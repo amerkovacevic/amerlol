@@ -95,6 +95,16 @@ export function AppCard({ app, locked = false }: AppCardProps) {
             </div>
           </div>
         )}
+
+        {app.status === "comingSoon" && (
+          <div className="absolute inset-0 bg-background/60 backdrop-blur-sm flex items-center justify-center rounded-lg">
+            <div className="text-center space-y-2">
+              <Badge variant="outline" className="text-sm px-3 py-1">
+                Coming Soon
+              </Badge>
+            </div>
+          </div>
+        )}
       </Card>
     </motion.div>
   )

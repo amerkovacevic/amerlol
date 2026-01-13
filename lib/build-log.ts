@@ -1,0 +1,33 @@
+export interface BuildLogEntry {
+  date: string
+  title: string
+  description: string
+}
+
+export const buildLog: BuildLogEntry[] = [
+  {
+    date: "2026-01-12",
+    title: "UI/UX Improvements & Build Log System",
+    description: "Implemented comprehensive UI improvements including logo integration across header, footer, hero section, and favicon. Refactored build log system to use shared data source, ensuring Latest Drops section automatically displays 4 most recent entries. Standardized all app settings to use toggle switches instead of checkboxes for better UX consistency. Fixed dev server routing issues with dynamic params configuration. Improved date selector styling in Pickup Soccer app.",
+  },
+  {
+    date: "2026-01-12",
+    title: "Pickup Soccer",
+    description: "Launched Pickup Soccer app - an all-in-one platform for scheduling, joining, creating, and managing pickup soccer games. Features include game listing with search and date filters, game creation with location and player limits, join/leave functionality, player management, game deletion for creators, user display name validation, and comprehensive settings for default preferences, notifications, and data management. Integrated with Firestore for real-time game data and user authentication requirements.",
+  },
+  {
+    date: "2026-01-12",
+    title: "Time Zone Converter",
+    description: "Launched Time Zone Converter utility - a comprehensive tool for comparing multiple time zones and converting times across the world. Features include real-time updates, day/night indicators, custom date/time selection, time zone search, and copy-to-clipboard functionality. Includes user settings for time format (12/24 hour), seconds display, day/night indicators, and auto-refresh preferences.",
+  },
+  {
+    date: "2026-01-12",
+    title: "Diff Checker",
+    description: "Launched Diff Checker utility - a text comparison tool for finding differences between two text files. Features include side-by-side text input, file upload support, visual diff display with color-coded additions (green) and deletions (red), download diff results, and comprehensive settings for font size, line numbers, whitespace handling, and case sensitivity.",
+  },
+  {
+    date: "2026-01-12",
+    title: "Encryption Platform & Firebase Integration",
+    description: "Launched the first mini-app - Encryption Platform with Base64, URL, Hex, Binary, ASCII, Caesar Cipher, ROT13, Morse Code, MD5, and SHA-256 encoding/decoding. Integrated Firebase Authentication (Google Sign-In and Email/Password) and Firestore for persistent user settings. Implemented authentication-gated settings with auto-convert, clear on tab change, default tab, and font size preferences.",
+  },
+]

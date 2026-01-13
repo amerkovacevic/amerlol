@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { motion } from "framer-motion"
-import { getFeaturedApps, getAppsByCategory, searchApps, type AppCategory } from "@/lib/apps/registry"
+import { getAllApps, getFeaturedApps, getAppsByCategory, searchApps, type AppCategory } from "@/lib/apps/registry"
 import { AppCard } from "@/components/hub/app-card"
 import { FilterBar } from "@/components/hub/filter-bar"
 import { EmptyState } from "@/components/hub/empty-state"
@@ -36,7 +36,7 @@ export default function HubPage() {
     let apps = searchQuery
       ? searchApps(searchQuery)
       : selectedCategory === "all"
-      ? getFeaturedApps()
+      ? getAllApps()
       : getAppsByCategory(selectedCategory as AppCategory)
 
     if (sortBy === "new") {

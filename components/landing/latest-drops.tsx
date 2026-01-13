@@ -4,33 +4,26 @@ import { motion } from "framer-motion"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Calendar } from "lucide-react"
+import { buildLog } from "@/lib/build-log"
 
-const changelog = [
-  {
-    date: "2026-01-12",
-    title: "Time Zone Converter",
-    type: "New App",
-    description: "Compare multiple time zones and convert times across the world with real-time updates, day/night indicators, and custom date/time selection",
-  },
-  {
-    date: "2026-01-12",
-    title: "Diff Checker",
-    type: "New App",
-    description: "Compare text files and find differences with visual diff display, file upload support, and comprehensive comparison settings",
-  },
-  {
-    date: "2026-01-12",
-    title: "Encryption Platform",
-    type: "New App",
-    description: "First mini-app launched with comprehensive encryption tools including Base64, URL, Hex, Binary, ASCII, Caesar Cipher, ROT13, Morse Code, MD5, and SHA-256 encoding/decoding",
-  },
-  {
-    date: "2026-01-12",
-    title: "Firebase Authentication",
-    type: "Feature",
-    description: "Integrated Firebase Authentication with Google Sign-In and Email/Password authentication, plus Firestore for persistent user settings",
-  },
-]
+// Get the 4 most recent entries from the build log
+// Extract a shorter description for the homepage (first sentence or first part after dash)
+const changelog = buildLog.slice(0, 4).map((entry) => {
+  // Try to get description after " - " or use first sentence
+  let shortDesc = entry.description
+  if (entry.description.includes(" - ")) {
+    shortDesc = entry.description.split(" - ")[1].split(". ")[0] + "."
+  } else {
+    shortDesc = entry.description.split(". ")[0] + "."
+  }
+  
+  return {
+    date: entry.date,
+    title: entry.title,
+    type: "New App" as const,
+    description: shortDesc,
+  }
+})
 
 export function LatestDrops() {
   return (
@@ -53,7 +46,7 @@ export function LatestDrops() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
         {changelog.map((item, index) => (
           <motion.div
-            key={item.date}
+            key={`${item.date}-${item.title}-${index}`}
             initial={{ opacity: 0, x: -20 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true, margin: "-200px 0px", amount: 0.3 }}

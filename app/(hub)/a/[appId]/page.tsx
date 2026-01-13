@@ -19,8 +19,9 @@ export async function generateStaticParams() {
   }
 }
 
-// Disable dynamic params - only pre-generated routes are allowed
-export const dynamicParams = false
+// Allow dynamic params in dev mode, disable in production for static export
+// This ensures routes work in dev server while maintaining static generation for production
+export const dynamicParams = process.env.NODE_ENV === 'development'
 
 export default function AppPage({ params }: { params: { appId: string } }) {
   return <AppPageClient appId={params.appId} />

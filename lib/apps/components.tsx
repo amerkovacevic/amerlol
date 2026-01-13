@@ -2,27 +2,16 @@ import * as React from "react"
 import { AppShellLayout } from "@/components/apps/app-shell-layout"
 import type { AppEntry } from "./registry"
 
-// Lazy load app components for better code splitting
-const EncryptionTools = React.lazy(() => 
-  import("@/components/apps/encryption/encryption-tools").then(m => ({ default: m.EncryptionTools }))
-)
-const EncryptionSettings = React.lazy(() => 
-  import("@/components/apps/encryption/encryption-settings").then(m => ({ default: m.EncryptionSettings }))
-)
-
-const DiffChecker = React.lazy(() => 
-  import("@/components/apps/diffchecker/diff-checker").then(m => ({ default: m.DiffChecker }))
-)
-const DiffCheckerSettings = React.lazy(() => 
-  import("@/components/apps/diffchecker/diff-checker-settings").then(m => ({ default: m.DiffCheckerSettings }))
-)
-
-const TimeZoneConverter = React.lazy(() => 
-  import("@/components/apps/timezone/timezone-converter").then(m => ({ default: m.TimeZoneConverter }))
-)
-const TimeZoneSettings = React.lazy(() => 
-  import("@/components/apps/timezone/timezone-settings").then(m => ({ default: m.TimeZoneSettings }))
-)
+// Import components directly for static export compatibility
+// Using regular imports instead of lazy loading to avoid chunk loading issues
+import { EncryptionTools } from "@/components/apps/encryption/encryption-tools"
+import { EncryptionSettings } from "@/components/apps/encryption/encryption-settings"
+import { DiffChecker } from "@/components/apps/diffchecker/diff-checker"
+import { DiffCheckerSettings } from "@/components/apps/diffchecker/diff-checker-settings"
+import { TimeZoneConverter } from "@/components/apps/timezone/timezone-converter"
+import { TimeZoneSettings } from "@/components/apps/timezone/timezone-settings"
+import { PickupSoccerMain } from "@/components/apps/pickup-soccer/pickup-soccer-main"
+import { PickupSoccerSettings } from "@/components/apps/pickup-soccer/pickup-soccer-settings"
 
 interface AppComponents {
   Main: React.ComponentType
@@ -47,6 +36,10 @@ const APP_COMPONENTS: Record<string, AppComponents> = {
     Main: TimeZoneConverter,
     Settings: TimeZoneSettings,
   },
+  "pickup-soccer": {
+    Main: PickupSoccerMain,
+    Settings: PickupSoccerSettings,
+  },
 }
 
 export function getAppComponents(appId: string): AppComponents | null {
@@ -57,23 +50,13 @@ export function hasAppComponents(appId: string): boolean {
   return appId in APP_COMPONENTS
 }
 
-// Helper to render app with Suspense
+// Helper to render app (no Suspense needed with direct imports)
 export function renderApp(app: AppEntry, components: AppComponents): React.ReactNode {
   const { Main, Settings } = components
 
   return (
-    <React.Suspense
-      fallback={
-        <div className="flex items-center justify-center py-12">
-          <div className="text-center">
-            <p className="text-muted-foreground">Loading {app.name}...</p>
-          </div>
-        </div>
-      }
-    >
-      <AppShellLayout app={app} settingsContent={Settings ? <Settings /> : undefined}>
-        <Main />
-      </AppShellLayout>
-    </React.Suspense>
+    <AppShellLayout app={app} settingsContent={Settings ? <Settings /> : undefined}>
+      <Main />
+    </AppShellLayout>
   )
 }

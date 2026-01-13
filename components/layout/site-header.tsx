@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { Menu, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -39,8 +40,16 @@ export function SiteHeader() {
       )}
     >
       <div className="container flex h-16 items-center justify-between">
-        <Link href="/" className="flex items-center space-x-2">
-          <span className="font-space-grotesk text-xl font-bold">amer.lol</span>
+        <Link href="/" className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
+          <Image
+            src="/logo.png"
+            alt="amer.lol"
+            width={32}
+            height={32}
+            className="h-8 w-8 object-contain"
+            priority
+          />
+          <span className="font-space-grotesk text-xl font-bold hidden sm:inline">amer.lol</span>
         </Link>
 
         <nav className="hidden md:flex items-center space-x-6">

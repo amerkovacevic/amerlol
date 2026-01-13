@@ -2,6 +2,12 @@ import {
   Lock,
   GitCompare,
   Globe,
+  Users,
+  Gift,
+  Trophy,
+  Palette,
+  Shield,
+  BarChart3,
   type LucideIcon
 } from "lucide-react"
 
@@ -54,10 +60,80 @@ export const APP_REGISTRY: AppEntry[] = [
     accent: "from-orange-500 to-red-500",
     featured: true,
   },
+  {
+    appId: "pickup-soccer",
+    name: "Pickup Soccer",
+    description: "Schedule, join, create, and manage pickup soccer games",
+    category: "Social",
+    tags: ["soccer", "football", "sports", "pickup", "games", "scheduling"],
+    status: "live",
+    icon: Users,
+    accent: "from-green-500 to-emerald-500",
+    featured: true,
+  },
+  {
+    appId: "secret-santa",
+    name: "Secret Santa",
+    description: "Organize and manage Secret Santa gift exchanges",
+    category: "Social",
+    tags: ["gifts", "santa", "exchange", "holiday", "social"],
+    status: "comingSoon",
+    icon: Gift,
+    accent: "from-red-500 to-pink-500",
+    featured: false,
+  },
+  {
+    appId: "football-manager-team-picker",
+    name: "Football Manager Team Picker",
+    description: "Create and manage fantasy football teams with advanced picker tools",
+    category: "Games",
+    tags: ["football", "fantasy", "team", "manager", "sports", "picker"],
+    status: "comingSoon",
+    icon: Trophy,
+    accent: "from-yellow-500 to-orange-500",
+    featured: false,
+  },
+  {
+    appId: "color-palette-crafter",
+    name: "Color Palette Crafter",
+    description: "Design and craft beautiful color palettes for your projects",
+    category: "Visual",
+    tags: ["color", "palette", "design", "craft", "visual", "art"],
+    status: "comingSoon",
+    icon: Palette,
+    accent: "from-indigo-500 to-purple-500",
+    featured: false,
+  },
+  {
+    appId: "amer-gauntlet",
+    name: "Amer Gauntlet",
+    description: "Challenge yourself with the ultimate gauntlet experience",
+    category: "Games",
+    tags: ["gauntlet", "challenge", "game", "adventure"],
+    status: "comingSoon",
+    icon: Shield,
+    accent: "from-slate-500 to-gray-500",
+    featured: false,
+  },
+  {
+    appId: "monitoring-dashboard",
+    name: "Monitoring Dashboard",
+    description: "Real-time monitoring and analytics dashboard for system metrics",
+    category: "Utilities",
+    tags: ["monitoring", "dashboard", "analytics", "metrics", "data"],
+    status: "comingSoon",
+    icon: BarChart3,
+    accent: "from-teal-500 to-cyan-500",
+    featured: false,
+  },
 ]
 
 export function getAppById(appId: string): AppEntry | undefined {
   return APP_REGISTRY.find(app => app.appId === appId)
+}
+
+export function getAllApps(): AppEntry[] {
+  return APP_REGISTRY
 }
 
 export function getFeaturedApps(): AppEntry[] {

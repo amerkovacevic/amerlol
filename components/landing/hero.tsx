@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { ArrowRight } from "lucide-react"
@@ -36,7 +37,19 @@ export function Hero() {
         animate="visible"
         className="container mx-auto px-4 py-20 text-center relative z-10"
       >
-        
+        <motion.div
+          variants={itemVariants}
+          className="flex justify-center mb-8"
+        >
+          <Image
+            src="/logo.png"
+            alt="amer.lol"
+            width={200}
+            height={200}
+            className="h-32 w-32 md:h-48 md:w-48 lg:h-64 lg:w-64 object-contain drop-shadow-2xl"
+            priority
+          />
+        </motion.div>
 
         <motion.h1
           variants={itemVariants}

@@ -1,4 +1,5 @@
 import Link from "next/link"
+import Image from "next/image"
 import { Github, Linkedin } from "lucide-react"
 
 export function Footer() {
@@ -7,7 +8,16 @@ export function Footer() {
       <div className="container mx-auto px-4 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="space-y-4">
-            <h3 className="font-space-grotesk text-lg font-bold">amer.lol</h3>
+            <Link href="/" className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
+              <Image
+                src="/logo.png"
+                alt="amer.lol"
+                width={32}
+                height={32}
+                className="h-8 w-8 object-contain"
+              />
+              <h3 className="font-space-grotesk text-lg font-bold">amer.lol</h3>
+            </Link>
             <p className="text-sm text-muted-foreground">
               A premium, playful hub for mini-apps and experiments
             </p>

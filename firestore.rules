@@ -25,6 +25,37 @@ service cloud.firestore {
       match /timezoneSettings/{settingsId} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
+      
+      // Pickup Soccer settings subcollection
+      // Document structure: /users/{userId}/pickupSoccerSettings/{settingsId}
+      match /pickupSoccerSettings/{settingsId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+    
+    // Pickup Soccer Games collection
+    // Document structure: /games/{gameId}
+    // Fields: title, description, date, time, location, maxPlayers, players[], createdBy, createdAt, updatedAt
+    // Security: Anyone can read, only authenticated users can create, only creator can update/delete
+    match /games/{gameId} {
+      // Anyone can read games (view available games)
+      allow read: if true;
+      
+      // Only authenticated users can create games
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.createdBy;
+      
+      // Only the game creator can delete
+      allow delete: if request.auth != null && request.auth.uid == resource.data.createdBy;
+      
+      // Allow game creator to update any field
+      allow update: if request.auth != null && request.auth.uid == resource.data.createdBy;
+      
+      // Allow any authenticated user to join/leave games (update players array only)
+      // This allows users to add/remove themselves from the players array
+      allow update: if request.auth != null && 
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['players', 'updatedAt']) &&
+        request.resource.data.players is list &&
+        resource.data.players is list;
     }
   }
 }
