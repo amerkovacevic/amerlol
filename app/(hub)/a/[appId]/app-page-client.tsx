@@ -6,6 +6,8 @@ import { AppShellLayout } from "@/components/apps/app-shell-layout"
 import { motion } from "framer-motion"
 import { EncryptionTools } from "@/components/apps/encryption/encryption-tools"
 import { EncryptionSettings } from "@/components/apps/encryption/encryption-settings"
+import { DiffChecker } from "@/components/apps/diffchecker/diff-checker"
+import { DiffCheckerSettings } from "@/components/apps/diffchecker/diff-checker-settings"
 
 interface AppPageClientProps {
   appId: string
@@ -38,6 +40,17 @@ export function AppPageClient({ appId }: AppPageClientProps) {
         settingsContent={<EncryptionSettings />}
       >
         <EncryptionTools />
+      </AppShellLayout>
+    )
+  }
+
+  if (app.appId === "diffchecker") {
+    return (
+      <AppShellLayout 
+        app={app}
+        settingsContent={<DiffCheckerSettings />}
+      >
+        <DiffChecker />
       </AppShellLayout>
     )
   }

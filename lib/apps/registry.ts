@@ -1,5 +1,6 @@
 import { 
   Lock,
+  GitCompare,
   type LucideIcon
 } from "lucide-react"
 
@@ -28,6 +29,17 @@ export const APP_REGISTRY: AppEntry[] = [
     status: "live",
     icon: Lock,
     accent: "from-blue-500 to-cyan-500",
+    featured: true,
+  },
+  {
+    appId: "diffchecker",
+    name: "Diff Checker",
+    description: "Compare text files and find differences between two versions",
+    category: "Utilities",
+    tags: ["diff", "compare", "text", "file", "difference"],
+    status: "live",
+    icon: GitCompare,
+    accent: "from-purple-500 to-pink-500",
     featured: true,
   },
 ]
