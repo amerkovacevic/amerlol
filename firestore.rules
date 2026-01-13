@@ -19,6 +19,12 @@ service cloud.firestore {
       match /diffCheckerSettings/{settingsId} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
+      
+      // Time Zone Converter settings subcollection
+      // Document structure: /users/{userId}/timezoneSettings/{settingsId}
+      match /timezoneSettings/{settingsId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
     }
   }
 }

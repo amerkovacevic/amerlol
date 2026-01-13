@@ -1,6 +1,7 @@
 import { 
   Lock,
   GitCompare,
+  Globe,
   type LucideIcon
 } from "lucide-react"
 
@@ -42,6 +43,17 @@ export const APP_REGISTRY: AppEntry[] = [
     accent: "from-purple-500 to-pink-500",
     featured: true,
   },
+  {
+    appId: "timezone",
+    name: "Time Zone Converter",
+    description: "Compare multiple time zones and convert times across the world",
+    category: "Utilities",
+    tags: ["timezone", "time", "converter", "world", "clock"],
+    status: "live",
+    icon: Globe,
+    accent: "from-orange-500 to-red-500",
+    featured: true,
+  },
 ]
 
 export function getAppById(appId: string): AppEntry | undefined {
@@ -63,4 +75,31 @@ export function searchApps(query: string): AppEntry[] {
     app.description.toLowerCase().includes(lowerQuery) ||
     app.tags.some(tag => tag.toLowerCase().includes(lowerQuery))
   )
+}
+
+// Helper to validate app registry integrity
+export function validateAppRegistry(): { valid: boolean; errors: string[] } {
+  const errors: string[] = []
+  const appIds = new Set<string>()
+
+  APP_REGISTRY.forEach((app, index) => {
+    // Check for duplicate appIds
+    if (appIds.has(app.appId)) {
+      errors.push(`Duplicate appId "${app.appId}" found at index ${index}`)
+    }
+    appIds.add(app.appId)
+
+    // Validate required fields
+    if (!app.appId || app.appId.trim() === "") {
+      errors.push(`App at index ${index} has empty appId`)
+    }
+    if (!app.name || app.name.trim() === "") {
+      errors.push(`App "${app.appId}" has empty name`)
+    }
+  })
+
+  return {
+    valid: errors.length === 0,
+    errors,
+  }
 }

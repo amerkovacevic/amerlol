@@ -7,6 +7,16 @@ import { Calendar } from "lucide-react"
 const buildLog = [
   {
     date: "2026-01-12",
+    title: "Time Zone Converter",
+    description: "Launched Time Zone Converter utility - a comprehensive tool for comparing multiple time zones and converting times across the world. Features include real-time updates, day/night indicators, custom date/time selection, time zone search, and copy-to-clipboard functionality. Includes user settings for time format (12/24 hour), seconds display, day/night indicators, and auto-refresh preferences.",
+  },
+  {
+    date: "2026-01-12",
+    title: "Diff Checker",
+    description: "Launched Diff Checker utility - a text comparison tool for finding differences between two text files. Features include side-by-side text input, file upload support, visual diff display with color-coded additions (green) and deletions (red), download diff results, and comprehensive settings for font size, line numbers, whitespace handling, and case sensitivity.",
+  },
+  {
+    date: "2026-01-12",
     title: "Encryption Platform & Firebase Integration",
     description: "Launched the first mini-app - Encryption Platform with Base64, URL, Hex, Binary, ASCII, Caesar Cipher, ROT13, Morse Code, MD5, and SHA-256 encoding/decoding. Integrated Firebase Authentication (Google Sign-In and Email/Password) and Firestore for persistent user settings. Implemented authentication-gated settings with auto-convert, clear on tab change, default tab, and font size preferences.",
   },
@@ -57,10 +67,11 @@ export function AboutContent() {
                       <div className="flex items-center justify-between mb-2">
                         <h3 className="font-semibold text-lg">{entry.title}</h3>
                         <span className="text-sm text-muted-foreground">
-                          {new Date(entry.date).toLocaleDateString("en-US", {
+                          {new Date(entry.date + "T12:00:00-06:00").toLocaleDateString("en-US", {
                             month: "short",
                             day: "numeric",
                             year: "numeric",
+                            timeZone: "America/Chicago",
                           })}
                         </span>
                       </div>

@@ -2,12 +2,9 @@
 
 import * as React from "react"
 import { getAppById } from "@/lib/apps/registry"
+import { getAppComponents, renderApp, hasAppComponents } from "@/lib/apps/components"
 import { AppShellLayout } from "@/components/apps/app-shell-layout"
 import { motion } from "framer-motion"
-import { EncryptionTools } from "@/components/apps/encryption/encryption-tools"
-import { EncryptionSettings } from "@/components/apps/encryption/encryption-settings"
-import { DiffChecker } from "@/components/apps/diffchecker/diff-checker"
-import { DiffCheckerSettings } from "@/components/apps/diffchecker/diff-checker-settings"
 
 interface AppPageClientProps {
   appId: string
@@ -32,30 +29,15 @@ export function AppPageClient({ appId }: AppPageClientProps) {
     )
   }
 
-  // Render app-specific content
-  if (app.appId === "encryption") {
-    return (
-      <AppShellLayout 
-        app={app}
-        settingsContent={<EncryptionSettings />}
-      >
-        <EncryptionTools />
-      </AppShellLayout>
-    )
+  // Get app components from registry
+  const components = getAppComponents(appId)
+
+  // If components are registered, render them
+  if (components) {
+    return <>{renderApp(app, components)}</>
   }
 
-  if (app.appId === "diffchecker") {
-    return (
-      <AppShellLayout 
-        app={app}
-        settingsContent={<DiffCheckerSettings />}
-      >
-        <DiffChecker />
-      </AppShellLayout>
-    )
-  }
-
-  // Default placeholder for other apps
+  // Default placeholder for apps without components yet
   return (
     <AppShellLayout app={app}>
       <motion.div

@@ -8,6 +8,18 @@ import { Calendar } from "lucide-react"
 const changelog = [
   {
     date: "2026-01-12",
+    title: "Time Zone Converter",
+    type: "New App",
+    description: "Compare multiple time zones and convert times across the world with real-time updates, day/night indicators, and custom date/time selection",
+  },
+  {
+    date: "2026-01-12",
+    title: "Diff Checker",
+    type: "New App",
+    description: "Compare text files and find differences with visual diff display, file upload support, and comprehensive comparison settings",
+  },
+  {
+    date: "2026-01-12",
     title: "Encryption Platform",
     type: "New App",
     description: "First mini-app launched with comprehensive encryption tools including Base64, URL, Hex, Binary, ASCII, Caesar Cipher, ROT13, Morse Code, MD5, and SHA-256 encoding/decoding",
