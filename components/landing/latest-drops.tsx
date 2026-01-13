@@ -26,7 +26,7 @@ export function LatestDrops() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true }}
+        viewport={{ once: true, margin: "-200px 0px", amount: 0.3 }}
         transition={{ duration: 0.5 }}
         className="text-center mb-12"
       >
@@ -44,7 +44,7 @@ export function LatestDrops() {
             key={item.date}
             initial={{ opacity: 0, x: -20 }}
             whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
+            viewport={{ once: true, margin: "-200px 0px", amount: 0.3 }}
             transition={{ duration: 0.5, delay: index * 0.1 }}
           >
             <Card className="h-full">
@@ -53,10 +53,11 @@ export function LatestDrops() {
                   <Badge variant="secondary">{item.type}</Badge>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Calendar className="h-4 w-4" />
-                    {new Date(item.date).toLocaleDateString("en-US", {
+                    {new Date(item.date + "T12:00:00-06:00").toLocaleDateString("en-US", {
                       month: "short",
                       day: "numeric",
                       year: "numeric",
+                      timeZone: "America/Chicago",
                     })}
                   </div>
                 </div>

@@ -64,10 +64,7 @@ export function AppCard({ app, locked = false }: AppCardProps) {
         <div className={cn("absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-10 transition-opacity", `bg-gradient-to-br ${app.accent}`)} />
         
         <CardHeader>
-          <div className="flex items-start justify-between">
-            <div className={cn("p-2 rounded-lg bg-gradient-to-br", app.accent)}>
-              <app.icon className="h-5 w-5 text-white" />
-            </div>
+          <div className="flex items-start justify-between mb-2">
             <Badge variant={statusVariants[app.status]}>
               {statusLabels[app.status]}
             </Badge>
@@ -89,7 +86,9 @@ export function AppCard({ app, locked = false }: AppCardProps) {
         {locked && (
           <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center rounded-lg">
             <div className="text-center space-y-3">
-              <Lock className="h-8 w-8 mx-auto text-muted-foreground" />
+              <div className="p-3 rounded-full bg-foreground/10 border-2 border-foreground/20 mx-auto w-fit">
+                <Lock className="h-8 w-8 text-slate-900 dark:text-slate-100" strokeWidth={2.5} />
+              </div>
               <Button size="sm" variant="default">
                 Login to unlock
               </Button>

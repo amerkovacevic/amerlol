@@ -6,7 +6,6 @@ import { ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { AppEntry } from "@/lib/apps/registry"
-import { cn } from "@/lib/utils"
 import { useAuth } from "@/components/auth/auth-provider"
 import { AuthDialog } from "@/components/auth/auth-dialog"
 
@@ -18,7 +17,6 @@ interface AppShellLayoutProps {
 
 export function AppShellLayout({ app, children, settingsContent }: AppShellLayoutProps) {
   const { user } = useAuth()
-  const Icon = app.icon
   const [authDialogOpen, setAuthDialogOpen] = React.useState(false)
 
   return (
@@ -35,18 +33,13 @@ export function AppShellLayout({ app, children, settingsContent }: AppShellLayou
       </Button>
 
       <div className="mb-8">
-        <div className="flex items-start gap-4 mb-4">
-          <div className={cn("p-3 rounded-xl bg-gradient-to-br", app.accent)}>
-            <Icon className="h-8 w-8 text-white" />
-          </div>
-          <div className="flex-1">
-            <h1 className="font-space-grotesk text-3xl md:text-4xl font-bold mb-2">
-              {app.name}
-            </h1>
-            <p className="text-muted-foreground text-lg">
-              {app.description}
-            </p>
-          </div>
+        <div className="mb-4">
+          <h1 className="font-space-grotesk text-3xl md:text-4xl font-bold mb-2">
+            {app.name}
+          </h1>
+          <p className="text-muted-foreground text-lg">
+            {app.description}
+          </p>
         </div>
       </div>
 

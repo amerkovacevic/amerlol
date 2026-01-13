@@ -9,7 +9,10 @@ import { EmptyState } from "@/components/hub/empty-state"
 import { useAuth } from "@/components/auth/auth-provider"
 import { AuthDialog } from "@/components/auth/auth-dialog"
 import { Button } from "@/components/ui/button"
-import { User, LogOut } from "lucide-react"
+import { User, LogOut, Settings } from "lucide-react"
+import Link from "next/link"
+import { db } from "@/lib/firebase/config"
+import { doc, getDoc } from "firebase/firestore"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,6 +30,7 @@ export default function HubPage() {
   const [searchQuery, setSearchQuery] = React.useState("")
   const [selectedCategory, setSelectedCategory] = React.useState<AppCategory | "all">("all")
   const [sortBy, setSortBy] = React.useState<SortOption>("featured")
+  const [username, setUsername] = React.useState<string | null>(null)
 
   const filteredApps = React.useMemo(() => {
     let apps = searchQuery
@@ -45,6 +49,41 @@ export default function HubPage() {
 
     return apps
   }, [searchQuery, selectedCategory, sortBy])
+
+  // Load username from Firestore
+  React.useEffect(() => {
+    const loadUsername = async () => {
+      if (!user) {
+        setUsername(null)
+        return
+      }
+
+      try {
+        const userDocRef = doc(db, "users", user.uid)
+        const userDoc = await getDoc(userDocRef)
+        
+        if (userDoc.exists()) {
+          const data = userDoc.data()
+          setUsername(data.username || null)
+        } else {
+          setUsername(null)
+        }
+      } catch (error) {
+        console.error("Failed to load username:", error)
+        setUsername(null)
+      }
+    }
+
+    loadUsername()
+  }, [user])
+
+  // Determine display name priority: username > displayName > email
+  const displayName = React.useMemo(() => {
+    if (!user) return "My Account"
+    if (username) return username
+    if (user.displayName) return user.displayName
+    return user.email || "My Account"
+  }, [user, username])
 
   const handleSignOut = async () => {
     try {
@@ -93,15 +132,17 @@ export default function HubPage() {
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" className="gap-2">
                   <User className="h-4 w-4" />
-                  {user.email}
+                  {displayName}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel>My Account</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem disabled>
-                  <User className="mr-2 h-4 w-4" />
-                  <span>{user.email}</span>
+                <DropdownMenuItem asChild>
+                  <Link href="/account" className="flex items-center">
+                    <Settings className="mr-2 h-4 w-4" />
+                    <span>Account Settings</span>
+                  </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleSignOut}>
