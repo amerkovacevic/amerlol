@@ -7,6 +7,16 @@ export interface BuildLogEntry {
 export const buildLog: BuildLogEntry[] = [
   {
     date: "2026-01-13",
+    title: "STL Monitor",
+    description: "Launched STL Monitor - a Citizen-style incident monitoring dashboard for Greater St. Louis. Features include an interactive MapLibre map with animated pings for live incidents, incident drawer with details and nearby camera matching, category filters (Traffic, Weather, Transit, News), time window filtering (15m to 24h), replay mode with time slider for historical playback, analytics dashboard with hourly/daily distributions, temporal heatmaps, and top incident locations by neighborhood and corridor, and predictive insights with high-risk hours, high-risk locations, and 7-day forecasts. Data sources include MoDOT traffic incidents and cameras, IDOT (East St. Louis only), NWS weather alerts, and Metro Transit GTFS-RT service alerts. All user settings stored in Firestore. Situational awareness tool only - not for emergency response.",
+  },
+  {
+    date: "2026-01-13",
+    title: "Amer Gauntlet",
+    description: "Launched Amer Gauntlet - a daily word puzzle challenge with competitive leaderboards. Features include daily deterministic word generation, 6 attempts per puzzle with color-coded feedback (green/yellow/gray), real-time timer, hint system (-100 points), scoring based on time, attempts, and hints used. Comprehensive statistics tracking including current streak, best streak, total games, wins, average score, fastest time, and perfect games. Daily and all-time leaderboards with rankings. Share results as emoji grid. All data (results, stats, leaderboards) stored in Firestore with authentication requirements.",
+  },
+  {
+    date: "2026-01-13",
     title: "Color Crafter",
     description: "Launched Color Crafter - a colorhunt.co-inspired platform for discovering, creating, and sharing beautiful color palettes. Features include public palette browsing with search, palette creation with 2-8 colors per palette (color picker, hex input, randomize), my palettes management, favorites system with Firestore persistence, copy individual colors or entire palettes, export palettes as JSON, edit and delete own palettes, like counts, and comprehensive settings for default colors, export formats, display preferences, and auto-copy functionality. All user data (favorites, settings, created palettes) stored in Firestore with authentication requirements. Public palettes are readable by all, but creation and management require authentication.",
   },

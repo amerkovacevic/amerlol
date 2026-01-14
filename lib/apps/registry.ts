@@ -8,6 +8,7 @@ import {
   Palette,
   Shield,
   BarChart3,
+  Radio,
   type LucideIcon
 } from "lucide-react"
 
@@ -113,6 +114,17 @@ export const APP_REGISTRY: AppEntry[] = [
     status: "live",
     icon: Shield,
     accent: "from-red-500 to-orange-500",
+    featured: true,
+  },
+  {
+    appId: "stl-monitor",
+    name: "STL Monitor",
+    description: "Real-time incident monitoring dashboard for Greater St. Louis",
+    category: "Utilities",
+    tags: ["stl", "st louis", "monitor", "traffic", "incidents", "weather", "map", "live"],
+    status: "live",
+    icon: Radio,
+    accent: "from-red-600 to-rose-500",
     featured: true,
   },
   {

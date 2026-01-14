@@ -7,8 +7,8 @@ export async function generateStaticParams() {
   try {
     // Map all apps to their appId for static generation
     const params = APP_REGISTRY.map((app) => ({
-      appId: app.appId,
-    }))
+    appId: app.appId,
+  }))
     
     // Return empty array if registry is empty to prevent build errors
     return params.length > 0 ? params : []

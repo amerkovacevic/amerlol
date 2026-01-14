@@ -20,6 +20,8 @@ import { ColorPaletteCrafterMain } from "@/components/apps/color-palette-crafter
 import { ColorPaletteCrafterSettings } from "@/components/apps/color-palette-crafter/color-palette-crafter-settings"
 import { AmerGauntletMain } from "@/components/apps/amer-gauntlet/amer-gauntlet-main"
 import { AmerGauntletSettings } from "@/components/apps/amer-gauntlet/amer-gauntlet-settings"
+import { STLMonitorMain } from "@/components/apps/stl-monitor/stl-monitor-main"
+import { STLMonitorSettings } from "@/components/apps/stl-monitor/stl-monitor-settings"
 
 interface AppComponents {
   Main: React.ComponentType
@@ -63,6 +65,10 @@ const APP_COMPONENTS: Record<string, AppComponents> = {
   "amer-gauntlet": {
     Main: AmerGauntletMain,
     Settings: AmerGauntletSettings,
+  },
+  "stl-monitor": {
+    Main: STLMonitorMain,
+    Settings: STLMonitorSettings,
   },
 }
 
