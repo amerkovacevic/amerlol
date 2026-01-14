@@ -65,6 +65,7 @@ export default function MapComponent({
   const map = React.useRef<maplibregl.Map | null>(null)
   const markers = React.useRef<Map<string, maplibregl.Marker>>(new Map())
   const animationFrames = React.useRef<Map<string, number>>(new Map())
+  const previousView = React.useRef<{ center: [number, number]; zoom: number } | null>(null)
   const { resolvedTheme } = useTheme()
   const [mounted, setMounted] = React.useState(false)
 
@@ -280,15 +281,32 @@ export default function MapComponent({
     })
   }, [incidents, onIncidentClick, replayMode])
 
-  // Center on selected incident
+  // Center on selected incident or restore previous view
   React.useEffect(() => {
-    if (!map.current || !selectedIncident) return
+    if (!map.current) return
 
-    map.current.flyTo({
-      center: [selectedIncident.location.lng, selectedIncident.location.lat],
-      zoom: 14,
-      duration: 1000,
-    })
+    if (selectedIncident) {
+      // Save current view before zooming to incident
+      previousView.current = {
+        center: map.current.getCenter().toArray() as [number, number],
+        zoom: map.current.getZoom(),
+      }
+      
+      // Fly to selected incident
+      map.current.flyTo({
+        center: [selectedIncident.location.lng, selectedIncident.location.lat],
+        zoom: 14,
+        duration: 1000,
+      })
+    } else if (previousView.current) {
+      // Restore previous view when sidebar closes
+      map.current.flyTo({
+        center: previousView.current.center,
+        zoom: previousView.current.zoom,
+        duration: 1000,
+      })
+      previousView.current = null
+    }
   }, [selectedIncident])
 
   // Create marker element with fixed-size container for proper anchoring
@@ -306,6 +324,9 @@ export default function MapComponent({
       height: ${size}px;
       cursor: pointer;
       position: relative;
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
     `
     
     // The visual marker circle

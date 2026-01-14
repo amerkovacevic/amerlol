@@ -60,6 +60,22 @@ import {
 // Map component loaded dynamically to avoid SSR issues
 const MapComponent = React.lazy(() => import("./map-component"))
 
+// Loading messages for fun popups
+const LOADING_MESSAGES = [
+  "Finding crimes...",
+  "Braking for no reason on I-270...",
+  "Checking traffic cameras...",
+  "Locating potholes...",
+  "Scanning for construction zones...",
+  "Detecting sudden stops on 40...",
+  "Monitoring Metro delays...",
+  "Watching for weather alerts...",
+  "Counting red lights...",
+  "Tracking accidents...",
+  "Checking I-64 backups...",
+  "Finding traffic jams...",
+]
+
 export function STLMonitorMain() {
   const { user, loading: authLoading } = useAuth()
   const [authDialogOpen, setAuthDialogOpen] = React.useState(false)
@@ -76,6 +92,7 @@ export function STLMonitorMain() {
   const [selectedIncident, setSelectedIncident] = React.useState<Incident | null>(null)
   const [showFilters, setShowFilters] = React.useState(false)
   const [isRefreshing, setIsRefreshing] = React.useState(false)
+  const [currentMessageIndex, setCurrentMessageIndex] = React.useState(0)
   
   // Replay state
   const [replayTime, setReplayTime] = React.useState<Date>(new Date())
@@ -241,13 +258,36 @@ export function STLMonitorMain() {
     }
   }
 
+  // Cycle through loading messages
+  React.useEffect(() => {
+    if (loading && incidents.length === 0) {
+      const interval = setInterval(() => {
+        setCurrentMessageIndex((prev) => (prev + 1) % LOADING_MESSAGES.length)
+      }, 1500) // Change message every 1.5 seconds
+      return () => clearInterval(interval)
+    }
+  }, [loading, incidents.length])
+
   if (loading && incidents.length === 0) {
     return (
       <Card>
         <CardContent className="py-12 text-center">
-          <div className="animate-pulse space-y-4">
+          <div className="space-y-6">
             <Radio className="h-12 w-12 mx-auto text-primary animate-spin" />
-            <p className="text-muted-foreground">Loading STL Monitor...</p>
+            <div className="h-8 flex items-center justify-center">
+              <AnimatePresence mode="wait">
+                <motion.p
+                  key={currentMessageIndex}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.3 }}
+                  className="text-muted-foreground text-lg"
+                >
+                  {LOADING_MESSAGES[currentMessageIndex]}
+                </motion.p>
+              </AnimatePresence>
+            </div>
           </div>
         </CardContent>
       </Card>

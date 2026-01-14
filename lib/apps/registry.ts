@@ -127,17 +127,6 @@ export const APP_REGISTRY: AppEntry[] = [
     accent: "from-red-600 to-rose-500",
     featured: true,
   },
-  {
-    appId: "monitoring-dashboard",
-    name: "Monitoring Dashboard",
-    description: "Real-time monitoring and analytics dashboard for system metrics",
-    category: "Utilities",
-    tags: ["monitoring", "dashboard", "analytics", "metrics", "data"],
-    status: "comingSoon",
-    icon: BarChart3,
-    accent: "from-teal-500 to-cyan-500",
-    featured: false,
-  },
 ]
 
 export function getAppById(appId: string): AppEntry | undefined {
