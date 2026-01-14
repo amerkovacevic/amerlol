@@ -18,6 +18,8 @@ import { FootballManagerTeamPickerMain } from "@/components/apps/football-manage
 import { FootballManagerTeamPickerSettings } from "@/components/apps/football-manager-team-picker/football-manager-team-picker-settings"
 import { ColorPaletteCrafterMain } from "@/components/apps/color-palette-crafter/color-palette-crafter-main"
 import { ColorPaletteCrafterSettings } from "@/components/apps/color-palette-crafter/color-palette-crafter-settings"
+import { AmerGauntletMain } from "@/components/apps/amer-gauntlet/amer-gauntlet-main"
+import { AmerGauntletSettings } from "@/components/apps/amer-gauntlet/amer-gauntlet-settings"
 
 interface AppComponents {
   Main: React.ComponentType
@@ -57,6 +59,10 @@ const APP_COMPONENTS: Record<string, AppComponents> = {
   "color-palette-crafter": {
     Main: ColorPaletteCrafterMain,
     Settings: ColorPaletteCrafterSettings,
+  },
+  "amer-gauntlet": {
+    Main: AmerGauntletMain,
+    Settings: AmerGauntletSettings,
   },
 }
 

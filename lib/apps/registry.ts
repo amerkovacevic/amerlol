@@ -107,13 +107,13 @@ export const APP_REGISTRY: AppEntry[] = [
   {
     appId: "amer-gauntlet",
     name: "Amer Gauntlet",
-    description: "Challenge yourself with the ultimate gauntlet experience",
+    description: "Daily word puzzle challenge with leaderboards and streaks",
     category: "Games",
-    tags: ["gauntlet", "challenge", "game", "adventure"],
-    status: "comingSoon",
+    tags: ["gauntlet", "challenge", "game", "puzzle", "word", "daily", "leaderboard"],
+    status: "live",
     icon: Shield,
-    accent: "from-slate-500 to-gray-500",
-    featured: false,
+    accent: "from-red-500 to-orange-500",
+    featured: true,
   },
   {
     appId: "monitoring-dashboard",
