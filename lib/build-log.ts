@@ -7,6 +7,11 @@ export interface BuildLogEntry {
 export const buildLog: BuildLogEntry[] = [
   {
     date: "2026-01-13",
+    title: "Color Crafter",
+    description: "Launched Color Crafter - a colorhunt.co-inspired platform for discovering, creating, and sharing beautiful color palettes. Features include public palette browsing with search, palette creation with 2-8 colors per palette (color picker, hex input, randomize), my palettes management, favorites system with Firestore persistence, copy individual colors or entire palettes, export palettes as JSON, edit and delete own palettes, like counts, and comprehensive settings for default colors, export formats, display preferences, and auto-copy functionality. All user data (favorites, settings, created palettes) stored in Firestore with authentication requirements. Public palettes are readable by all, but creation and management require authentication.",
+  },
+  {
+    date: "2026-01-13",
     title: "Football Manager Team Picker",
     description: "Launched Football Manager Team Picker - a comprehensive tool for picking random Football Manager teams for solo play or group selection. Features include single and multiple team picking modes, filtering by country and league, same country/league constraints for group picks, minimum tier filtering, search functionality, favorites system with Firestore persistence, pick history tracking, and comprehensive settings for default preferences. All user data (favorites, history, settings) stored in Firestore with authentication requirements. Team data loaded from JSON template with support for optional fields.",
   },
