@@ -12,6 +12,8 @@ import { TimeZoneConverter } from "@/components/apps/timezone/timezone-converter
 import { TimeZoneSettings } from "@/components/apps/timezone/timezone-settings"
 import { PickupSoccerMain } from "@/components/apps/pickup-soccer/pickup-soccer-main"
 import { PickupSoccerSettings } from "@/components/apps/pickup-soccer/pickup-soccer-settings"
+import { SecretSantaMain } from "@/components/apps/secret-santa/secret-santa-main"
+import { SecretSantaSettings } from "@/components/apps/secret-santa/secret-santa-settings"
 
 interface AppComponents {
   Main: React.ComponentType
@@ -39,6 +41,10 @@ const APP_COMPONENTS: Record<string, AppComponents> = {
   "pickup-soccer": {
     Main: PickupSoccerMain,
     Settings: PickupSoccerSettings,
+  },
+  "secret-santa": {
+    Main: SecretSantaMain,
+    Settings: SecretSantaSettings,
   },
 }
 

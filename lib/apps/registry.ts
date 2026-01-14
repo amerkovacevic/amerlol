@@ -77,10 +77,10 @@ export const APP_REGISTRY: AppEntry[] = [
     description: "Organize and manage Secret Santa gift exchanges",
     category: "Social",
     tags: ["gifts", "santa", "exchange", "holiday", "social"],
-    status: "comingSoon",
+    status: "live",
     icon: Gift,
     accent: "from-red-500 to-pink-500",
-    featured: false,
+    featured: true,
   },
   {
     appId: "football-manager-team-picker",
