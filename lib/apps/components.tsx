@@ -16,6 +16,8 @@ import { SecretSantaMain } from "@/components/apps/secret-santa/secret-santa-mai
 import { SecretSantaSettings } from "@/components/apps/secret-santa/secret-santa-settings"
 import { FootballManagerTeamPickerMain } from "@/components/apps/football-manager-team-picker/football-manager-team-picker-main"
 import { FootballManagerTeamPickerSettings } from "@/components/apps/football-manager-team-picker/football-manager-team-picker-settings"
+import { ColorPaletteCrafterMain } from "@/components/apps/color-palette-crafter/color-palette-crafter-main"
+import { ColorPaletteCrafterSettings } from "@/components/apps/color-palette-crafter/color-palette-crafter-settings"
 
 interface AppComponents {
   Main: React.ComponentType
@@ -51,6 +53,10 @@ const APP_COMPONENTS: Record<string, AppComponents> = {
   "football-manager-team-picker": {
     Main: FootballManagerTeamPickerMain,
     Settings: FootballManagerTeamPickerSettings,
+  },
+  "color-palette-crafter": {
+    Main: ColorPaletteCrafterMain,
+    Settings: ColorPaletteCrafterSettings,
   },
 }
 

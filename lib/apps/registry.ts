@@ -95,14 +95,14 @@ export const APP_REGISTRY: AppEntry[] = [
   },
   {
     appId: "color-palette-crafter",
-    name: "Color Palette Crafter",
-    description: "Design and craft beautiful color palettes for your projects",
+    name: "Color Crafter",
+    description: "Discover, create, and share beautiful color palettes",
     category: "Visual",
     tags: ["color", "palette", "design", "craft", "visual", "art"],
-    status: "comingSoon",
+    status: "live",
     icon: Palette,
     accent: "from-indigo-500 to-purple-500",
-    featured: false,
+    featured: true,
   },
   {
     appId: "amer-gauntlet",

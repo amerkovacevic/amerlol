@@ -6,6 +6,16 @@ export interface BuildLogEntry {
 
 export const buildLog: BuildLogEntry[] = [
   {
+    date: "2026-01-13",
+    title: "Football Manager Team Picker",
+    description: "Launched Football Manager Team Picker - a comprehensive tool for picking random Football Manager teams for solo play or group selection. Features include single and multiple team picking modes, filtering by country and league, same country/league constraints for group picks, minimum tier filtering, search functionality, favorites system with Firestore persistence, pick history tracking, and comprehensive settings for default preferences. All user data (favorites, history, settings) stored in Firestore with authentication requirements. Team data loaded from JSON template with support for optional fields.",
+  },
+  {
+    date: "2026-01-13",
+    title: "Secret Santa",
+    description: "Launched Secret Santa app - a complete platform for organizing and managing Secret Santa gift exchanges. Features include exchange creation with name, description, budget, and date, participant management (join/leave), random name drawing by organizer, assignment reveal system for participants, custom fields support (text, number, select dropdowns) for exchange-specific information (e.g., jersey size for swaps), participant response collection and viewing for organizers, search functionality, and comprehensive settings. All data stored in Firestore with proper security rules. Organizers can view all participant responses to custom fields.",
+  },
+  {
     date: "2026-01-12",
     title: "UI/UX Improvements & Build Log System",
     description: "Implemented comprehensive UI improvements including logo integration across header, footer, hero section, and favicon. Refactored build log system to use shared data source, ensuring Latest Drops section automatically displays 4 most recent entries. Standardized all app settings to use toggle switches instead of checkboxes for better UX consistency. Fixed dev server routing issues with dynamic params configuration. Improved date selector styling in Pickup Soccer app.",

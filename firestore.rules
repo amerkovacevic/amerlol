@@ -55,6 +55,36 @@ service cloud.firestore {
       match /footballManagerTeamPickerHistory/{historyId} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
+      
+      // Color Palette Crafter settings subcollection
+      // Document structure: /users/{userId}/colorPaletteCrafterSettings/{settingsId}
+      match /colorPaletteCrafterSettings/{settingsId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+      
+      // Color Palette Crafter favorites subcollection
+      // Document structure: /users/{userId}/colorPaletteCrafterFavorites/{paletteId}
+      match /colorPaletteCrafterFavorites/{paletteId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+    
+    // Color Palettes collection
+    // Document structure: /colorPalettes/{paletteId}
+    // Fields: colors[], title, description, likes, createdBy, createdByName, createdAt, updatedAt
+    // Security: Anyone can read, only authenticated users can create, only creator can update/delete
+    match /colorPalettes/{paletteId} {
+      // Anyone can read palettes (browse public palettes)
+      allow read: if true;
+      
+      // Only authenticated users can create palettes
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.createdBy;
+      
+      // Only the palette creator can delete
+      allow delete: if request.auth != null && request.auth.uid == resource.data.createdBy;
+      
+      // Only the palette creator can update
+      allow update: if request.auth != null && request.auth.uid == resource.data.createdBy;
     }
     
     // Pickup Soccer Games collection
