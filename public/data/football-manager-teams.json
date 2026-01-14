@@ -1,0 +1,1912 @@
+{
+  "countries": [
+    {
+      "id": "england",
+      "name": "England",
+      "flag": "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
+      "leagues": [
+        {
+          "id": "premier-league",
+          "name": "Premier League",
+          "tier": 1,
+          "teams": [
+            {
+              "id": "arsenal",
+              "name": "Arsenal",
+              "city": "London (Holloway)",
+              "stadium": "Emirates Stadium",
+              "capacity": 60704,
+              "established": 1886,
+              "rivalry": [
+                "Tottenham",
+                "Chelsea"
+              ]
+            },
+            {
+              "id": "aston-villa",
+              "name": "Aston Villa",
+              "city": "Birmingham",
+              "stadium": "Villa Park",
+              "capacity": 43205
+            },
+            {
+              "id": "bournemouth",
+              "name": "Bournemouth",
+              "city": "Bournemouth",
+              "stadium": "Dean Court",
+              "capacity": 11307
+            },
+            {
+              "id": "brentford",
+              "name": "Brentford",
+              "city": "London (Brentford)",
+              "stadium": "Brentford Community Stadium",
+              "capacity": 17250
+            },
+            {
+              "id": "brighton-and-hove-albion",
+              "name": "Brighton & Hove Albion",
+              "city": "Falmer",
+              "stadium": "Falmer Stadium",
+              "capacity": 31876
+            },
+            {
+              "id": "burnley",
+              "name": "Burnley",
+              "city": "Burnley",
+              "stadium": "Turf Moor",
+              "capacity": 21990
+            },
+            {
+              "id": "chelsea",
+              "name": "Chelsea",
+              "city": "London (Fulham)",
+              "stadium": "Stamford Bridge",
+              "capacity": 40044,
+              "established": 1905,
+              "rivalry": [
+                "Arsenal",
+                "Tottenham"
+              ]
+            },
+            {
+              "id": "crystal-palace",
+              "name": "Crystal Palace",
+              "city": "London (Selhurst)",
+              "stadium": "Selhurst Park",
+              "capacity": 25194
+            },
+            {
+              "id": "everton",
+              "name": "Everton",
+              "city": "Liverpool (Vauxhall)",
+              "stadium": "Hill Dickinson Stadium",
+              "capacity": 52769
+            },
+            {
+              "id": "fulham",
+              "name": "Fulham",
+              "city": "London (Fulham)",
+              "stadium": "Craven Cottage",
+              "capacity": 27782
+            },
+            {
+              "id": "leeds-united",
+              "name": "Leeds United",
+              "city": "Leeds",
+              "stadium": "Elland Road",
+              "capacity": 37645
+            },
+            {
+              "id": "liverpool",
+              "name": "Liverpool",
+              "city": "Liverpool (Anfield)",
+              "stadium": "Anfield",
+              "capacity": 61276,
+              "established": 1892,
+              "rivalry": [
+                "Manchester United",
+                "Everton"
+              ]
+            },
+            {
+              "id": "manchester-city",
+              "name": "Manchester City",
+              "city": "Manchester",
+              "stadium": "City of Manchester Stadium",
+              "capacity": 52900,
+              "established": 1880,
+              "rivalry": [
+                "Manchester United"
+              ]
+            },
+            {
+              "id": "manchester-united",
+              "name": "Manchester United",
+              "city": "Trafford",
+              "stadium": "Old Trafford",
+              "capacity": 74244,
+              "established": 1878,
+              "rivalry": [
+                "Manchester City",
+                "Liverpool"
+              ]
+            },
+            {
+              "id": "newcastle-united",
+              "name": "Newcastle United",
+              "city": "Newcastle upon Tyne",
+              "stadium": "St James' Park",
+              "capacity": 52264
+            },
+            {
+              "id": "nottingham-forest",
+              "name": "Nottingham Forest",
+              "city": "West Bridgford",
+              "stadium": "City Ground",
+              "capacity": 31042
+            },
+            {
+              "id": "sunderland",
+              "name": "Sunderland",
+              "city": "Sunderland",
+              "stadium": "Stadium of Light",
+              "capacity": 48095
+            },
+            {
+              "id": "tottenham",
+              "name": "Tottenham Hotspur",
+              "city": "London (Tottenham)",
+              "stadium": "Tottenham Hotspur Stadium",
+              "capacity": 62850,
+              "established": 1882,
+              "rivalry": [
+                "Arsenal",
+                "Chelsea"
+              ]
+            },
+            {
+              "id": "west-ham-united",
+              "name": "West Ham United",
+              "city": "London (Stratford)",
+              "stadium": "London Stadium",
+              "capacity": 62500
+            },
+            {
+              "id": "wolverhampton-wanderers",
+              "name": "Wolverhampton Wanderers",
+              "city": "Wolverhampton",
+              "stadium": "Molineux Stadium",
+              "capacity": 31750
+            }
+          ]
+        },
+        {
+          "id": "championship",
+          "name": "EFL Championship",
+          "tier": 2,
+          "teams": [
+            {
+              "id": "birmingham-city",
+              "name": "Birmingham City",
+              "city": "Birmingham (Bordesley)",
+              "stadium": "St Andrew's",
+              "capacity": 29409
+            },
+            {
+              "id": "blackburn-rovers",
+              "name": "Blackburn Rovers",
+              "city": "Blackburn",
+              "stadium": "Ewood Park",
+              "capacity": 31367
+            },
+            {
+              "id": "bristol-city",
+              "name": "Bristol City",
+              "city": "Bristol",
+              "stadium": "Ashton Gate",
+              "capacity": 26462
+            },
+            {
+              "id": "charlton-athletic",
+              "name": "Charlton Athletic",
+              "city": "London (Charlton)",
+              "stadium": "The Valley",
+              "capacity": 27111
+            },
+            {
+              "id": "coventry-city",
+              "name": "Coventry City",
+              "city": "Coventry",
+              "stadium": "Coventry Building Society Arena",
+              "capacity": 32609
+            },
+            {
+              "id": "derby-county",
+              "name": "Derby County",
+              "city": "Derby",
+              "stadium": "Pride Park",
+              "capacity": 32926
+            },
+            {
+              "id": "hull-city",
+              "name": "Hull City",
+              "city": "Kingston upon Hull",
+              "stadium": "MKM Stadium",
+              "capacity": 25586
+            },
+            {
+              "id": "ipswich-town",
+              "name": "Ipswich Town",
+              "city": "Ipswich",
+              "stadium": "Portman Road",
+              "capacity": 30056
+            },
+            {
+              "id": "leicester-city",
+              "name": "Leicester City",
+              "city": "Leicester",
+              "stadium": "King Power Stadium",
+              "capacity": 32259
+            },
+            {
+              "id": "middlesbrough",
+              "name": "Middlesbrough",
+              "city": "Middlesbrough",
+              "stadium": "Riverside Stadium",
+              "capacity": 34742
+            },
+            {
+              "id": "millwall",
+              "name": "Millwall",
+              "city": "London (Bermondsey)",
+              "stadium": "The Den",
+              "capacity": 20146
+            },
+            {
+              "id": "norwich-city",
+              "name": "Norwich City",
+              "city": "Norwich",
+              "stadium": "Carrow Road",
+              "capacity": 27359
+            },
+            {
+              "id": "oxford-united",
+              "name": "Oxford United",
+              "city": "Oxford",
+              "stadium": "Kassam Stadium",
+              "capacity": 12500
+            },
+            {
+              "id": "portsmouth",
+              "name": "Portsmouth",
+              "city": "Portsmouth",
+              "stadium": "Fratton Park",
+              "capacity": 20867
+            },
+            {
+              "id": "preston-north-end",
+              "name": "Preston North End",
+              "city": "Preston",
+              "stadium": "Deepdale",
+              "capacity": 23408
+            },
+            {
+              "id": "queens-park-rangers",
+              "name": "Queens Park Rangers",
+              "city": "London (Shepherd's Bush)",
+              "stadium": "Loftus Road",
+              "capacity": 18439
+            },
+            {
+              "id": "sheffield-united",
+              "name": "Sheffield United",
+              "city": "Sheffield (Highfield)",
+              "stadium": "Bramall Lane",
+              "capacity": 32050
+            },
+            {
+              "id": "sheffield-wednesday",
+              "name": "Sheffield Wednesday",
+              "city": "Sheffield (Hillsborough)",
+              "stadium": "Hillsborough Stadium",
+              "capacity": 39732
+            },
+            {
+              "id": "southampton",
+              "name": "Southampton",
+              "city": "Southampton",
+              "stadium": "St Mary's Stadium",
+              "capacity": 32384
+            },
+            {
+              "id": "stoke-city",
+              "name": "Stoke City",
+              "city": "Stoke-on-Trent",
+              "stadium": "bet365 Stadium",
+              "capacity": 30089
+            },
+            {
+              "id": "swansea-city",
+              "name": "Swansea City",
+              "city": "Swansea",
+              "stadium": "Swansea.com Stadium",
+              "capacity": 21088
+            },
+            {
+              "id": "watford",
+              "name": "Watford",
+              "city": "Watford",
+              "stadium": "Vicarage Road",
+              "capacity": 22200
+            },
+            {
+              "id": "west-bromwich-albion",
+              "name": "West Bromwich Albion",
+              "city": "West Bromwich",
+              "stadium": "The Hawthorns",
+              "capacity": 26850
+            },
+            {
+              "id": "wrexham",
+              "name": "Wrexham",
+              "city": "Wrexham",
+              "stadium": "Racecourse Ground",
+              "capacity": 10771
+            }
+          ]
+        },
+        {
+          "id": "league-one",
+          "name": "EFL League One",
+          "tier": 3,
+          "teams": [
+            {
+              "id": "afc-wimbledon",
+              "name": "AFC Wimbledon",
+              "city": "London (Wimbledon)",
+              "stadium": "Plough Lane",
+              "capacity": 9215
+            },
+            {
+              "id": "barnsley",
+              "name": "Barnsley",
+              "city": "Barnsley",
+              "stadium": "Oakwell",
+              "capacity": 23287
+            },
+            {
+              "id": "blackpool",
+              "name": "Blackpool",
+              "city": "Blackpool",
+              "stadium": "Bloomfield Road",
+              "capacity": 16616
+            },
+            {
+              "id": "bolton-wanderers",
+              "name": "Bolton Wanderers",
+              "city": "Horwich",
+              "stadium": "Toughsheet Community Stadium",
+              "capacity": 28723
+            },
+            {
+              "id": "bradford-city",
+              "name": "Bradford City",
+              "city": "Bradford",
+              "stadium": "Valley Parade",
+              "capacity": 25136
+            },
+            {
+              "id": "burton-albion",
+              "name": "Burton Albion",
+              "city": "Burton upon Trent",
+              "stadium": "Pirelli Stadium",
+              "capacity": 6912
+            },
+            {
+              "id": "cardiff-city",
+              "name": "Cardiff City",
+              "city": "Leckwith",
+              "stadium": "Cardiff City Stadium",
+              "capacity": 33280
+            },
+            {
+              "id": "doncaster-rovers",
+              "name": "Doncaster Rovers",
+              "city": "Doncaster",
+              "stadium": "Eco-Power Stadium",
+              "capacity": 15231
+            },
+            {
+              "id": "exeter-city",
+              "name": "Exeter City",
+              "city": "Exeter",
+              "stadium": "St. James Park",
+              "capacity": 8219
+            },
+            {
+              "id": "huddersfield-town",
+              "name": "Huddersfield Town",
+              "city": "Huddersfield",
+              "stadium": "Kirklees Stadium",
+              "capacity": 24121
+            },
+            {
+              "id": "leyton-orient",
+              "name": "Leyton Orient",
+              "city": "London (Leyton)",
+              "stadium": "Brisbane Road",
+              "capacity": 9271
+            },
+            {
+              "id": "lincoln-city",
+              "name": "Lincoln City",
+              "city": "Lincoln",
+              "stadium": "Sincil Bank",
+              "capacity": 10669
+            },
+            {
+              "id": "luton-town",
+              "name": "Luton Town",
+              "city": "Luton",
+              "stadium": "Kenilworth Road",
+              "capacity": 12300
+            },
+            {
+              "id": "mansfield-town",
+              "name": "Mansfield Town",
+              "city": "Mansfield",
+              "stadium": "Field Mill",
+              "capacity": 9186
+            },
+            {
+              "id": "northampton-town",
+              "name": "Northampton Town",
+              "city": "Northampton (Sixfields)",
+              "stadium": "Sixfields Stadium",
+              "capacity": 8203
+            },
+            {
+              "id": "peterborough-united",
+              "name": "Peterborough United",
+              "city": "Peterborough",
+              "stadium": "London Road Stadium",
+              "capacity": 13511
+            },
+            {
+              "id": "plymouth-argyle",
+              "name": "Plymouth Argyle",
+              "city": "Plymouth",
+              "stadium": "Home Park",
+              "capacity": 18173
+            },
+            {
+              "id": "port-vale",
+              "name": "Port Vale",
+              "city": "Stoke-on-Trent (Burslem)",
+              "stadium": "Vale Park",
+              "capacity": 19052
+            },
+            {
+              "id": "reading",
+              "name": "Reading",
+              "city": "Reading (Green Park)",
+              "stadium": "Madejski Stadium",
+              "capacity": 24161
+            },
+            {
+              "id": "rotherham-united",
+              "name": "Rotherham United",
+              "city": "Rotherham",
+              "stadium": "New York Stadium",
+              "capacity": 12021
+            },
+            {
+              "id": "stevenage",
+              "name": "Stevenage",
+              "city": "Stevenage",
+              "stadium": "Broadhall Way",
+              "capacity": 7200
+            },
+            {
+              "id": "stockport-county",
+              "name": "Stockport County",
+              "city": "Stockport (Edgeley)",
+              "stadium": "Edgeley Park",
+              "capacity": 10841
+            },
+            {
+              "id": "wigan-athletic",
+              "name": "Wigan Athletic",
+              "city": "Wigan",
+              "stadium": "Brick Community Stadium",
+              "capacity": 25133
+            },
+            {
+              "id": "wycombe-wanderers",
+              "name": "Wycombe Wanderers",
+              "city": "High Wycombe",
+              "stadium": "Adams Park",
+              "capacity": 10137
+            }
+          ]
+        },
+        {
+          "id": "league-two",
+          "name": "EFL League Two",
+          "tier": 4,
+          "teams": [
+            {
+              "id": "accrington-stanley",
+              "name": "Accrington Stanley",
+              "city": "Accrington",
+              "stadium": "Crown Ground",
+              "capacity": 5450
+            },
+            {
+              "id": "barnet",
+              "name": "Barnet",
+              "city": "London (Canons Park)",
+              "stadium": "The Hive Stadium",
+              "capacity": 6500
+            },
+            {
+              "id": "barrow",
+              "name": "Barrow",
+              "city": "Barrow-in-Furness",
+              "stadium": "Holker Street",
+              "capacity": 6500
+            },
+            {
+              "id": "bristol-rovers",
+              "name": "Bristol Rovers",
+              "city": "Bristol (Horfield)",
+              "stadium": "Memorial Stadium",
+              "capacity": 9832
+            },
+            {
+              "id": "bromley",
+              "name": "Bromley",
+              "city": "London (Bromley)",
+              "stadium": "Hayes Lane",
+              "capacity": 5150
+            },
+            {
+              "id": "cambridge-united",
+              "name": "Cambridge United",
+              "city": "Cambridge",
+              "stadium": "Abbey Stadium",
+              "capacity": 8127
+            },
+            {
+              "id": "cheltenham-town",
+              "name": "Cheltenham Town",
+              "city": "Cheltenham",
+              "stadium": "Whaddon Road",
+              "capacity": 7066
+            },
+            {
+              "id": "chesterfield",
+              "name": "Chesterfield",
+              "city": "Chesterfield",
+              "stadium": "SMH Group Stadium",
+              "capacity": 10504
+            },
+            {
+              "id": "colchester-united",
+              "name": "Colchester United",
+              "city": "Colchester",
+              "stadium": "Colchester Community Stadium",
+              "capacity": 10105
+            },
+            {
+              "id": "crawley-town",
+              "name": "Crawley Town",
+              "city": "Crawley",
+              "stadium": "Broadfield Stadium",
+              "capacity": 5996
+            },
+            {
+              "id": "crewe-alexandra",
+              "name": "Crewe Alexandra",
+              "city": "Crewe",
+              "stadium": "Gresty Road",
+              "capacity": 10153
+            },
+            {
+              "id": "fleetwood-town",
+              "name": "Fleetwood Town",
+              "city": "Fleetwood",
+              "stadium": "Highbury Stadium",
+              "capacity": 5327
+            },
+            {
+              "id": "gillingham",
+              "name": "Gillingham",
+              "city": "Gillingham",
+              "stadium": "Priestfield Stadium",
+              "capacity": 11582
+            },
+            {
+              "id": "grimsby-town",
+              "name": "Grimsby Town",
+              "city": "Cleethorpes",
+              "stadium": "Blundell Park",
+              "capacity": 9052
+            },
+            {
+              "id": "harrogate-town",
+              "name": "Harrogate Town",
+              "city": "Harrogate",
+              "stadium": "Wetherby Road",
+              "capacity": 5000
+            },
+            {
+              "id": "milton-keynes-dons",
+              "name": "Milton Keynes Dons",
+              "city": "Milton Keynes (Denbigh)",
+              "stadium": "Stadium MK",
+              "capacity": 30500
+            },
+            {
+              "id": "newport-county",
+              "name": "Newport County",
+              "city": "Newport",
+              "stadium": "Rodney Parade",
+              "capacity": 7850
+            },
+            {
+              "id": "notts-county",
+              "name": "Notts County",
+              "city": "Nottingham",
+              "stadium": "Meadow Lane",
+              "capacity": 19841
+            },
+            {
+              "id": "oldham-athletic",
+              "name": "Oldham Athletic",
+              "city": "Oldham",
+              "stadium": "Boundary Park",
+              "capacity": 13513
+            },
+            {
+              "id": "salford-city",
+              "name": "Salford City",
+              "city": "Salford",
+              "stadium": "Moor Lane",
+              "capacity": 5108
+            },
+            {
+              "id": "shrewsbury-town",
+              "name": "Shrewsbury Town",
+              "city": "Shrewsbury",
+              "stadium": "New Meadow",
+              "capacity": 9875
+            },
+            {
+              "id": "swindon-town",
+              "name": "Swindon Town",
+              "city": "Swindon",
+              "stadium": "County Ground",
+              "capacity": 15728
+            },
+            {
+              "id": "tranmere-rovers",
+              "name": "Tranmere Rovers",
+              "city": "Birkenhead (Prenton)",
+              "stadium": "Prenton Park",
+              "capacity": 16789
+            },
+            {
+              "id": "walsall",
+              "name": "Walsall",
+              "city": "Walsall (Bescot)",
+              "stadium": "Bescot Stadium",
+              "capacity": 11300
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "spain",
+      "name": "Spain",
+      "flag": "🇪🇸",
+      "leagues": [
+        {
+          "id": "la-liga",
+          "name": "La Liga",
+          "tier": 1,
+          "teams": [
+            {
+              "id": "alaves",
+              "name": "Alavés",
+              "city": "Vitoria-Gasteiz",
+              "stadium": "Campo de Fútbol de Mendizorrotza",
+              "capacity": 19840
+            },
+            {
+              "id": "athletic-bilbao",
+              "name": "Athletic Bilbao",
+              "city": "Bilbao",
+              "stadium": "Estadio San Mamés",
+              "capacity": 53289
+            },
+            {
+              "id": "atletico-madrid",
+              "name": "Atlético Madrid",
+              "city": "Madrid",
+              "stadium": "Estadio Riyadh Air Metropolitano",
+              "capacity": 70692,
+              "established": 1903,
+              "rivalry": [
+                "Real Madrid"
+              ]
+            },
+            {
+              "id": "barcelona",
+              "name": "Barcelona",
+              "city": "Barcelona",
+              "stadium": "Olímpic Lluís Companys",
+              "capacity": 55926
+            },
+            {
+              "id": "celta-vigo",
+              "name": "Celta Vigo",
+              "city": "Vigo",
+              "stadium": "Estadio ABANCA Balaídos",
+              "capacity": 24870
+            },
+            {
+              "id": "elche",
+              "name": "Elche",
+              "city": "Elche",
+              "stadium": "Estadio Martínez Valero",
+              "capacity": 31388
+            },
+            {
+              "id": "espanyol",
+              "name": "Espanyol",
+              "city": "Cornellà de Llobregat",
+              "stadium": "RCDE Stadium",
+              "capacity": 37776
+            },
+            {
+              "id": "getafe",
+              "name": "Getafe",
+              "city": "Getafe",
+              "stadium": "Estadio Coliseum",
+              "capacity": 16500
+            },
+            {
+              "id": "girona",
+              "name": "Girona",
+              "city": "Girona",
+              "stadium": "Estadio Municipal de Montilivi",
+              "capacity": 14624
+            },
+            {
+              "id": "levante",
+              "name": "Levante",
+              "city": "Valencia",
+              "stadium": "Estadio Ciutat de València",
+              "capacity": 26354
+            },
+            {
+              "id": "mallorca",
+              "name": "Mallorca",
+              "city": "Palma",
+              "stadium": "Estadi Mallorca Son Moix",
+              "capacity": 23142
+            },
+            {
+              "id": "osasuna",
+              "name": "Osasuna",
+              "city": "Pamplona",
+              "stadium": "Estadio El Sadar",
+              "capacity": 23576
+            },
+            {
+              "id": "oviedo",
+              "name": "Oviedo",
+              "city": "Oviedo",
+              "stadium": "Estadio Carlos Tartiere",
+              "capacity": 30500
+            },
+            {
+              "id": "rayo-vallecano",
+              "name": "Rayo Vallecano",
+              "city": "Madrid",
+              "stadium": "El Campo de Fútbol de Vallecas",
+              "capacity": 14708
+            },
+            {
+              "id": "real-betis",
+              "name": "Real Betis",
+              "city": "Seville",
+              "stadium": "Estadio Olímpico de la Cartuja",
+              "capacity": 70000
+            },
+            {
+              "id": "real-madrid",
+              "name": "Real Madrid",
+              "city": "Madrid",
+              "stadium": "Bernabéu",
+              "capacity": 83186,
+              "established": 1902,
+              "rivalry": [
+                "Barcelona",
+                "Atletico Madrid"
+              ]
+            },
+            {
+              "id": "real-sociedad",
+              "name": "Real Sociedad",
+              "city": "San Sebastián",
+              "stadium": "Reale Arena",
+              "capacity": 39313
+            },
+            {
+              "id": "sevilla",
+              "name": "Sevilla",
+              "city": "Seville",
+              "stadium": "Estadio Ramón Sánchez-Pizjuán",
+              "capacity": 43883
+            },
+            {
+              "id": "valencia",
+              "name": "Valencia",
+              "city": "Valencia",
+              "stadium": "Camp de Mestalla",
+              "capacity": 49430
+            },
+            {
+              "id": "villarreal",
+              "name": "Villarreal",
+              "city": "Villarreal",
+              "stadium": "Estadio de la Cerámica",
+              "capacity": 23008
+            }
+          ]
+        },
+        {
+          "id": "segunda-division",
+          "name": "Segunda División",
+          "tier": 2,
+          "teams": [
+            {
+              "id": "albacete",
+              "name": "Albacete",
+              "city": "Albacete",
+              "stadium": "Estadio Carlos Belmonte",
+              "capacity": 17524
+            },
+            {
+              "id": "almeria",
+              "name": "Almería",
+              "city": "Almería",
+              "stadium": "UD Almería Stadium",
+              "capacity": 15000
+            },
+            {
+              "id": "andorra",
+              "name": "Andorra",
+              "city": "Encamp",
+              "stadium": "Nou Estadi Encamp",
+              "capacity": 5108
+            },
+            {
+              "id": "burgos",
+              "name": "Burgos",
+              "city": "Burgos",
+              "stadium": "Estadio El Plantío",
+              "capacity": 12194
+            },
+            {
+              "id": "cadiz",
+              "name": "Cádiz",
+              "city": "Cádiz",
+              "stadium": "Estadio Nuevo Mirandilla",
+              "capacity": 20724
+            },
+            {
+              "id": "castellon",
+              "name": "Castellón",
+              "city": "Castellón de la Plana",
+              "stadium": "Estadio SkyFi Castàlia",
+              "capacity": 15500
+            },
+            {
+              "id": "ceuta",
+              "name": "Ceuta",
+              "city": "Ceuta",
+              "stadium": "Estadio Alfonso Murube",
+              "capacity": 6500
+            },
+            {
+              "id": "cordoba",
+              "name": "Córdoba",
+              "city": "Córdoba",
+              "stadium": "Estadio Bahrain Victorious Nuevo Arcángel de Córdoba",
+              "capacity": 20989
+            },
+            {
+              "id": "cultural-leonesa",
+              "name": "Cultural Leonesa",
+              "city": "León",
+              "stadium": "Estadio Reino de León",
+              "capacity": 13346
+            },
+            {
+              "id": "deportivo-la-coruna",
+              "name": "Deportivo La Coruña",
+              "city": "La Coruña",
+              "stadium": "Estadio ABANCA-RIAZOR",
+              "capacity": 32660
+            },
+            {
+              "id": "eibar",
+              "name": "Eibar",
+              "city": "Eibar",
+              "stadium": "Estadio Municipal de Ipurua",
+              "capacity": 8164
+            },
+            {
+              "id": "granada",
+              "name": "Granada",
+              "city": "Granada",
+              "stadium": "Estadio Nuevo Los Cármenes",
+              "capacity": 19189
+            },
+            {
+              "id": "huesca",
+              "name": "Huesca",
+              "city": "Huesca",
+              "stadium": "Estadio El Alcoraz",
+              "capacity": 9100
+            },
+            {
+              "id": "las-palmas",
+              "name": "Las Palmas",
+              "city": "Las Palmas",
+              "stadium": "Estadio Gran Canaria",
+              "capacity": 32392
+            },
+            {
+              "id": "leganes",
+              "name": "Leganés",
+              "city": "Leganés",
+              "stadium": "Estadio Ontime Butarque",
+              "capacity": 12450
+            },
+            {
+              "id": "malaga",
+              "name": "Málaga",
+              "city": "Málaga",
+              "stadium": "La Rosaleda Stadium",
+              "capacity": 30044
+            },
+            {
+              "id": "mirandes",
+              "name": "Mirandés",
+              "city": "Miranda de Ebro",
+              "stadium": "Estadio Municipal de Anduva",
+              "capacity": 5759
+            },
+            {
+              "id": "racing-santander",
+              "name": "Racing Santander",
+              "city": "Santander",
+              "stadium": "Stadium El Sardinero",
+              "capacity": 22222
+            },
+            {
+              "id": "real-sociedad-b",
+              "name": "Real Sociedad B",
+              "city": "San Sebastián",
+              "stadium": "Reale Arena",
+              "capacity": 39500
+            },
+            {
+              "id": "sporting-gijon",
+              "name": "Sporting Gijón",
+              "city": "Gijón",
+              "stadium": "Estadio El Molinón-Enrique Castro \"Quini\"",
+              "capacity": 29371
+            },
+            {
+              "id": "valladolid",
+              "name": "Valladolid",
+              "city": "Valladolid",
+              "stadium": "Estadio Municipal José Zorrilla",
+              "capacity": 27618
+            },
+            {
+              "id": "zaragoza",
+              "name": "Zaragoza",
+              "city": "Zaragoza",
+              "stadium": "Ibercaja Stadium",
+              "capacity": 20000
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "italy",
+      "name": "Italy",
+      "flag": "🇮🇹",
+      "leagues": [
+        {
+          "id": "serie-a",
+          "name": "Serie A",
+          "tier": 1,
+          "teams": [
+            {
+              "id": "atalanta",
+              "name": "Atalanta",
+              "city": "Bergamo",
+              "stadium": "Stadio di Bergamo",
+              "capacity": 23439
+            },
+            {
+              "id": "bologna",
+              "name": "Bologna",
+              "city": "Bologna",
+              "stadium": "Stadio Renato Dall'Ara",
+              "capacity": 38279
+            },
+            {
+              "id": "cagliari",
+              "name": "Cagliari",
+              "city": "Cagliari",
+              "stadium": "Unipol Domus",
+              "capacity": 16416
+            },
+            {
+              "id": "como",
+              "name": "Como",
+              "city": "Como",
+              "stadium": "Stadio Giuseppe Sinigaglia",
+              "capacity": 13602
+            },
+            {
+              "id": "cremonese",
+              "name": "Cremonese",
+              "city": "Cremona",
+              "stadium": "Stadio Giovanni Zini",
+              "capacity": 20641
+            },
+            {
+              "id": "fiorentina",
+              "name": "Fiorentina",
+              "city": "Florence",
+              "stadium": "Stadio Artemio Franchi",
+              "capacity": 43118
+            },
+            {
+              "id": "genoa",
+              "name": "Genoa",
+              "city": "Genoa",
+              "stadium": "Stadio Luigi Ferraris",
+              "capacity": 33205
+            },
+            {
+              "id": "hellas-verona",
+              "name": "Hellas Verona",
+              "city": "Verona",
+              "stadium": "Stadio Marcantonio Bentegodi",
+              "capacity": 31713
+            },
+            {
+              "id": "inter-milan",
+              "name": "Inter Milan",
+              "city": "Milan",
+              "stadium": "Stadio Giuseppe Meazza",
+              "capacity": 75710,
+              "established": 1908,
+              "rivalry": [
+                "AC Milan",
+                "Juventus"
+              ]
+            },
+            {
+              "id": "juventus",
+              "name": "Juventus",
+              "city": "Turin",
+              "stadium": "Allianz Stadium",
+              "capacity": 41507,
+              "established": 1897,
+              "rivalry": [
+                "Inter Milan",
+                "AC Milan",
+                "Torino"
+              ]
+            },
+            {
+              "id": "lazio",
+              "name": "Lazio",
+              "city": "Rome",
+              "stadium": "Stadio Olimpico",
+              "capacity": 70634
+            },
+            {
+              "id": "lecce",
+              "name": "Lecce",
+              "city": "Lecce",
+              "stadium": "Stadio Via del Mare-Ettore Giardiniero",
+              "capacity": 30354
+            },
+            {
+              "id": "ac-milan",
+              "name": "AC Milan",
+              "city": "Milan",
+              "stadium": "Stadio Giuseppe Meazza",
+              "capacity": 75710,
+              "established": 1899,
+              "rivalry": [
+                "Inter Milan",
+                "Juventus"
+              ]
+            },
+            {
+              "id": "napoli",
+              "name": "Napoli",
+              "city": "Naples",
+              "stadium": "Stadio Diego Armando Maradona",
+              "capacity": 54732
+            },
+            {
+              "id": "parma",
+              "name": "Parma",
+              "city": "Parma",
+              "stadium": "Stadio Ennio Tardini",
+              "capacity": 22352
+            },
+            {
+              "id": "pisa",
+              "name": "Pisa",
+              "city": "Pisa",
+              "stadium": "Cetilar Arena",
+              "capacity": 12508
+            },
+            {
+              "id": "roma",
+              "name": "Roma",
+              "city": "Rome",
+              "stadium": "Stadio Olimpico",
+              "capacity": 70634
+            },
+            {
+              "id": "sassuolo",
+              "name": "Sassuolo",
+              "city": "Sassuolo",
+              "stadium": "Mapei Stadium – Città del Tricolore",
+              "capacity": 21515
+            },
+            {
+              "id": "torino",
+              "name": "Torino",
+              "city": "Turin",
+              "stadium": "Stadio Olimpico Grande Torino",
+              "capacity": 28177
+            },
+            {
+              "id": "udinese",
+              "name": "Udinese",
+              "city": "Udine",
+              "stadium": "Bluenergy Stadium",
+              "capacity": 25132
+            }
+          ]
+        },
+        {
+          "id": "serie-b",
+          "name": "Serie B",
+          "tier": 2,
+          "teams": [
+            {
+              "id": "avellino",
+              "name": "Avellino",
+              "city": "Avellino",
+              "stadium": "Stadio Partenio-Adriano Lombardi",
+              "capacity": 26000
+            },
+            {
+              "id": "bari",
+              "name": "Bari",
+              "city": "Bari",
+              "stadium": "Stadio Comunale San Nicola",
+              "capacity": 58270
+            },
+            {
+              "id": "carrarese",
+              "name": "Carrarese",
+              "city": "Carrara",
+              "stadium": "Stadio dei Marmi - IV Olimpionici Azzurri",
+              "capacity": 4194
+            },
+            {
+              "id": "catanzaro",
+              "name": "Catanzaro",
+              "city": "Catanzaro",
+              "stadium": "Stadio Nicola Ceravolo",
+              "capacity": 14650
+            },
+            {
+              "id": "cesena",
+              "name": "Cesena",
+              "city": "Cesena",
+              "stadium": "Orogel Stadium - Dino Manuzzi",
+              "capacity": 20194
+            },
+            {
+              "id": "empoli",
+              "name": "Empoli",
+              "city": "Empoli",
+              "stadium": "Stadio Carlo Castellani – Computer Gross Arena",
+              "capacity": 16284
+            },
+            {
+              "id": "frosinone",
+              "name": "Frosinone",
+              "city": "Frosinone",
+              "stadium": "Stadio Benito Stirpe",
+              "capacity": 16227
+            },
+            {
+              "id": "juve-stabia",
+              "name": "Juve Stabia",
+              "city": "Castellammare di Stabia",
+              "stadium": "Stadio Comunale Romeo Menti",
+              "capacity": 7642
+            },
+            {
+              "id": "modena",
+              "name": "Modena",
+              "city": "Modena",
+              "stadium": "Stadio Alberto Braglia",
+              "capacity": 21151
+            },
+            {
+              "id": "mantova",
+              "name": "Mantova",
+              "city": "Mantua",
+              "stadium": "Stadio Danilo Martelli – Pata Stadium",
+              "capacity": 14884
+            },
+            {
+              "id": "monza",
+              "name": "Monza",
+              "city": "Monza",
+              "stadium": "U-Power Stadium",
+              "capacity": 17102
+            },
+            {
+              "id": "padova",
+              "name": "Padova",
+              "city": "Padua",
+              "stadium": "Stadio Comunale Euganeo",
+              "capacity": 32420
+            },
+            {
+              "id": "palermo",
+              "name": "Palermo",
+              "city": "Palermo",
+              "stadium": "Stadio Renzo Barbera",
+              "capacity": 36365
+            },
+            {
+              "id": "pescara",
+              "name": "Pescara",
+              "city": "Pescara",
+              "stadium": "Stadio Adriatico – Giovanni Cornacchia",
+              "capacity": 20476
+            },
+            {
+              "id": "reggiana",
+              "name": "Reggiana",
+              "city": "Reggio Emilia",
+              "stadium": "MAPEI Stadium - Città del Tricolore",
+              "capacity": 21525
+            },
+            {
+              "id": "sampdoria",
+              "name": "Sampdoria",
+              "city": "Genoa",
+              "stadium": "Stadio Comunale Luigi Ferraris",
+              "capacity": 33205
+            },
+            {
+              "id": "spezia",
+              "name": "Spezia",
+              "city": "La Spezia",
+              "stadium": "Stadio Alberto Picco",
+              "capacity": 12273
+            },
+            {
+              "id": "sudtirol",
+              "name": "Südtirol",
+              "city": "Bolzano",
+              "stadium": "Stadio Marco Druso",
+              "capacity": 5539
+            },
+            {
+              "id": "venezia",
+              "name": "Venezia",
+              "city": "Venice",
+              "stadium": "Stadio Pier Luigi Penzo",
+              "capacity": 12048
+            },
+            {
+              "id": "virtus-entella",
+              "name": "Virtus Entella",
+              "city": "Chiavari",
+              "stadium": "Stadio Enrico Sannazzari",
+              "capacity": 5587
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "germany",
+      "name": "Germany",
+      "flag": "🇩🇪",
+      "leagues": [
+        {
+          "id": "bundesliga",
+          "name": "Bundesliga",
+          "tier": 1,
+          "teams": [
+            {
+              "id": "fc-augsburg",
+              "name": "FC Augsburg",
+              "city": "Augsburg",
+              "stadium": "WWK Arena",
+              "capacity": 30660
+            },
+            {
+              "id": "union-berlin",
+              "name": "Union Berlin",
+              "city": "Berlin",
+              "stadium": "Stadion An der Alten Försterei",
+              "capacity": 22012
+            },
+            {
+              "id": "werder-bremen",
+              "name": "Werder Bremen",
+              "city": "Bremen",
+              "stadium": "Weserstadion",
+              "capacity": 42100
+            },
+            {
+              "id": "borussia-dortmund",
+              "name": "Borussia Dortmund",
+              "city": "Dortmund",
+              "stadium": "Signal Iduna Park",
+              "capacity": 81365,
+              "established": 1909,
+              "rivalry": [
+                "Bayern Munich",
+                "Schalke 04"
+              ]
+            },
+            {
+              "id": "eintracht-frankfurt",
+              "name": "Eintracht Frankfurt",
+              "city": "Frankfurt",
+              "stadium": "Deutsche Bank Park",
+              "capacity": 59500
+            },
+            {
+              "id": "sc-freiburg",
+              "name": "SC Freiburg",
+              "city": "Freiburg im Breisgau",
+              "stadium": "Europa-Park Stadion",
+              "capacity": 34700
+            },
+            {
+              "id": "hamburger-sv",
+              "name": "Hamburger SV",
+              "city": "Hamburg",
+              "stadium": "Volksparkstadion",
+              "capacity": 57000
+            },
+            {
+              "id": "1-fc-heidenheim",
+              "name": "1. FC Heidenheim",
+              "city": "Heidenheim",
+              "stadium": "Voith-Arena",
+              "capacity": 15000
+            },
+            {
+              "id": "tsg-hoffenheim",
+              "name": "TSG Hoffenheim",
+              "city": "Sinsheim",
+              "stadium": "PreZero Arena",
+              "capacity": 30150
+            },
+            {
+              "id": "1-fc-koln",
+              "name": "1. FC Köln",
+              "city": "Cologne",
+              "stadium": "RheinEnergieStadion",
+              "capacity": 49698
+            },
+            {
+              "id": "rb-leipzig",
+              "name": "RB Leipzig",
+              "city": "Leipzig",
+              "stadium": "Red Bull Arena",
+              "capacity": 47800
+            },
+            {
+              "id": "bayer-leverkusen",
+              "name": "Bayer Leverkusen",
+              "city": "Leverkusen",
+              "stadium": "BayArena",
+              "capacity": 30210
+            },
+            {
+              "id": "mainz-05",
+              "name": "Mainz 05",
+              "city": "Mainz",
+              "stadium": "Mewa Arena",
+              "capacity": 33305
+            },
+            {
+              "id": "borussia-monchengladbach",
+              "name": "Borussia Mönchengladbach",
+              "city": "Mönchengladbach",
+              "stadium": "Borussia-Park",
+              "capacity": 54042
+            },
+            {
+              "id": "bayern-munich",
+              "name": "Bayern Munich",
+              "city": "Munich",
+              "stadium": "Allianz Arena",
+              "capacity": 75000,
+              "established": 1900,
+              "rivalry": [
+                "Borussia Dortmund"
+              ]
+            },
+            {
+              "id": "fc-st-pauli",
+              "name": "FC St. Pauli",
+              "city": "Hamburg",
+              "stadium": "Millerntor-Stadion",
+              "capacity": 29546
+            },
+            {
+              "id": "vfb-stuttgart",
+              "name": "VfB Stuttgart",
+              "city": "Stuttgart",
+              "stadium": "MHPArena",
+              "capacity": 60058
+            },
+            {
+              "id": "vfl-wolfsburg",
+              "name": "VfL Wolfsburg",
+              "city": "Wolfsburg",
+              "stadium": "Volkswagen Arena",
+              "capacity": 28917
+            }
+          ]
+        },
+        {
+          "id": "2-bundesliga",
+          "name": "2. Bundesliga",
+          "tier": 2,
+          "teams": [
+            {
+              "id": "hertha-bsc",
+              "name": "Hertha BSC",
+              "city": "Berlin",
+              "stadium": "Olympiastadion",
+              "capacity": 74649
+            },
+            {
+              "id": "arminia-bielefeld",
+              "name": "Arminia Bielefeld",
+              "city": "Bielefeld",
+              "stadium": "Schüco-Arena",
+              "capacity": 27332
+            },
+            {
+              "id": "vfl-bochum",
+              "name": "VfL Bochum",
+              "city": "Bochum",
+              "stadium": "Vonovia Ruhrstadion",
+              "capacity": 26000
+            },
+            {
+              "id": "eintracht-braunschweig",
+              "name": "Eintracht Braunschweig",
+              "city": "Braunschweig",
+              "stadium": "Eintracht-Stadion",
+              "capacity": 23325
+            },
+            {
+              "id": "darmstadt-98",
+              "name": "Darmstadt 98",
+              "city": "Darmstadt",
+              "stadium": "Merck-Stadion am Böllenfalltor",
+              "capacity": 17650
+            },
+            {
+              "id": "dynamo-dresden",
+              "name": "Dynamo Dresden",
+              "city": "Dresden",
+              "stadium": "Rudolf-Harbig-Stadion",
+              "capacity": 32249
+            },
+            {
+              "id": "fortuna-dusseldorf",
+              "name": "Fortuna Düsseldorf",
+              "city": "Düsseldorf",
+              "stadium": "Merkur Spiel-Arena",
+              "capacity": 54600
+            },
+            {
+              "id": "sv-elversberg",
+              "name": "SV Elversberg",
+              "city": "Spiesen-Elversberg",
+              "stadium": "Waldstadion an der Kaiserlinde",
+              "capacity": 10000
+            },
+            {
+              "id": "greuther-furth",
+              "name": "Greuther Fürth",
+              "city": "Fürth",
+              "stadium": "Sportpark Ronhof Thomas Sommer",
+              "capacity": 16626
+            },
+            {
+              "id": "hannover-96",
+              "name": "Hannover 96",
+              "city": "Hanover",
+              "stadium": "Heinz von Heiden Arena",
+              "capacity": 49000
+            },
+            {
+              "id": "1-fc-kaiserslautern",
+              "name": "1. FC Kaiserslautern",
+              "city": "Kaiserslautern",
+              "stadium": "Fritz-Walter-Stadion",
+              "capacity": 49327
+            },
+            {
+              "id": "karlsruher-sc",
+              "name": "Karlsruher SC",
+              "city": "Karlsruhe",
+              "stadium": "BBBank Wildpark",
+              "capacity": 34302
+            },
+            {
+              "id": "holstein-kiel",
+              "name": "Holstein Kiel",
+              "city": "Kiel",
+              "stadium": "Holstein-Stadion",
+              "capacity": 15034
+            },
+            {
+              "id": "1-fc-magdeburg",
+              "name": "1. FC Magdeburg",
+              "city": "Magdeburg",
+              "stadium": "Avnet Arena",
+              "capacity": 30098
+            },
+            {
+              "id": "preuen-munster",
+              "name": "Preußen Münster",
+              "city": "Münster",
+              "stadium": "LVM-Preußenstadion",
+              "capacity": 14300
+            },
+            {
+              "id": "1-fc-nurnberg",
+              "name": "1. FC Nürnberg",
+              "city": "Nuremberg",
+              "stadium": "Max-Morlock-Stadion",
+              "capacity": 49923
+            },
+            {
+              "id": "sc-paderborn",
+              "name": "SC Paderborn",
+              "city": "Paderborn",
+              "stadium": "Home Deluxe Arena",
+              "capacity": 15000
+            },
+            {
+              "id": "schalke-04",
+              "name": "Schalke 04",
+              "city": "Gelsenkirchen",
+              "stadium": "Veltins-Arena",
+              "capacity": 62271
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "france",
+      "name": "France",
+      "flag": "🇫🇷",
+      "leagues": [
+        {
+          "id": "ligue-1",
+          "name": "Ligue 1",
+          "tier": 1,
+          "teams": [
+            {
+              "id": "angers",
+              "name": "Angers",
+              "city": "Angers",
+              "stadium": "Stade Raymond Kopa",
+              "capacity": 18752
+            },
+            {
+              "id": "auxerre",
+              "name": "Auxerre",
+              "city": "Auxerre",
+              "stadium": "Stade Abbé Deschamps",
+              "capacity": 21379
+            },
+            {
+              "id": "brest",
+              "name": "Brest",
+              "city": "Brest",
+              "stadium": "Stade Francis-Le Blé",
+              "capacity": 15931
+            },
+            {
+              "id": "le-havre",
+              "name": "Le Havre",
+              "city": "Le Havre",
+              "stadium": "Stade Océane",
+              "capacity": 25178
+            },
+            {
+              "id": "lens",
+              "name": "Lens",
+              "city": "Lens",
+              "stadium": "Stade Bollaert-Delelis",
+              "capacity": 37705
+            },
+            {
+              "id": "lille",
+              "name": "Lille",
+              "city": "Villeneuve-d'Ascq",
+              "stadium": "Stade Pierre-Mauroy",
+              "capacity": 50186
+            },
+            {
+              "id": "lorient",
+              "name": "Lorient",
+              "city": "Lorient",
+              "stadium": "Stade du Moustoir",
+              "capacity": 18890
+            },
+            {
+              "id": "lyon",
+              "name": "Lyon",
+              "city": "Décines-Charpieu",
+              "stadium": "Groupama Stadium",
+              "capacity": 59186
+            },
+            {
+              "id": "marseille",
+              "name": "Marseille",
+              "city": "Marseille",
+              "stadium": "Stade Vélodrome",
+              "capacity": 67394
+            },
+            {
+              "id": "metz",
+              "name": "Metz",
+              "city": "Longeville-lès-Metz",
+              "stadium": "Stade Saint-Symphorien",
+              "capacity": 28786
+            },
+            {
+              "id": "monaco",
+              "name": "Monaco",
+              "city": "Monaco",
+              "stadium": "Stade Louis II",
+              "capacity": 18523
+            },
+            {
+              "id": "nantes",
+              "name": "Nantes",
+              "city": "Nantes",
+              "stadium": "Stade de la Beaujoire",
+              "capacity": 35322
+            },
+            {
+              "id": "nice",
+              "name": "Nice",
+              "city": "Nice",
+              "stadium": "Allianz Riviera",
+              "capacity": 35624
+            },
+            {
+              "id": "paris-fc",
+              "name": "Paris FC",
+              "city": "Paris (Paris 16)",
+              "stadium": "Stade Jean-Bouin",
+              "capacity": 20000
+            },
+            {
+              "id": "psg",
+              "name": "Paris Saint-Germain",
+              "city": "Paris (Paris 16)",
+              "stadium": "Parc des Princes",
+              "capacity": 47926,
+              "established": 1970,
+              "rivalry": [
+                "Marseille"
+              ]
+            },
+            {
+              "id": "rennes",
+              "name": "Rennes",
+              "city": "Rennes",
+              "stadium": "Roazhon Park",
+              "capacity": 29778
+            },
+            {
+              "id": "strasbourg",
+              "name": "Strasbourg",
+              "city": "Strasbourg",
+              "stadium": "Stade de la Meinau",
+              "capacity": 29230
+            },
+            {
+              "id": "toulouse",
+              "name": "Toulouse",
+              "city": "Toulouse",
+              "stadium": "Stadium de Toulouse",
+              "capacity": 33150
+            }
+          ]
+        },
+        {
+          "id": "ligue-2",
+          "name": "Ligue 2",
+          "tier": 2,
+          "teams": [
+            {
+              "id": "amiens",
+              "name": "Amiens",
+              "city": "Amiens",
+              "stadium": "Stade de la Licorne",
+              "capacity": 12097
+            },
+            {
+              "id": "annecy",
+              "name": "Annecy",
+              "city": "Annecy",
+              "stadium": "Parc des Sports",
+              "capacity": 15660
+            },
+            {
+              "id": "bastia",
+              "name": "Bastia",
+              "city": "Bastia",
+              "stadium": "Stade Armand Cesari",
+              "capacity": 16078
+            },
+            {
+              "id": "boulogne",
+              "name": "Boulogne↑",
+              "city": "Boulogne-sur-Mer",
+              "stadium": "Stade de la Libération",
+              "capacity": 9534
+            },
+            {
+              "id": "clermont",
+              "name": "Clermont",
+              "city": "Clermont-Ferrand",
+              "stadium": "Stade Gabriel Montpied",
+              "capacity": 11980
+            },
+            {
+              "id": "dunkerque",
+              "name": "Dunkerque",
+              "city": "Dunkirk",
+              "stadium": "Stade Marcel Tribut",
+              "capacity": 4933
+            },
+            {
+              "id": "grenoble",
+              "name": "Grenoble",
+              "city": "Grenoble",
+              "stadium": "Stade des Alpes",
+              "capacity": 20068
+            },
+            {
+              "id": "guingamp",
+              "name": "Guingamp",
+              "city": "Guingamp",
+              "stadium": "Stade de Roudourou",
+              "capacity": 18378
+            },
+            {
+              "id": "laval",
+              "name": "Laval",
+              "city": "Laval",
+              "stadium": "Stade Francis Le Basser",
+              "capacity": 18607
+            },
+            {
+              "id": "le-mans",
+              "name": "Le Mans↑",
+              "city": "Le Mans",
+              "stadium": "Stade Marie-Marvingt",
+              "capacity": 25000
+            },
+            {
+              "id": "montpellier",
+              "name": "Montpellier↓",
+              "city": "Montpellier",
+              "stadium": "Stade de la Mosson",
+              "capacity": 32900
+            },
+            {
+              "id": "nancy",
+              "name": "Nancy↑",
+              "city": "Nancy",
+              "stadium": "Stade Marcel Picot",
+              "capacity": 20087
+            },
+            {
+              "id": "pau",
+              "name": "Pau",
+              "city": "Pau",
+              "stadium": "Nouste Camp",
+              "capacity": 4031
+            },
+            {
+              "id": "red-star",
+              "name": "Red Star",
+              "city": "Paris (Saint-Ouen)",
+              "stadium": "Stade Bauer",
+              "capacity": 10000
+            },
+            {
+              "id": "reims",
+              "name": "Reims↓",
+              "city": "Reims",
+              "stadium": "Stade Auguste-Delaune",
+              "capacity": 21029
+            },
+            {
+              "id": "rodez",
+              "name": "Rodez",
+              "city": "Rodez",
+              "stadium": "Stade Paul Lignon",
+              "capacity": 5955
+            },
+            {
+              "id": "saint-etienne",
+              "name": "Saint-Étienne↓",
+              "city": "Saint-Étienne",
+              "stadium": "Stade Geoffroy Guichard",
+              "capacity": 41965
+            },
+            {
+              "id": "troyes",
+              "name": "Troyes",
+              "city": "Troyes",
+              "stadium": "Stade de l'Aube",
+              "capacity": 21684
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

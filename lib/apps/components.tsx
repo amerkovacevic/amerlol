@@ -14,6 +14,8 @@ import { PickupSoccerMain } from "@/components/apps/pickup-soccer/pickup-soccer-
 import { PickupSoccerSettings } from "@/components/apps/pickup-soccer/pickup-soccer-settings"
 import { SecretSantaMain } from "@/components/apps/secret-santa/secret-santa-main"
 import { SecretSantaSettings } from "@/components/apps/secret-santa/secret-santa-settings"
+import { FootballManagerTeamPickerMain } from "@/components/apps/football-manager-team-picker/football-manager-team-picker-main"
+import { FootballManagerTeamPickerSettings } from "@/components/apps/football-manager-team-picker/football-manager-team-picker-settings"
 
 interface AppComponents {
   Main: React.ComponentType
@@ -45,6 +47,10 @@ const APP_COMPONENTS: Record<string, AppComponents> = {
   "secret-santa": {
     Main: SecretSantaMain,
     Settings: SecretSantaSettings,
+  },
+  "football-manager-team-picker": {
+    Main: FootballManagerTeamPickerMain,
+    Settings: FootballManagerTeamPickerSettings,
   },
 }
 

@@ -85,13 +85,13 @@ export const APP_REGISTRY: AppEntry[] = [
   {
     appId: "football-manager-team-picker",
     name: "Football Manager Team Picker",
-    description: "Create and manage fantasy football teams with advanced picker tools",
+    description: "Pick a random Football Manager team or multiple teams for you and your friends",
     category: "Games",
-    tags: ["football", "fantasy", "team", "manager", "sports", "picker"],
-    status: "comingSoon",
+    tags: ["football", "fantasy", "team", "manager", "sports", "picker", "random"],
+    status: "live",
     icon: Trophy,
     accent: "from-yellow-500 to-orange-500",
-    featured: false,
+    featured: true,
   },
   {
     appId: "color-palette-crafter",
