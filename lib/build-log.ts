@@ -6,6 +6,11 @@ export interface BuildLogEntry {
 
 export const buildLog: BuildLogEntry[] = [
   {
+    date: "2026-01-15",
+    title: "Let Me Google That",
+    description: "Made a funny tool for when someone asks you a question they could easily Google. You generate a shareable link that plays a sarcastic animation before redirecting them to Google with their question. It's the passive-aggressive way to help people help themselves.",
+  },
+  {
     date: "2026-01-13",
     title: "STL Monitor",
     description: "Built a real-time incident monitoring dashboard for St. Louis. Think of it like a local news feed but on a map – you can see traffic, weather, and transit alerts happening around the city. Added some analytics and replay features to make sense of patterns over time.",

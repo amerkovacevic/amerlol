@@ -22,6 +22,8 @@ import { AmerGauntletMain } from "@/components/apps/amer-gauntlet/amer-gauntlet-
 import { AmerGauntletSettings } from "@/components/apps/amer-gauntlet/amer-gauntlet-settings"
 import { STLMonitorMain } from "@/components/apps/stl-monitor/stl-monitor-main"
 import { STLMonitorSettings } from "@/components/apps/stl-monitor/stl-monitor-settings"
+import { LMGTFYMain } from "@/components/apps/lmgtfy/lmgtfy-main"
+import { LMGTFYSettings } from "@/components/apps/lmgtfy/lmgtfy-settings"
 
 interface AppComponents {
   Main: React.ComponentType
@@ -69,6 +71,10 @@ const APP_COMPONENTS: Record<string, AppComponents> = {
   "stl-monitor": {
     Main: STLMonitorMain,
     Settings: STLMonitorSettings,
+  },
+  "lmgtfy": {
+    Main: LMGTFYMain,
+    Settings: LMGTFYSettings,
   },
 }
 

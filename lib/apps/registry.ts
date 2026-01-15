@@ -9,6 +9,7 @@ import {
   Shield,
   BarChart3,
   Radio,
+  Search,
   type LucideIcon
 } from "lucide-react"
 
@@ -125,6 +126,17 @@ export const APP_REGISTRY: AppEntry[] = [
     status: "live",
     icon: Radio,
     accent: "from-red-600 to-rose-500",
+    featured: true,
+  },
+  {
+    appId: "lmgtfy",
+    name: "Let Me Google That",
+    description: "Generate shareable links that play an animation before redirecting to Google search",
+    category: "Utilities",
+    tags: ["google", "search", "share", "funny", "lmgtfy", "link", "redirect"],
+    status: "live",
+    icon: Search,
+    accent: "from-blue-500 to-cyan-500",
     featured: true,
   },
 ]

@@ -463,6 +463,7 @@ export function STLMonitorMain() {
                 onIncidentClick={setSelectedIncident}
                 selectedIncident={selectedIncident}
                 replayMode={filters.replayMode}
+                showCameras={true}
               />
             </React.Suspense>
 
