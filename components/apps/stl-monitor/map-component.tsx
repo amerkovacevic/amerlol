@@ -6,7 +6,6 @@ import "maplibre-gl/dist/maplibre-gl.css"
 import { useTheme } from "next-themes"
 import {
   Incident,
-  Camera,
   STL_BOUNDS,
   CATEGORY_COLORS,
   CATEGORY_ICONS,
@@ -14,11 +13,9 @@ import {
 
 interface MapComponentProps {
   incidents: Incident[]
-  cameras: Camera[]
   onIncidentClick: (incident: Incident) => void
   selectedIncident: Incident | null
   replayMode: boolean
-  showCameras?: boolean
 }
 
 // Get tile URLs based on theme
@@ -57,16 +54,13 @@ function createMapStyle(isDark: boolean): maplibregl.StyleSpecification {
 
 export default function MapComponent({
   incidents,
-  cameras,
   onIncidentClick,
   selectedIncident,
   replayMode,
-  showCameras = true,
 }: MapComponentProps) {
   const mapContainer = React.useRef<HTMLDivElement>(null)
   const map = React.useRef<maplibregl.Map | null>(null)
   const markers = React.useRef<Map<string, maplibregl.Marker>>(new Map())
-  const cameraMarkers = React.useRef<Map<string, maplibregl.Marker>>(new Map())
   const animationFrames = React.useRef<Map<string, number>>(new Map())
   const previousView = React.useRef<{ center: [number, number]; zoom: number } | null>(null)
   const { resolvedTheme } = useTheme()
@@ -160,10 +154,6 @@ export default function MapComponent({
       // Cleanup markers
       markers.current.forEach((marker) => marker.remove())
       markers.current.clear()
-      
-      // Cleanup camera markers
-      cameraMarkers.current.forEach((marker) => marker.remove())
-      cameraMarkers.current.clear()
       
       if (map.current) {
         map.current.remove()
@@ -288,53 +278,6 @@ export default function MapComponent({
     })
   }, [incidents, onIncidentClick, replayMode])
 
-  // Update camera markers when cameras change or visibility setting changes
-  React.useEffect(() => {
-    if (!map.current) return
-
-    // Remove all camera markers if not showing cameras
-    if (!showCameras) {
-      cameraMarkers.current.forEach((marker) => marker.remove())
-      cameraMarkers.current.clear()
-      return
-    }
-
-    const currentCameraIds = new Set(cameraMarkers.current.keys())
-    const newCameraIds = new Set(cameras.map((cam) => cam.id))
-
-    // Remove camera markers that are no longer in cameras list
-    currentCameraIds.forEach((id) => {
-      if (!newCameraIds.has(id)) {
-        const marker = cameraMarkers.current.get(id)
-        if (marker) {
-          marker.remove()
-          cameraMarkers.current.delete(id)
-        }
-      }
-    })
-
-    // Add or update camera markers
-    cameras.forEach((camera) => {
-      if (cameraMarkers.current.has(camera.id)) {
-        // Update existing camera marker position if needed
-        const marker = cameraMarkers.current.get(camera.id)!
-        marker.setLngLat([camera.location.lng, camera.location.lat])
-      } else {
-        // Create new camera marker
-        const el = createCameraMarkerElement(camera)
-        
-        const marker = new maplibregl.Marker({ 
-          element: el,
-          anchor: "center"
-        })
-          .setLngLat([camera.location.lng, camera.location.lat])
-          .addTo(map.current!)
-
-        cameraMarkers.current.set(camera.id, marker)
-      }
-    })
-  }, [cameras, showCameras])
-
   // Center on selected incident or restore previous view
   React.useEffect(() => {
     if (!map.current) return
@@ -441,84 +384,6 @@ export default function MapComponent({
   function getSizeFromSeverity(severity: number): number {
     // Map severity 0-100 to size 28-40
     return Math.floor(28 + (severity / 100) * 12)
-  }
-
-  // Create camera marker element
-  function createCameraMarkerElement(camera: Camera): HTMLElement {
-    const size = 24 // Fixed size for cameras
-    const isOk = camera.lastOkAt && !camera.isStale
-    
-    const container = document.createElement("div")
-    container.className = "camera-marker-container"
-    container.style.cssText = `
-      width: ${size}px;
-      height: ${size}px;
-      cursor: pointer;
-      position: relative;
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    `
-    
-    // Camera icon circle
-    const circle = document.createElement("div")
-    circle.className = "camera-marker-circle"
-    circle.style.cssText = `
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background-color: ${isOk ? "#3b82f6" : "#6b7280"};
-      border-radius: 50%;
-      border: 2px solid white;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: ${size * 0.6}px;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-      transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
-      z-index: 2;
-    `
-    circle.innerHTML = "📷"
-    
-    // Status indicator dot
-    const statusDot = document.createElement("div")
-    statusDot.style.cssText = `
-      position: absolute;
-      bottom: -2px;
-      right: -2px;
-      width: 8px;
-      height: 8px;
-      background-color: ${isOk ? "#10b981" : "#ef4444"};
-      border-radius: 50%;
-      border: 2px solid white;
-      z-index: 3;
-    `
-    
-    container.appendChild(circle)
-    container.appendChild(statusDot)
-    
-    // Hover effects
-    container.addEventListener("mouseenter", () => {
-      circle.style.transform = "scale(1.2)"
-      circle.style.boxShadow = `0 4px 12px rgba(0, 0, 0, 0.4)`
-    })
-    
-    container.addEventListener("mouseleave", () => {
-      circle.style.transform = "scale(1)"
-      circle.style.boxShadow = `0 2px 6px rgba(0, 0, 0, 0.3)`
-    })
-    
-    // Click handler - open camera in new tab if available
-    container.addEventListener("click", (e) => {
-      e.stopPropagation()
-      if (camera.externalUrl) {
-        window.open(camera.externalUrl, "_blank", "noopener,noreferrer")
-      }
-    })
-    
-    return container
   }
 
   function startPingAnimation(id: string, el: HTMLElement) {

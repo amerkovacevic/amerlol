@@ -10,7 +10,6 @@ import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   AlertTriangle,
-  Camera,
   Cloud,
   Train,
   Newspaper,
@@ -35,7 +34,6 @@ import { useAuth } from "@/components/auth/auth-provider"
 import { AuthDialog } from "@/components/auth/auth-dialog"
 import {
   Incident,
-  Camera as CameraType,
   FilterState,
   IncidentCategory,
   CATEGORY_COLORS,
@@ -45,7 +43,6 @@ import {
 } from "./types"
 import {
   fetchMoDOTIncidents,
-  fetchMoDOTCameras,
   fetchIDOTIncidents,
   fetchNWSAlerts,
   fetchTransitAlerts,
@@ -53,8 +50,6 @@ import {
   weatherAlertsToIncidents,
   transitAlertsToIncidents,
   newsToIncidents,
-  findNearbyCameras,
-  calculateDistance,
 } from "./data-service"
 
 // Map component loaded dynamically to avoid SSR issues
@@ -64,7 +59,6 @@ const MapComponent = React.lazy(() => import("./map-component"))
 const LOADING_MESSAGES = [
   "Finding crimes...",
   "Braking for no reason on I-270...",
-  "Checking traffic cameras...",
   "Locating potholes...",
   "Scanning for construction zones...",
   "Detecting sudden stops on 40...",
@@ -83,7 +77,6 @@ export function STLMonitorMain() {
   
   // Data state
   const [incidents, setIncidents] = React.useState<Incident[]>([])
-  const [cameras, setCameras] = React.useState<CameraType[]>([])
   const [loading, setLoading] = React.useState(true)
   const [lastRefresh, setLastRefresh] = React.useState<Date | null>(null)
   
@@ -142,14 +135,12 @@ export function STLMonitorMain() {
       const [
         modotIncidents,
         idotIncidents,
-        modotCameras,
         weatherAlerts,
         transitAlerts,
         newsItems,
       ] = await Promise.all([
         fetchMoDOTIncidents(),
         fetchIDOTIncidents(),
-        fetchMoDOTCameras(),
         fetchNWSAlerts(),
         fetchTransitAlerts(),
         fetchLocalNews(),
@@ -165,7 +156,6 @@ export function STLMonitorMain() {
       ]
 
       setIncidents(allIncidents)
-      setCameras(modotCameras)
       setLastRefresh(new Date())
       
       if (!silent) {
@@ -207,12 +197,6 @@ export function STLMonitorMain() {
     
     return filtered
   }, [incidents, filters, replayTime])
-
-  // Get nearby cameras for selected incident
-  const nearbyCameras = React.useMemo(() => {
-    if (!selectedIncident) return []
-    return findNearbyCameras(selectedIncident, cameras, 0.5, 3)
-  }, [selectedIncident, cameras])
 
   const toggleCategory = (category: IncidentCategory) => {
     setFilters(prev => ({
@@ -459,11 +443,9 @@ export function STLMonitorMain() {
             }>
               <MapComponent
                 incidents={filteredIncidents}
-                cameras={cameras}
                 onIncidentClick={setSelectedIncident}
                 selectedIncident={selectedIncident}
                 replayMode={filters.replayMode}
-                showCameras={true}
               />
             </React.Suspense>
 
@@ -562,51 +544,6 @@ export function STLMonitorMain() {
                         )}
                       </div>
                     </div>
-
-                    {/* Nearby Cameras */}
-                    {nearbyCameras.length > 0 && (
-                      <div>
-                        <Label className="text-xs flex items-center gap-1 mb-2">
-                          <Camera className="h-3 w-3" />
-                          Nearby Cameras ({nearbyCameras.length})
-                        </Label>
-                        <div className="space-y-2">
-                          {nearbyCameras.map(camera => (
-                            <div
-                              key={camera.id}
-                              className="rounded-lg border p-2 hover:bg-muted/50 transition-colors"
-                            >
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <div className="font-medium text-sm">{camera.name}</div>
-                                  <div className="text-xs text-muted-foreground">
-                                    {camera.roadway && `${camera.roadway} • `}
-                                    {calculateDistance(selectedIncident.location, camera.location).toFixed(2)} mi
-                                  </div>
-                                </div>
-                                {camera.externalUrl && (
-                                  <a
-                                    href={camera.externalUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-primary"
-                                  >
-                                    <ExternalLink className="h-4 w-4" />
-                                  </a>
-                                )}
-                              </div>
-                              {camera.thumbnailUrl && (
-                                <img
-                                  src={camera.thumbnailUrl}
-                                  alt={camera.name}
-                                  className="mt-2 rounded w-full h-24 object-cover bg-gray-800"
-                                />
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
                   </div>
                 </motion.div>
               )}

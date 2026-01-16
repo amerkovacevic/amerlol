@@ -647,12 +647,12 @@ export function geocodeText(text: string): { location: GeoPoint; confidence: Con
     const jeffCoMatch = matches.find(m => isJeffersonCountyLocation(m.entry.location))
     if (jeffCoMatch && jeffCoMatch.score >= 10) {
       // Use Jefferson County match if it has reasonable score
-      return createGeocodeResult(jeffCoMatch.entry, jeffCoMatch.score)
+      return createGeocodeResult(jeffCoMatch.entry, jeffCoMatch.score, text)
     }
   }
   
-  // Use helper function to create result
-  return createGeocodeResult(bestMatch.entry, bestMatch.score)
+  // Use helper function to create result with source text for deterministic jitter
+  return createGeocodeResult(bestMatch.entry, bestMatch.score, text)
 }
 
 function getTypeScore(type: LocationEntry["type"]): number {
@@ -679,8 +679,29 @@ function isJeffersonCountyLocation(point: GeoPoint): boolean {
          point.lng <= -90.20    // Eastern boundary (roughly)
 }
 
+// Helper to create deterministic jitter based on text hash
+// This ensures the same location text always gets the same jitter offset
+function deterministicJitter(seed: string, maxOffset: number = 0.002): { lat: number; lng: number } {
+  // Simple hash function to generate consistent pseudo-random values
+  let hash = 0
+  for (let i = 0; i < seed.length; i++) {
+    const char = seed.charCodeAt(i)
+    hash = ((hash << 5) - hash) + char
+    hash = hash & hash // Convert to 32-bit integer
+  }
+  
+  // Normalize to -1 to 1 range using hash
+  const normalized1 = (Math.abs(hash) % 10000) / 5000 - 1
+  const normalized2 = ((Math.abs(hash * 31) % 10000) / 5000) - 1
+  
+  return {
+    lat: normalized1 * maxOffset,
+    lng: normalized2 * maxOffset,
+  }
+}
+
 // Helper to create geocode result with validation
-function createGeocodeResult(entry: LocationEntry, score: number): { location: GeoPoint; confidence: ConfidenceLevel; matchedLocation: string } | null {
+function createGeocodeResult(entry: LocationEntry, score: number, sourceText?: string): { location: GeoPoint; confidence: ConfidenceLevel; matchedLocation: string } | null {
   // Determine confidence based on match quality
   let confidence: ConfidenceLevel = "low"
   if (score >= 20) {
@@ -695,11 +716,13 @@ function createGeocodeResult(entry: LocationEntry, score: number): { location: G
     return null // Score too low
   }
   
-  // Add small jitter to avoid all incidents at exact same spot
+  // Add deterministic jitter based on source text to avoid all incidents at exact same spot
+  // Using source text ensures same article always gets same location
   const jitter = 0.002 // ~200m radius
+  const jitterOffset = sourceText ? deterministicJitter(sourceText + entry.name, jitter) : { lat: 0, lng: 0 }
   const location = {
-    lat: entry.location.lat + (Math.random() - 0.5) * jitter,
-    lng: entry.location.lng + (Math.random() - 0.5) * jitter,
+    lat: entry.location.lat + jitterOffset.lat,
+    lng: entry.location.lng + jitterOffset.lng,
   }
   
   // CRITICAL: Validate location is within STL metro bounds AND reasonable distance

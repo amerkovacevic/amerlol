@@ -52,8 +52,6 @@ export function STLMonitorSettings() {
           defaultTimeWindow: data.defaultTimeWindow ?? DEFAULT_SETTINGS.defaultTimeWindow,
           autoRefresh: data.autoRefresh ?? DEFAULT_SETTINGS.autoRefresh,
           refreshInterval: data.refreshInterval ?? DEFAULT_SETTINGS.refreshInterval,
-          showCameraOverlay: data.showCameraOverlay ?? DEFAULT_SETTINGS.showCameraOverlay,
-          cameraSearchRadius: data.cameraSearchRadius ?? DEFAULT_SETTINGS.cameraSearchRadius,
           mapStyle: data.mapStyle ?? DEFAULT_SETTINGS.mapStyle,
           clusterAtZoom: data.clusterAtZoom ?? DEFAULT_SETTINGS.clusterAtZoom,
           notifications: data.notifications ?? DEFAULT_SETTINGS.notifications,
@@ -274,45 +272,6 @@ export function STLMonitorSettings() {
                 />
                 <p className="text-xs text-muted-foreground">
                   Group nearby incidents at lower zoom levels (8-16)
-                </p>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="showCameraOverlay">Show Camera Overlay</Label>
-                  <p className="text-xs text-muted-foreground">
-                    Display traffic cameras on the map
-                  </p>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    id="showCameraOverlay"
-                    checked={settings.showCameraOverlay}
-                    onChange={(e) =>
-                      setSettings({ ...settings, showCameraOverlay: e.target.checked })
-                    }
-                    className="sr-only peer"
-                  />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-                </label>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="cameraSearchRadius">Camera Search Radius (miles)</Label>
-                <Input
-                  id="cameraSearchRadius"
-                  type="number"
-                  min="0.1"
-                  max="2"
-                  step="0.1"
-                  value={settings.cameraSearchRadius}
-                  onChange={(e) =>
-                    setSettings({ ...settings, cameraSearchRadius: parseFloat(e.target.value) || 0.5 })
-                  }
-                />
-                <p className="text-xs text-muted-foreground">
-                  Radius for finding nearby cameras when clicking an incident
                 </p>
               </div>
             </CardContent>

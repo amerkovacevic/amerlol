@@ -188,8 +188,6 @@ export interface STLMonitorSettings {
   defaultTimeWindow: "15m" | "1h" | "6h" | "24h"
   autoRefresh: boolean
   refreshInterval: number // seconds
-  showCameraOverlay: boolean
-  cameraSearchRadius: number // miles
   mapStyle: "dark" | "light" | "satellite"
   clusterAtZoom: number
   notifications: {
@@ -262,8 +260,6 @@ export const DEFAULT_SETTINGS: STLMonitorSettings = {
   defaultTimeWindow: "1h",
   autoRefresh: true,
   refreshInterval: 30,
-  showCameraOverlay: true,
-  cameraSearchRadius: 0.5,
   mapStyle: "dark",
   clusterAtZoom: 12,
   notifications: {
