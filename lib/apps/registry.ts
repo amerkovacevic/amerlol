@@ -10,6 +10,7 @@ import {
   BarChart3,
   Radio,
   Search,
+  Plane,
   type LucideIcon
 } from "lucide-react"
 
@@ -137,6 +138,17 @@ export const APP_REGISTRY: AppEntry[] = [
     status: "live",
     icon: Search,
     accent: "from-blue-500 to-cyan-500",
+    featured: true,
+  },
+  {
+    appId: "military-tracker",
+    name: "Airwatch",
+    description: "Track military aircraft worldwide with real-time position data, analytics, and activity detection",
+    category: "Utilities",
+    tags: ["military", "flights", "aircraft", "tracking", "radar", "aviation", "defense"],
+    status: "live",
+    icon: Plane,
+    accent: "from-red-600 to-orange-600",
     featured: true,
   },
 ]

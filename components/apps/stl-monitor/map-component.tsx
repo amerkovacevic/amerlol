@@ -250,10 +250,11 @@ export default function MapComponent({
         // Create new marker
         const el = createMarkerElement(incident)
         
-        // Use anchor: "center" to ensure the marker is placed at the exact coordinate
+        // Use anchor: "center" - this tells MapLibre to position the CENTER of the element at the coordinate
+        // The marker element uses margin offsets to ensure the visual marker is centered
         const marker = new maplibregl.Marker({ 
           element: el,
-          anchor: "center"
+          anchor: "center" // Center anchor ensures stable positioning at all zoom levels
         })
           .setLngLat([incident.location.lng, incident.location.lat])
           .addTo(map.current!)
@@ -306,35 +307,43 @@ export default function MapComponent({
     }
   }, [selectedIncident])
 
-  // Create marker element with fixed-size container for proper anchoring
+  // Create marker element with proper anchoring for zoom stability
+  // MapLibre Marker with anchor: "center" positions the CENTER of the element at the coordinate
+  // So we need to offset the element by half its size so the visual center is at the coordinate
   function createMarkerElement(incident: Incident): HTMLElement {
     const color = CATEGORY_COLORS[incident.category]
     const icon = CATEGORY_ICONS[incident.category]
     const size = getSizeFromSeverity(incident.severity)
+    const halfSize = size / 2
     
-    // Fixed-size container - MUST be the same size as the marker for proper centering
-    // The anchor: "center" puts the CENTER of this element at the coordinate
-    const container = document.createElement("div")
-    container.className = `marker-container ${incident.category}`
-    container.style.cssText = `
+    // Create wrapper div - MapLibre will position this at the coordinate point
+    // When using anchor: "center", MapLibre positions the CENTER of this element at the coordinate
+    const wrapper = document.createElement("div")
+    wrapper.className = `marker-wrapper ${incident.category}`
+    
+    // The wrapper needs to be positioned so its visual center (where the circle is) aligns with the coordinate
+    // Since we're using anchor: "center", we offset by half the size
+    wrapper.style.cssText = `
+      position: absolute;
       width: ${size}px;
       height: ${size}px;
+      margin-left: -${halfSize}px;
+      margin-top: -${halfSize}px;
       cursor: pointer;
-      position: relative;
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
+      pointer-events: auto;
+      transform-origin: ${halfSize}px ${halfSize}px;
+      will-change: transform;
     `
     
-    // The visual marker circle
+    // The visual marker circle - fills the entire wrapper
     const circle = document.createElement("div")
     circle.className = "marker-circle"
     circle.style.cssText = `
       position: absolute;
       top: 0;
       left: 0;
-      width: 100%;
-      height: 100%;
+      width: ${size}px;
+      height: ${size}px;
       background-color: ${color};
       border-radius: 50%;
       border: 2px solid white;
@@ -344,6 +353,7 @@ export default function MapComponent({
       font-size: ${size * 0.5}px;
       box-shadow: 0 2px 8px ${color}80;
       transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
+      transform-origin: center center;
       z-index: 2;
     `
     circle.innerHTML = icon
@@ -355,30 +365,31 @@ export default function MapComponent({
       position: absolute;
       top: 0;
       left: 0;
-      width: 100%;
-      height: 100%;
+      width: ${size}px;
+      height: ${size}px;
       border-radius: 50%;
       border: 2px solid ${color};
       opacity: 0;
       pointer-events: none;
+      transform-origin: center center;
       z-index: 1;
     `
     
-    container.appendChild(pingRing)
-    container.appendChild(circle)
+    wrapper.appendChild(pingRing)
+    wrapper.appendChild(circle)
     
-    // Hover effects
-    container.addEventListener("mouseenter", () => {
+    // Hover effects - only transform the circle, never the wrapper
+    wrapper.addEventListener("mouseenter", () => {
       circle.style.transform = "scale(1.15)"
       circle.style.boxShadow = `0 4px 16px ${color}`
     })
     
-    container.addEventListener("mouseleave", () => {
+    wrapper.addEventListener("mouseleave", () => {
       circle.style.transform = "scale(1)"
       circle.style.boxShadow = `0 2px 8px ${color}80`
     })
     
-    return container
+    return wrapper
   }
 
   function getSizeFromSeverity(severity: number): number {
@@ -423,12 +434,23 @@ export default function MapComponent({
     <div ref={mapContainer} className="w-full h-full" style={{ minHeight: "500px" }}>
       {/* Custom CSS for markers */}
       <style jsx global>{`
-        .marker-container {
+        /* Marker wrapper - positioned by MapLibre with center anchor */
+        .marker-wrapper {
           /* Ensure marker doesn't get clipped */
-          overflow: visible;
+          overflow: visible !important;
+          /* No padding to avoid offset issues */
+          padding: 0 !important;
+          /* Box sizing to ensure size calculations are correct */
+          box-sizing: content-box !important;
         }
         
-        .marker-container.selected .marker-circle {
+        /* Ensure MapLibre's marker container uses center transform origin */
+        .maplibregl-marker {
+          /* MapLibre handles positioning - don't interfere */
+          transform-origin: center center !important;
+        }
+        
+        .marker-wrapper.selected .marker-circle {
           transform: scale(1.2) !important;
           animation: pulse 1.5s ease-in-out infinite;
         }
