@@ -6,6 +6,11 @@ export interface BuildLogEntry {
 
 export const buildLog: BuildLogEntry[] = [
   {
+    date: "2026-01-16",
+    title: "AirWatch",
+    description: "Built a real-time military flight tracker that monitors aircraft worldwide. Uses OpenSky Network to pull live data, with filtering, analytics, and activity detection. You can see what's in the sky, where it's going, and what type of missions are happening. Kind of like FlightRadar24 but specifically for military aircraft.",
+  },
+  {
     date: "2026-01-15",
     title: "Let Me Google That",
     description: "Made a funny tool for when someone asks you a question they could easily Google. You generate a shareable link that plays a sarcastic animation before redirecting them to Google with their question. It's the passive-aggressive way to help people help themselves.",
