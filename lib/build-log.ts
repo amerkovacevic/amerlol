@@ -6,6 +6,11 @@ export interface BuildLogEntry {
 
 export const buildLog: BuildLogEntry[] = [
   {
+    date: "2026-01-28",
+    title: "Trivial",
+    description: "Created a multiplayer trivia game inspired by jklm.fun's popsauce mode. Players can create shareable rooms, configure categories with include/exclude options, choose scoring methods, and compete in real-time. Built with Firestore for live synchronization, so everyone sees updates as the leader configures the game. Added 10 categories with 100+ questions, each with references and explanations.",
+  },
+  {
     date: "2026-01-16",
     title: "AirWatch",
     description: "Built a real-time military flight tracker that monitors aircraft worldwide. Uses OpenSky Network to pull live data, with filtering, analytics, and activity detection. You can see what's in the sky, where it's going, and what type of missions are happening. Kind of like FlightRadar24 but specifically for military aircraft.",

@@ -1,0 +1,96 @@
+{
+  "category": "literature",
+  "name": "Literature",
+  "questions": [
+    {
+      "id": "lit_001",
+      "question": "Who wrote '1984'?",
+      "answer": "George Orwell",
+      "options": ["Aldous Huxley", "George Orwell", "Ray Bradbury", "H.G. Wells"],
+      "difficulty": "easy",
+      "reference": "Literary Classics",
+      "explanation": "George Orwell published '1984' in 1949, depicting a dystopian future."
+    },
+    {
+      "id": "lit_002",
+      "question": "What is the first book in the 'Harry Potter' series?",
+      "answer": "Harry Potter and the Philosopher's Stone",
+      "options": ["Harry Potter and the Sorcerer's Stone", "Harry Potter and the Philosopher's Stone", "Harry Potter and the Chamber of Secrets", "Harry Potter and the Prisoner of Azkaban"],
+      "difficulty": "easy",
+      "reference": "Harry Potter Series",
+      "explanation": "The first book was published as 'Philosopher's Stone' in the UK and 'Sorcerer's Stone' in the US."
+    },
+    {
+      "id": "lit_003",
+      "question": "Who wrote 'To Kill a Mockingbird'?",
+      "answer": "Harper Lee",
+      "options": ["Mark Twain", "Harper Lee", "John Steinbeck", "F. Scott Fitzgerald"],
+      "difficulty": "medium",
+      "reference": "American Literature",
+      "explanation": "Harper Lee published 'To Kill a Mockingbird' in 1960."
+    },
+    {
+      "id": "lit_004",
+      "question": "What is the name of the author who wrote 'The Great Gatsby'?",
+      "answer": "F. Scott Fitzgerald",
+      "options": ["Ernest Hemingway", "F. Scott Fitzgerald", "William Faulkner", "John Steinbeck"],
+      "difficulty": "medium",
+      "reference": "American Literature",
+      "explanation": "F. Scott Fitzgerald published 'The Great Gatsby' in 1925."
+    },
+    {
+      "id": "lit_005",
+      "question": "Who wrote 'Pride and Prejudice'?",
+      "answer": "Jane Austen",
+      "options": ["Charlotte Brontë", "Jane Austen", "Emily Brontë", "Virginia Woolf"],
+      "difficulty": "easy",
+      "reference": "British Literature",
+      "explanation": "Jane Austen published 'Pride and Prejudice' in 1813."
+    },
+    {
+      "id": "lit_006",
+      "question": "What is the name of the main character in 'Moby Dick'?",
+      "answer": "Ishmael",
+      "options": ["Ahab", "Ishmael", "Queequeg", "Starbuck"],
+      "difficulty": "hard",
+      "reference": "Herman Melville's Works",
+      "explanation": "Ishmael is the narrator and protagonist of 'Moby Dick'."
+    },
+    {
+      "id": "lit_007",
+      "question": "Who wrote 'The Catcher in the Rye'?",
+      "answer": "J.D. Salinger",
+      "options": ["J.D. Salinger", "Kurt Vonnegut", "Jack Kerouac", "Allen Ginsberg"],
+      "difficulty": "medium",
+      "reference": "American Literature",
+      "explanation": "J.D. Salinger published 'The Catcher in the Rye' in 1951."
+    },
+    {
+      "id": "lit_008",
+      "question": "What is the name of the author who wrote 'The Lord of the Rings'?",
+      "answer": "J.R.R. Tolkien",
+      "options": ["C.S. Lewis", "J.R.R. Tolkien", "George R.R. Martin", "Terry Pratchett"],
+      "difficulty": "easy",
+      "reference": "Fantasy Literature",
+      "explanation": "J.R.R. Tolkien published 'The Lord of the Rings' trilogy between 1954 and 1955."
+    },
+    {
+      "id": "lit_009",
+      "question": "Who wrote 'Romeo and Juliet'?",
+      "answer": "William Shakespeare",
+      "options": ["Christopher Marlowe", "William Shakespeare", "Ben Jonson", "John Donne"],
+      "difficulty": "easy",
+      "reference": "Shakespeare's Works",
+      "explanation": "William Shakespeare wrote 'Romeo and Juliet' in the late 16th century."
+    },
+    {
+      "id": "lit_010",
+      "question": "What is the name of the author who wrote 'The Chronicles of Narnia'?",
+      "answer": "C.S. Lewis",
+      "options": ["J.R.R. Tolkien", "C.S. Lewis", "Roald Dahl", "Philip Pullman"],
+      "difficulty": "medium",
+      "reference": "Fantasy Literature",
+      "explanation": "C.S. Lewis wrote 'The Chronicles of Narnia' series between 1950 and 1956."
+    }
+  ]
+}

@@ -1,0 +1,96 @@
+{
+  "category": "science",
+  "name": "Science",
+  "questions": [
+    {
+      "id": "sci_001",
+      "question": "What is the speed of light in a vacuum?",
+      "answer": "299,792,458 meters per second",
+      "options": ["299,792,458 m/s", "300,000,000 m/s", "299,000,000 m/s", "299,792,458 m/s"],
+      "difficulty": "medium",
+      "reference": "Physics Constants",
+      "explanation": "The speed of light in a vacuum is exactly 299,792,458 meters per second, denoted by 'c'."
+    },
+    {
+      "id": "sci_002",
+      "question": "What is the most abundant gas in Earth's atmosphere?",
+      "answer": "Nitrogen",
+      "options": ["Oxygen", "Carbon Dioxide", "Nitrogen", "Argon"],
+      "difficulty": "easy",
+      "reference": "Atmospheric Composition Studies",
+      "explanation": "Nitrogen makes up approximately 78% of Earth's atmosphere."
+    },
+    {
+      "id": "sci_003",
+      "question": "What is the chemical formula for water?",
+      "answer": "H2O",
+      "options": ["H2O", "CO2", "O2", "H2O2"],
+      "difficulty": "easy",
+      "reference": "Chemistry Fundamentals",
+      "explanation": "Water consists of two hydrogen atoms and one oxygen atom."
+    },
+    {
+      "id": "sci_004",
+      "question": "What is the smallest unit of matter?",
+      "answer": "Atom",
+      "options": ["Molecule", "Atom", "Electron", "Proton"],
+      "difficulty": "medium",
+      "reference": "Atomic Theory",
+      "explanation": "An atom is the smallest unit of matter that retains the properties of an element."
+    },
+    {
+      "id": "sci_005",
+      "question": "What planet is known as the Red Planet?",
+      "answer": "Mars",
+      "options": ["Venus", "Mars", "Jupiter", "Saturn"],
+      "difficulty": "easy",
+      "reference": "NASA Planetary Science",
+      "explanation": "Mars appears red due to iron oxide (rust) on its surface."
+    },
+    {
+      "id": "sci_006",
+      "question": "What is the process by which plants make food?",
+      "answer": "Photosynthesis",
+      "options": ["Respiration", "Photosynthesis", "Transpiration", "Fermentation"],
+      "difficulty": "easy",
+      "reference": "Biology Fundamentals",
+      "explanation": "Photosynthesis is the process where plants convert light energy into chemical energy."
+    },
+    {
+      "id": "sci_007",
+      "question": "What is the pH of pure water?",
+      "answer": "7",
+      "options": ["5", "6", "7", "8"],
+      "difficulty": "medium",
+      "reference": "Chemistry pH Scale",
+      "explanation": "Pure water has a pH of 7, which is neutral on the pH scale."
+    },
+    {
+      "id": "sci_008",
+      "question": "What is the largest organ in the human body?",
+      "answer": "Skin",
+      "options": ["Liver", "Lungs", "Skin", "Intestines"],
+      "difficulty": "medium",
+      "reference": "Human Anatomy",
+      "explanation": "The skin is the largest organ, covering the entire body surface."
+    },
+    {
+      "id": "sci_009",
+      "question": "What is the force that pulls objects toward Earth?",
+      "answer": "Gravity",
+      "options": ["Magnetism", "Gravity", "Friction", "Inertia"],
+      "difficulty": "easy",
+      "reference": "Physics: Newton's Laws",
+      "explanation": "Gravity is the force that attracts objects with mass toward each other."
+    },
+    {
+      "id": "sci_010",
+      "question": "What is the atomic number of carbon?",
+      "answer": "6",
+      "options": ["4", "5", "6", "7"],
+      "difficulty": "medium",
+      "reference": "Periodic Table of Elements",
+      "explanation": "Carbon has 6 protons, giving it an atomic number of 6."
+    }
+  ]
+}

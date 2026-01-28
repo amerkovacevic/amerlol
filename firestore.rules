@@ -97,6 +97,18 @@ service cloud.firestore {
       match /stlMonitorSavedLocations/{locationId} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
+      
+      // LMGTFY settings subcollection
+      // Document structure: /users/{userId}/lmgtfySettings/{settingsId}
+      match /lmgtfySettings/{settingsId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+      
+      // Trivial settings subcollection
+      // Document structure: /users/{userId}/trivialSettings/{settingsId}
+      match /trivialSettings/{settingsId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
     }
     
     // Color Palettes collection
@@ -207,6 +219,33 @@ service cloud.firestore {
       
       // Users can delete their own entries
       allow delete: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Trivial Rooms collection
+    // Document structure: /trivialRooms/{roomId}
+    // Fields: leaderId, leaderName, participants[], includedCategories[], excludedCategories[], scoringMethod, questionsPerRound, timeLimit, status, createdAt, updatedAt
+    // Security: Authenticated users can read, only leader can update settings, participants can join/leave
+    match /trivialRooms/{roomId} {
+      // Authenticated users can read rooms
+      allow read: if request.auth != null;
+      
+      // Only authenticated users can create rooms, and they must be the leader
+      allow create: if request.auth != null && 
+        request.auth.uid == request.resource.data.leaderId;
+      
+      // Leader can update any field
+      allow update: if request.auth != null && 
+        request.auth.uid == resource.data.leaderId;
+      
+      // Participants can join/leave (update participants array only)
+      // Allow updates to participants array if user is adding/removing themselves
+      allow update: if request.auth != null && 
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['participants', 'updatedAt']) &&
+        request.resource.data.participants is list &&
+        resource.data.participants is list;
+      
+      // Leader can delete/close room
+      allow delete: if request.auth != null && request.auth.uid == resource.data.leaderId;
     }
   }
 }

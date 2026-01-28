@@ -1,0 +1,96 @@
+{
+  "category": "geography",
+  "name": "Geography",
+  "questions": [
+    {
+      "id": "geo_001",
+      "question": "What is the smallest country in the world?",
+      "answer": "Vatican City",
+      "options": ["Monaco", "Vatican City", "San Marino", "Liechtenstein"],
+      "difficulty": "medium",
+      "reference": "World Atlas",
+      "explanation": "Vatican City is only 0.17 square miles, making it the smallest country."
+    },
+    {
+      "id": "geo_002",
+      "question": "What is the highest mountain in the world?",
+      "answer": "Mount Everest",
+      "options": ["K2", "Mount Kilimanjaro", "Mount Everest", "Mount Fuji"],
+      "difficulty": "easy",
+      "reference": "Geological Survey",
+      "explanation": "Mount Everest stands at 29,032 feet above sea level."
+    },
+    {
+      "id": "geo_003",
+      "question": "Which country has the most time zones?",
+      "answer": "France",
+      "options": ["Russia", "United States", "France", "United Kingdom"],
+      "difficulty": "hard",
+      "reference": "Time Zone Database",
+      "explanation": "France has 12 time zones due to its overseas territories."
+    },
+    {
+      "id": "geo_004",
+      "question": "What is the largest desert in the world?",
+      "answer": "Antarctica",
+      "options": ["Sahara", "Gobi", "Antarctica", "Arabian"],
+      "difficulty": "medium",
+      "reference": "Geographical Records",
+      "explanation": "Antarctica is the largest desert, covering 5.5 million square miles."
+    },
+    {
+      "id": "geo_005",
+      "question": "Which river flows through London?",
+      "answer": "Thames",
+      "options": ["Seine", "Thames", "Rhine", "Danube"],
+      "difficulty": "easy",
+      "reference": "European Geography",
+      "explanation": "The River Thames flows through London and is 215 miles long."
+    },
+    {
+      "id": "geo_006",
+      "question": "What is the capital of Australia?",
+      "answer": "Canberra",
+      "options": ["Sydney", "Melbourne", "Canberra", "Brisbane"],
+      "difficulty": "medium",
+      "reference": "World Capitals",
+      "explanation": "Canberra became the capital in 1913, chosen as a compromise between Sydney and Melbourne."
+    },
+    {
+      "id": "geo_007",
+      "question": "Which continent is the most populous?",
+      "answer": "Asia",
+      "options": ["Africa", "Asia", "Europe", "North America"],
+      "difficulty": "easy",
+      "reference": "World Population Statistics",
+      "explanation": "Asia has over 4.7 billion people, more than half the world's population."
+    },
+    {
+      "id": "geo_008",
+      "question": "What is the deepest ocean trench?",
+      "answer": "Mariana Trench",
+      "options": ["Puerto Rico Trench", "Mariana Trench", "Tonga Trench", "Philippine Trench"],
+      "difficulty": "hard",
+      "reference": "Oceanographic Studies",
+      "explanation": "The Mariana Trench reaches a depth of 36,070 feet."
+    },
+    {
+      "id": "geo_009",
+      "question": "Which country is known as the Land of the Rising Sun?",
+      "answer": "Japan",
+      "options": ["China", "Japan", "South Korea", "Thailand"],
+      "difficulty": "easy",
+      "reference": "Cultural Geography",
+      "explanation": "Japan is called 'Nihon' or 'Nippon' meaning 'origin of the sun'."
+    },
+    {
+      "id": "geo_010",
+      "question": "What is the longest mountain range in the world?",
+      "answer": "Andes",
+      "options": ["Himalayas", "Rockies", "Andes", "Alps"],
+      "difficulty": "medium",
+      "reference": "Geological Survey",
+      "explanation": "The Andes stretch 4,300 miles along South America's western coast."
+    }
+  ]
+}

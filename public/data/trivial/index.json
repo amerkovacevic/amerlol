@@ -1,0 +1,66 @@
+{
+  "categories": [
+    {
+      "id": "general",
+      "name": "General Knowledge",
+      "file": "general.json",
+      "description": "A mix of various topics"
+    },
+    {
+      "id": "science",
+      "name": "Science",
+      "file": "science.json",
+      "description": "Physics, chemistry, biology, and more"
+    },
+    {
+      "id": "history",
+      "name": "History",
+      "file": "history.json",
+      "description": "World history and historical events"
+    },
+    {
+      "id": "geography",
+      "name": "Geography",
+      "file": "geography.json",
+      "description": "Countries, cities, landmarks, and more"
+    },
+    {
+      "id": "entertainment",
+      "name": "Entertainment",
+      "file": "entertainment.json",
+      "description": "Movies, TV shows, music, and celebrities"
+    },
+    {
+      "id": "sports",
+      "name": "Sports",
+      "file": "sports.json",
+      "description": "Athletics, teams, and sporting events"
+    },
+    {
+      "id": "technology",
+      "name": "Technology",
+      "file": "technology.json",
+      "description": "Computers, internet, and tech innovations"
+    },
+    {
+      "id": "literature",
+      "name": "Literature",
+      "file": "literature.json",
+      "description": "Books, authors, and literary works"
+    },
+    {
+      "id": "food",
+      "name": "Food & Drink",
+      "file": "food.json",
+      "description": "Cuisines, recipes, and beverages"
+    },
+    {
+      "id": "animals",
+      "name": "Animals",
+      "file": "animals.json",
+      "description": "Wildlife, pets, and nature"
+    }
+  ],
+  "version": "1.0.0",
+  "lastUpdated": "2025-01-12"
+}

@@ -1,0 +1,96 @@
+{
+  "category": "general",
+  "name": "General Knowledge",
+  "questions": [
+    {
+      "id": "gen_001",
+      "question": "What is the capital of France?",
+      "answer": "Paris",
+      "options": ["London", "Berlin", "Paris", "Madrid"],
+      "difficulty": "easy",
+      "reference": "World Atlas",
+      "explanation": "Paris has been the capital of France since 987 AD."
+    },
+    {
+      "id": "gen_002",
+      "question": "How many continents are there?",
+      "answer": "7",
+      "options": ["5", "6", "7", "8"],
+      "difficulty": "easy",
+      "reference": "National Geographic",
+      "explanation": "The seven continents are: Africa, Antarctica, Asia, Australia, Europe, North America, and South America."
+    },
+    {
+      "id": "gen_003",
+      "question": "What is the largest ocean on Earth?",
+      "answer": "Pacific Ocean",
+      "options": ["Atlantic Ocean", "Indian Ocean", "Pacific Ocean", "Arctic Ocean"],
+      "difficulty": "easy",
+      "reference": "NOAA",
+      "explanation": "The Pacific Ocean covers approximately 63 million square miles, making it the largest ocean."
+    },
+    {
+      "id": "gen_004",
+      "question": "What is the chemical symbol for gold?",
+      "answer": "Au",
+      "options": ["Go", "Gd", "Au", "Ag"],
+      "difficulty": "medium",
+      "reference": "Periodic Table of Elements",
+      "explanation": "Au comes from the Latin word 'aurum' meaning gold."
+    },
+    {
+      "id": "gen_005",
+      "question": "Who painted the Mona Lisa?",
+      "answer": "Leonardo da Vinci",
+      "options": ["Vincent van Gogh", "Pablo Picasso", "Leonardo da Vinci", "Michelangelo"],
+      "difficulty": "medium",
+      "reference": "Louvre Museum",
+      "explanation": "Leonardo da Vinci painted the Mona Lisa between 1503 and 1519."
+    },
+    {
+      "id": "gen_006",
+      "question": "What is the smallest prime number?",
+      "answer": "2",
+      "options": ["1", "2", "3", "5"],
+      "difficulty": "easy",
+      "reference": "Mathematics Fundamentals",
+      "explanation": "2 is the smallest and only even prime number."
+    },
+    {
+      "id": "gen_007",
+      "question": "In which year did World War II end?",
+      "answer": "1945",
+      "options": ["1943", "1944", "1945", "1946"],
+      "difficulty": "medium",
+      "reference": "World War II Historical Records",
+      "explanation": "World War II ended in 1945 with the surrender of Japan."
+    },
+    {
+      "id": "gen_008",
+      "question": "What is the hardest natural substance on Earth?",
+      "answer": "Diamond",
+      "options": ["Gold", "Iron", "Diamond", "Platinum"],
+      "difficulty": "medium",
+      "reference": "Geological Survey",
+      "explanation": "Diamond is the hardest known natural material, rating 10 on the Mohs scale."
+    },
+    {
+      "id": "gen_009",
+      "question": "How many sides does a hexagon have?",
+      "answer": "6",
+      "options": ["5", "6", "7", "8"],
+      "difficulty": "easy",
+      "reference": "Geometry Basics",
+      "explanation": "A hexagon is a polygon with six sides and six angles."
+    },
+    {
+      "id": "gen_010",
+      "question": "What is the longest river in the world?",
+      "answer": "Nile River",
+      "options": ["Amazon River", "Mississippi River", "Nile River", "Yangtze River"],
+      "difficulty": "medium",
+      "reference": "National Geographic",
+      "explanation": "The Nile River is approximately 4,135 miles long, making it the longest river."
+    }
+  ]
+}

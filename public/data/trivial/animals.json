@@ -1,0 +1,96 @@
+{
+  "category": "animals",
+  "name": "Animals",
+  "questions": [
+    {
+      "id": "ani_001",
+      "question": "What is the largest mammal in the world?",
+      "answer": "Blue Whale",
+      "options": ["African Elephant", "Blue Whale", "Giraffe", "Hippopotamus"],
+      "difficulty": "easy",
+      "reference": "Marine Biology",
+      "explanation": "The blue whale can grow up to 100 feet long and weigh up to 200 tons."
+    },
+    {
+      "id": "ani_002",
+      "question": "What is a group of lions called?",
+      "answer": "Pride",
+      "options": ["Pack", "Pride", "Herd", "Flock"],
+      "difficulty": "medium",
+      "reference": "Zoology",
+      "explanation": "A group of lions is called a pride, typically consisting of related females and their cubs."
+    },
+    {
+      "id": "ani_003",
+      "question": "How many hearts does an octopus have?",
+      "answer": "3",
+      "options": ["1", "2", "3", "4"],
+      "difficulty": "hard",
+      "reference": "Marine Biology",
+      "explanation": "An octopus has three hearts: two pump blood to the gills, and one pumps blood to the body."
+    },
+    {
+      "id": "ani_004",
+      "question": "What is the fastest land animal?",
+      "answer": "Cheetah",
+      "options": ["Lion", "Cheetah", "Leopard", "Gazelle"],
+      "difficulty": "easy",
+      "reference": "Wildlife Records",
+      "explanation": "Cheetahs can reach speeds of up to 70 mph in short bursts."
+    },
+    {
+      "id": "ani_005",
+      "question": "What is a baby kangaroo called?",
+      "answer": "Joey",
+      "options": ["Cub", "Pup", "Joey", "Kit"],
+      "difficulty": "easy",
+      "reference": "Marsupial Biology",
+      "explanation": "Baby kangaroos are called joeys and develop in their mother's pouch."
+    },
+    {
+      "id": "ani_006",
+      "question": "Which bird is known for its ability to mimic human speech?",
+      "answer": "Parrot",
+      "options": ["Crow", "Parrot", "Raven", "Magpie"],
+      "difficulty": "easy",
+      "reference": "Ornithology",
+      "explanation": "Parrots, especially African grey parrots, are excellent mimics."
+    },
+    {
+      "id": "ani_007",
+      "question": "What is the largest species of bear?",
+      "answer": "Polar Bear",
+      "options": ["Grizzly Bear", "Polar Bear", "Brown Bear", "Kodiak Bear"],
+      "difficulty": "medium",
+      "reference": "Wildlife Biology",
+      "explanation": "Polar bears are the largest bear species, with males weighing up to 1,500 pounds."
+    },
+    {
+      "id": "ani_008",
+      "question": "How many legs does a spider have?",
+      "answer": "8",
+      "options": ["6", "8", "10", "12"],
+      "difficulty": "easy",
+      "reference": "Arachnid Biology",
+      "explanation": "All spiders have eight legs, distinguishing them from insects which have six."
+    },
+    {
+      "id": "ani_009",
+      "question": "What is the only mammal capable of true flight?",
+      "answer": "Bat",
+      "options": ["Flying Squirrel", "Bat", "Flying Lemur", "Sugar Glider"],
+      "difficulty": "medium",
+      "reference": "Mammalian Biology",
+      "explanation": "Bats are the only mammals capable of sustained flight."
+    },
+    {
+      "id": "ani_010",
+      "question": "What is the largest species of penguin?",
+      "answer": "Emperor Penguin",
+      "options": ["King Penguin", "Emperor Penguin", "Adélie Penguin", "Gentoo Penguin"],
+      "difficulty": "medium",
+      "reference": "Antarctic Wildlife",
+      "explanation": "Emperor penguins are the largest, standing up to 4 feet tall and weighing up to 100 pounds."
+    }
+  ]
+}

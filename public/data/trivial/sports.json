@@ -1,0 +1,96 @@
+{
+  "category": "sports",
+  "name": "Sports",
+  "questions": [
+    {
+      "id": "spo_001",
+      "question": "How many players are on a basketball team on the court at once?",
+      "answer": "5",
+      "options": ["4", "5", "6", "7"],
+      "difficulty": "easy",
+      "reference": "Basketball Rules",
+      "explanation": "Each team has 5 players on the court at the same time."
+    },
+    {
+      "id": "spo_002",
+      "question": "Which country has won the most FIFA World Cups?",
+      "answer": "Brazil",
+      "options": ["Germany", "Argentina", "Brazil", "Italy"],
+      "difficulty": "medium",
+      "reference": "FIFA Records",
+      "explanation": "Brazil has won 5 World Cups: 1958, 1962, 1970, 1994, and 2002."
+    },
+    {
+      "id": "spo_003",
+      "question": "What is the distance of a marathon?",
+      "answer": "26.2 miles",
+      "options": ["24.2 miles", "25.2 miles", "26.2 miles", "27.2 miles"],
+      "difficulty": "medium",
+      "reference": "Athletics Standards",
+      "explanation": "A marathon is exactly 26.2 miles (42.195 kilometers)."
+    },
+    {
+      "id": "spo_004",
+      "question": "Which sport is played at Wimbledon?",
+      "answer": "Tennis",
+      "options": ["Golf", "Tennis", "Cricket", "Rugby"],
+      "difficulty": "easy",
+      "reference": "Tennis Championships",
+      "explanation": "Wimbledon is the oldest and most prestigious tennis tournament."
+    },
+    {
+      "id": "spo_005",
+      "question": "How many rings are in the Olympic symbol?",
+      "answer": "5",
+      "options": ["4", "5", "6", "7"],
+      "difficulty": "easy",
+      "reference": "Olympic Charter",
+      "explanation": "The five rings represent the five continents: Africa, Americas, Asia, Europe, and Oceania."
+    },
+    {
+      "id": "spo_006",
+      "question": "Who holds the record for most home runs in a single MLB season?",
+      "answer": "Barry Bonds",
+      "options": ["Babe Ruth", "Hank Aaron", "Barry Bonds", "Mark McGwire"],
+      "difficulty": "hard",
+      "reference": "MLB Records",
+      "explanation": "Barry Bonds hit 73 home runs in 2001."
+    },
+    {
+      "id": "spo_007",
+      "question": "What is the maximum score in a single frame of bowling?",
+      "answer": "30",
+      "options": ["20", "25", "30", "35"],
+      "difficulty": "hard",
+      "reference": "Bowling Rules",
+      "explanation": "The maximum score in a single frame is 30 (three strikes)."
+    },
+    {
+      "id": "spo_008",
+      "question": "Which country won the 2018 FIFA World Cup?",
+      "answer": "France",
+      "options": ["Croatia", "France", "Brazil", "Belgium"],
+      "difficulty": "medium",
+      "reference": "FIFA World Cup History",
+      "explanation": "France won the 2018 World Cup, defeating Croatia 4-2 in the final."
+    },
+    {
+      "id": "spo_009",
+      "question": "How many players are on a soccer team on the field at once?",
+      "answer": "11",
+      "options": ["9", "10", "11", "12"],
+      "difficulty": "easy",
+      "reference": "Soccer Rules",
+      "explanation": "Each team has 11 players on the field, including the goalkeeper."
+    },
+    {
+      "id": "spo_010",
+      "question": "What is the name of the trophy awarded to the Super Bowl winner?",
+      "answer": "Vince Lombardi Trophy",
+      "options": ["Lombardi Trophy", "Vince Lombardi Trophy", "Super Bowl Trophy", "NFL Championship Trophy"],
+      "difficulty": "medium",
+      "reference": "NFL History",
+      "explanation": "The Vince Lombardi Trophy is named after the legendary Green Bay Packers coach."
+    }
+  ]
+}

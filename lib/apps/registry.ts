@@ -10,7 +10,7 @@ import {
   BarChart3,
   Radio,
   Search,
-  Plane,
+  Brain,
   type LucideIcon
 } from "lucide-react"
 
@@ -141,14 +141,14 @@ export const APP_REGISTRY: AppEntry[] = [
     featured: true,
   },
   {
-    appId: "military-tracker",
-    name: "Airwatch",
-    description: "Track military aircraft worldwide with real-time position data, analytics, and activity detection",
-    category: "Utilities",
-    tags: ["military", "flights", "aircraft", "tracking", "radar", "aviation", "defense"],
+    appId: "trivial",
+    name: "Trivial",
+    description: "Trivia game where you choose categories and compete with friends",
+    category: "Games",
+    tags: ["trivia", "quiz", "game", "multiplayer", "categories"],
     status: "live",
-    icon: Plane,
-    accent: "from-red-600 to-orange-600",
+    icon: Brain,
+    accent: "from-purple-500 to-pink-500",
     featured: true,
   },
 ]

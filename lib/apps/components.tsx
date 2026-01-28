@@ -24,8 +24,8 @@ import { STLMonitorMain } from "@/components/apps/stl-monitor/stl-monitor-main"
 import { STLMonitorSettings } from "@/components/apps/stl-monitor/stl-monitor-settings"
 import { LMGTFYMain } from "@/components/apps/lmgtfy/lmgtfy-main"
 import { LMGTFYSettings } from "@/components/apps/lmgtfy/lmgtfy-settings"
-import { MilitaryTrackerMain } from "@/components/apps/military-tracker/military-tracker-main"
-import { MilitaryTrackerSettings } from "@/components/apps/military-tracker/military-tracker-settings"
+import { TrivialMain } from "@/components/apps/trivial/trivial-main"
+import { TrivialSettings } from "@/components/apps/trivial/trivial-settings"
 
 interface AppComponents {
   Main: React.ComponentType
@@ -78,9 +78,9 @@ const APP_COMPONENTS: Record<string, AppComponents> = {
     Main: LMGTFYMain,
     Settings: LMGTFYSettings,
   },
-  "military-tracker": {
-    Main: MilitaryTrackerMain,
-    Settings: MilitaryTrackerSettings,
+  "trivial": {
+    Main: TrivialMain,
+    Settings: TrivialSettings,
   },
 }
 

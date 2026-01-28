@@ -1,0 +1,96 @@
+{
+  "category": "entertainment",
+  "name": "Entertainment",
+  "questions": [
+    {
+      "id": "ent_001",
+      "question": "Who directed the movie 'Inception'?",
+      "answer": "Christopher Nolan",
+      "options": ["Steven Spielberg", "Christopher Nolan", "Martin Scorsese", "Quentin Tarantino"],
+      "difficulty": "medium",
+      "reference": "IMDb",
+      "explanation": "Christopher Nolan wrote and directed 'Inception' in 2010."
+    },
+    {
+      "id": "ent_002",
+      "question": "Which band released the album 'Abbey Road'?",
+      "answer": "The Beatles",
+      "options": ["The Rolling Stones", "The Beatles", "Led Zeppelin", "Pink Floyd"],
+      "difficulty": "easy",
+      "reference": "Music History",
+      "explanation": "The Beatles released 'Abbey Road' in 1969, their final recorded album."
+    },
+    {
+      "id": "ent_003",
+      "question": "Who played Jack Dawson in 'Titanic'?",
+      "answer": "Leonardo DiCaprio",
+      "options": ["Brad Pitt", "Leonardo DiCaprio", "Matt Damon", "Tom Cruise"],
+      "difficulty": "easy",
+      "reference": "IMDb",
+      "explanation": "Leonardo DiCaprio starred as Jack Dawson in the 1997 film 'Titanic'."
+    },
+    {
+      "id": "ent_004",
+      "question": "What is the highest-grossing film of all time?",
+      "answer": "Avatar",
+      "options": ["Avengers: Endgame", "Titanic", "Avatar", "Star Wars: The Force Awakens"],
+      "difficulty": "medium",
+      "reference": "Box Office Mojo",
+      "explanation": "Avatar (2009) has grossed over $2.9 billion worldwide."
+    },
+    {
+      "id": "ent_005",
+      "question": "Which TV show features the character Walter White?",
+      "answer": "Breaking Bad",
+      "options": ["The Sopranos", "Breaking Bad", "The Wire", "Game of Thrones"],
+      "difficulty": "easy",
+      "reference": "TV Guide",
+      "explanation": "Walter White is the main character in 'Breaking Bad', played by Bryan Cranston."
+    },
+    {
+      "id": "ent_006",
+      "question": "Who sang 'Bohemian Rhapsody'?",
+      "answer": "Queen",
+      "options": ["The Who", "Queen", "Led Zeppelin", "Pink Floyd"],
+      "difficulty": "easy",
+      "reference": "Music History",
+      "explanation": "Queen released 'Bohemian Rhapsody' in 1975, written by Freddie Mercury."
+    },
+    {
+      "id": "ent_007",
+      "question": "Which actor won the Oscar for Best Actor in 'The Revenant'?",
+      "answer": "Leonardo DiCaprio",
+      "options": ["Tom Hardy", "Leonardo DiCaprio", "Michael Fassbender", "Eddie Redmayne"],
+      "difficulty": "medium",
+      "reference": "Academy Awards",
+      "explanation": "Leonardo DiCaprio won his first Oscar for 'The Revenant' in 2016."
+    },
+    {
+      "id": "ent_008",
+      "question": "What is the name of the coffee shop in 'Friends'?",
+      "answer": "Central Perk",
+      "options": ["Central Perk", "Coffee Bean", "Starbucks", "The Grind"],
+      "difficulty": "easy",
+      "reference": "TV Show References",
+      "explanation": "Central Perk was the coffee shop where the Friends characters often met."
+    },
+    {
+      "id": "ent_009",
+      "question": "Which rapper's real name is Marshall Mathers?",
+      "answer": "Eminem",
+      "options": ["Jay-Z", "Eminem", "50 Cent", "Snoop Dogg"],
+      "difficulty": "medium",
+      "reference": "Music Biography",
+      "explanation": "Eminem's real name is Marshall Bruce Mathers III."
+    },
+    {
+      "id": "ent_010",
+      "question": "What year did 'The Simpsons' first air?",
+      "answer": "1989",
+      "options": ["1987", "1988", "1989", "1990"],
+      "difficulty": "hard",
+      "reference": "TV History",
+      "explanation": "'The Simpsons' premiered on December 17, 1989, on Fox."
+    }
+  ]
+}
