@@ -20,7 +20,7 @@ export function AboutContent() {
 
         <div className="prose prose-lg dark:prose-invert max-w-none mb-16">
           <p className="text-muted-foreground text-lg leading-relaxed">
-            I'm Amer, a platform engineer and amatuer developer. I'm a big fan of the web and love to build things that are useful and fun.
+            I'm Amer, a platform engineer and amateur developer. I'm a big fan of the web and love to build things that are useful and fun.
             I am slowly building things that I find useful in my daily life and share them here.
           </p>
         </div>
