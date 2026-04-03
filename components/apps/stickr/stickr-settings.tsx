@@ -108,7 +108,7 @@ export function StickrSettings() {
                 id="customCount"
                 type="number"
                 min={1}
-                max={900}
+                max={1200}
                 value={state.customStickerCount}
                 onChange={(e) => {
                   const v = clampStickerCount(parseInt(e.target.value, 10) || 1)
