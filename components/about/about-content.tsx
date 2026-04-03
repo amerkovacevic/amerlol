@@ -20,14 +20,8 @@ export function AboutContent() {
 
         <div className="prose prose-lg dark:prose-invert max-w-none mb-16">
           <p className="text-muted-foreground text-lg leading-relaxed">
-            amer.lol is a playground for creative web experiences, mini-apps, and experiments.
-            Built with modern web technologies, it serves as a hub for interactive projects
-            and tools that showcase what&apos;s possible on the web.
-          </p>
-          <p className="text-muted-foreground text-lg leading-relaxed mt-4">
-            The platform is designed to be fast, accessible, and enjoyable to use. Each
-            mini-app is carefully crafted with attention to detail, focusing on both
-            functionality and user experience.
+            I'm Amer, a platform engineer and amatuer developer. I'm a big fan of the web and love to build things that are useful and fun.
+            I am slowly building things that I find useful in my daily life and share them here.
           </p>
         </div>
 
