@@ -85,6 +85,6 @@ export function getPresetById(id: string): AlbumPreset | undefined {
   return ALBUM_PRESETS.find((p) => p.id === id)
 }
 
-export function clampStickerCount(n: number, min = 1, max = 900): number {
+export function clampStickerCount(n: number, min = 1, max = 1200): number {
   return Math.min(max, Math.max(min, Math.floor(n)))
 }
