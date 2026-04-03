@@ -24,8 +24,9 @@ import { STLMonitorMain } from "@/components/apps/stl-monitor/stl-monitor-main"
 import { STLMonitorSettings } from "@/components/apps/stl-monitor/stl-monitor-settings"
 import { LMGTFYMain } from "@/components/apps/lmgtfy/lmgtfy-main"
 import { LMGTFYSettings } from "@/components/apps/lmgtfy/lmgtfy-settings"
-import { TrivialMain } from "@/components/apps/trivial/trivial-main"
-import { TrivialSettings } from "@/components/apps/trivial/trivial-settings"
+import { StickrProvider } from "@/components/apps/stickr/stickr-provider"
+import { StickrMain } from "@/components/apps/stickr/stickr-main"
+import { StickrSettings } from "@/components/apps/stickr/stickr-settings"
 
 interface AppComponents {
   Main: React.ComponentType
@@ -78,9 +79,9 @@ const APP_COMPONENTS: Record<string, AppComponents> = {
     Main: LMGTFYMain,
     Settings: LMGTFYSettings,
   },
-  "trivial": {
-    Main: TrivialMain,
-    Settings: TrivialSettings,
+  stickr: {
+    Main: StickrMain,
+    Settings: StickrSettings,
   },
 }
 
@@ -96,9 +97,15 @@ export function hasAppComponents(appId: string): boolean {
 export function renderApp(app: AppEntry, components: AppComponents): React.ReactNode {
   const { Main, Settings } = components
 
-  return (
+  const shell = (
     <AppShellLayout app={app} settingsContent={Settings ? <Settings /> : undefined}>
       <Main />
     </AppShellLayout>
   )
+
+  if (app.appId === "stickr") {
+    return <StickrProvider>{shell}</StickrProvider>
+  }
+
+  return shell
 }

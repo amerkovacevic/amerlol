@@ -6,9 +6,10 @@ export interface BuildLogEntry {
 
 export const buildLog: BuildLogEntry[] = [
   {
-    date: "2026-01-28",
-    title: "Trivial",
-    description: "Created a multiplayer trivia game inspired by jklm.fun's popsauce mode. Players can create shareable rooms, configure categories with include/exclude options, choose scoring methods, and compete in real-time. Built with Firestore for live synchronization, so everyone sees updates as the leader configures the game. Added 10 categories with 100+ questions, each with references and explanations.",
+    date: "2026-04-03",
+    title: "Stickr",
+    description:
+      "Added Stickr for Panini FIFA World Cup™ collectors: pick duplicates and needs from a full album grid, then download a square PNG or copy text to post trades on social media. Album presets (including custom size), local storage when signed out, and Firestore sync when signed in.",
   },
   {
     date: "2026-01-16",

@@ -10,7 +10,7 @@ import {
   BarChart3,
   Radio,
   Search,
-  Brain,
+  LayoutGrid,
   type LucideIcon
 } from "lucide-react"
 
@@ -141,14 +141,15 @@ export const APP_REGISTRY: AppEntry[] = [
     featured: true,
   },
   {
-    appId: "trivial",
-    name: "Trivial",
-    description: "Trivia game where you choose categories and compete with friends",
-    category: "Games",
-    tags: ["trivia", "quiz", "game", "multiplayer", "categories"],
+    appId: "stickr",
+    name: "Stickr",
+    description:
+      "Track Panini FIFA World Cup™ sticker duplicates and needs, then share a clean trade card for social media",
+    category: "Social",
+    tags: ["panini", "fifa", "world cup", "stickers", "trading", "collectibles", "album"],
     status: "live",
-    icon: Brain,
-    accent: "from-purple-500 to-pink-500",
+    icon: LayoutGrid,
+    accent: "from-green-600 to-teal-500",
     featured: true,
   },
 ]
