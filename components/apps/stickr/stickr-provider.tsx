@@ -42,8 +42,8 @@ function firestoreToState(data: Record<string, unknown>): StickrPersistedState {
       customStickerCount: data.customStickerCount as number | undefined,
       displayName: data.displayName as string | undefined,
       shareCardTheme: data.shareCardTheme as StickrPersistedState["shareCardTheme"] | undefined,
-      duplicates: data.duplicates as number[] | undefined,
-      needs: data.needs as number[] | undefined,
+      duplicates: data.duplicates as unknown as StickrPersistedState["duplicates"] | undefined,
+      needs: data.needs as unknown as StickrPersistedState["needs"] | undefined,
     },
     getPresetById((data.albumPresetId as string) ?? "")
   )

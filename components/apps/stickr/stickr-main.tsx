@@ -18,7 +18,28 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import { getPresetById } from "@/lib/stickr/album-presets"
-import { formatStickerList, filterToAlbum } from "@/lib/stickr/format-sticker-list"
+import {
+  formatNumericStickerList,
+  formatQatar2022StickerList,
+  formatUsa2026StickerList,
+  filterNumericToAlbum,
+} from "@/lib/stickr/format-sticker-list"
+import {
+  USA_2026_GROUPS,
+  USA_2026_FWC_SPECIAL_COUNT,
+  USA_2026_TEAM_STICKERS_PER_TEAM,
+  findTeamByCode,
+  makeFwcStickerId,
+  makeTeamStickerId,
+} from "@/lib/stickr/usa-2026-schema"
+import {
+  QATAR_2022_GROUPS,
+  QATAR_2022_FWC_SPECIAL_COUNT,
+  QATAR_2022_TEAM_STICKERS_PER_TEAM,
+  findQatar2022TeamByCode,
+  makeQatar2022FwcStickerId,
+  makeQatar2022TeamStickerId,
+} from "@/lib/stickr/qatar-2022-schema"
 import { useStickr } from "./stickr-provider"
 
 type EditMode = "duplicates" | "needs"
@@ -29,10 +50,49 @@ export function StickrMain() {
   const [search, setSearch] = React.useState("")
   const [rangeStart, setRangeStart] = React.useState("")
   const [rangeEnd, setRangeEnd] = React.useState("")
+  const [activeTeam, setActiveTeam] = React.useState("USA")
   const shareRef = React.useRef<HTMLDivElement>(null)
   const [downloading, setDownloading] = React.useState(false)
 
   const albumLabel = getPresetById(state.albumPresetId)?.label ?? "Custom album"
+
+  const teamAlbum = React.useMemo(() => {
+    if (state.albumPresetId === "usa-2026") {
+      return {
+        kind: "usa-2026" as const,
+        groups: USA_2026_GROUPS,
+        teamPerTeam: USA_2026_TEAM_STICKERS_PER_TEAM,
+        fwcCount: USA_2026_FWC_SPECIAL_COUNT,
+        findTeam: findTeamByCode,
+        makeTeamId: makeTeamStickerId,
+        makeFwcId: makeFwcStickerId,
+        formatList: formatUsa2026StickerList,
+        defaultTeam: "USA",
+      }
+    }
+    if (state.albumPresetId === "qatar-2022") {
+      return {
+        kind: "qatar-2022" as const,
+        groups: QATAR_2022_GROUPS,
+        teamPerTeam: QATAR_2022_TEAM_STICKERS_PER_TEAM,
+        fwcCount: QATAR_2022_FWC_SPECIAL_COUNT,
+        findTeam: findQatar2022TeamByCode,
+        makeTeamId: makeQatar2022TeamStickerId,
+        makeFwcId: makeQatar2022FwcStickerId,
+        formatList: formatQatar2022StickerList,
+        defaultTeam: "QAT",
+      }
+    }
+    return null
+  }, [state.albumPresetId])
+
+  React.useEffect(() => {
+    if (!teamAlbum) return
+    const exists = teamAlbum.findTeam(activeTeam)
+    if (!exists) {
+      setActiveTeam(teamAlbum.defaultTeam)
+    }
+  }, [teamAlbum, activeTeam])
 
   const dupSet = React.useMemo(() => new Set(state.duplicates), [state.duplicates])
   const needSet = React.useMemo(() => new Set(state.needs), [state.needs])
@@ -48,27 +108,27 @@ export function StickrMain() {
     return numbers.filter((n) => String(n).includes(q))
   }, [numbers, search])
 
-  const toggleSticker = (n: number) => {
+  const toggleId = (id: string) => {
     setState((prev) => {
       const dup = new Set(prev.duplicates)
       const need = new Set(prev.needs)
       if (mode === "duplicates") {
-        if (dup.has(n)) dup.delete(n)
+        if (dup.has(id)) dup.delete(id)
         else {
-          dup.add(n)
-          need.delete(n)
+          dup.add(id)
+          need.delete(id)
         }
       } else {
-        if (need.has(n)) need.delete(n)
+        if (need.has(id)) need.delete(id)
         else {
-          need.add(n)
-          dup.delete(n)
+          need.add(id)
+          dup.delete(id)
         }
       }
       return {
         ...prev,
-        duplicates: [...dup].sort((a, b) => a - b),
-        needs: [...need].sort((a, b) => a - b),
+        duplicates: [...dup].sort((a, b) => a.localeCompare(b)),
+        needs: [...need].sort((a, b) => a.localeCompare(b)),
       }
     })
   }
@@ -92,26 +152,28 @@ export function StickrMain() {
     }
     const start = Math.min(a, b)
     const end = Math.max(a, b)
-    if (start < 1 || end > stickerCount) {
-      toast.error(`Numbers must be between 1 and ${stickerCount}`)
+    const maxRange = teamAlbum ? teamAlbum.teamPerTeam : stickerCount
+    if (start < 1 || end > maxRange) {
+      toast.error(`Numbers must be between 1 and ${maxRange}`)
       return
     }
     setState((prev) => {
       const dup = new Set(prev.duplicates)
       const need = new Set(prev.needs)
       for (let n = start; n <= end; n++) {
+        const id = teamAlbum ? teamAlbum.makeTeamId(activeTeam, n) : String(n)
         if (mode === "duplicates") {
-          dup.add(n)
-          need.delete(n)
+          dup.add(id)
+          need.delete(id)
         } else {
-          need.add(n)
-          dup.delete(n)
+          need.add(id)
+          dup.delete(id)
         }
       }
       return {
         ...prev,
-        duplicates: filterToAlbum([...dup], stickerCount),
-        needs: filterToAlbum([...need], stickerCount),
+        duplicates: teamAlbum ? [...dup].sort((x, y) => x.localeCompare(y)) : filterNumericToAlbum([...dup], stickerCount),
+        needs: teamAlbum ? [...need].sort((x, y) => x.localeCompare(y)) : filterNumericToAlbum([...need], stickerCount),
       }
     })
     setRangeStart("")
@@ -120,12 +182,14 @@ export function StickrMain() {
   }
 
   const copyListsText = async () => {
+    const lookingFor = teamAlbum ? teamAlbum.formatList(state.needs) : formatNumericStickerList(state.needs)
+    const duplicatesForTrade = teamAlbum ? teamAlbum.formatList(state.duplicates) : formatNumericStickerList(state.duplicates)
     const lines = [
       `Album: ${albumLabel}`,
       state.displayName ? `Collector: ${state.displayName}` : "",
       "",
-      `Looking for: ${formatStickerList(state.needs)}`,
-      `Duplicates for trade: ${formatStickerList(state.duplicates)}`,
+      `Looking for: ${lookingFor}`,
+      `Duplicates for trade: ${duplicatesForTrade}`,
       "",
       "Made with Stickr — amer.lol",
     ].filter(Boolean)
@@ -162,6 +226,19 @@ export function StickrMain() {
     }
   }
 
+  const isDark = state.shareCardTheme === "dark"
+  const isTeamAlbum = !!teamAlbum
+  const activeTeamMeta = teamAlbum ? teamAlbum.findTeam(activeTeam) : undefined
+  const filteredGroups = React.useMemo(() => {
+    if (!teamAlbum) return []
+    const q = search.trim().toLowerCase()
+    if (!q) return teamAlbum.groups
+    return teamAlbum.groups.map((g) => ({
+      ...g,
+      teams: g.teams.filter((t) => t.code.toLowerCase().includes(q) || t.name.toLowerCase().includes(q)),
+    })).filter((g) => g.teams.length > 0)
+  }, [teamAlbum, search])
+
   if (!hydrated) {
     return (
       <div className="flex items-center justify-center py-24 text-muted-foreground gap-2">
@@ -170,8 +247,6 @@ export function StickrMain() {
       </div>
     )
   }
-
-  const isDark = state.shareCardTheme === "dark"
 
   return (
     <div className="space-y-8">
@@ -191,7 +266,14 @@ export function StickrMain() {
           <div className="flex flex-wrap gap-2 items-center justify-between">
             <div className="flex flex-wrap gap-2">
               <Badge variant="secondary">{albumLabel}</Badge>
-              <Badge variant="outline">1–{stickerCount}</Badge>
+              {isTeamAlbum ? (
+                <>
+                  <Badge variant="outline">{teamAlbum?.groups.reduce((acc, g) => acc + g.teams.length, 0) ?? 0} teams × {teamAlbum?.teamPerTeam ?? 20}</Badge>
+                  <Badge variant="outline">FWC specials: {teamAlbum?.fwcCount}</Badge>
+                </>
+              ) : (
+                <Badge variant="outline">1–{stickerCount}</Badge>
+              )}
               <Badge variant="outline" className="border-amber-500/50 text-amber-700 dark:text-amber-400">
                 Needs: {state.needs.length}
               </Badge>
@@ -220,17 +302,17 @@ export function StickrMain() {
 
           <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
             <div className="space-y-2 flex-1">
-              <Label htmlFor="stickr-search">Jump / filter</Label>
+              <Label htmlFor="stickr-search">{isTeamAlbum ? "Find team" : "Jump / filter"}</Label>
               <Input
                 id="stickr-search"
-                placeholder="e.g. 12 or 120"
+                placeholder={isTeamAlbum ? "e.g. USA or Mexico" : "e.g. 12 or 120"}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
             <div className="flex flex-wrap gap-2 items-end">
               <div className="space-y-2">
-                <Label htmlFor="r1">Range</Label>
+                <Label htmlFor="r1">{isTeamAlbum ? "Team range" : "Range"}</Label>
                 <div className="flex gap-2">
                   <Input
                     id="r1"
@@ -249,7 +331,7 @@ export function StickrMain() {
                   />
                 </div>
               </div>
-              <Button type="button" variant="secondary" onClick={applyRange}>
+              <Button type="button" variant="secondary" onClick={applyRange} disabled={isTeamAlbum && !activeTeamMeta}>
                 Apply range
               </Button>
               <Button type="button" variant="outline" onClick={clearCurrentList}>
@@ -259,34 +341,152 @@ export function StickrMain() {
             </div>
           </div>
 
-          <div className="rounded-lg border bg-muted/30 p-3 max-h-[min(420px,50vh)] overflow-y-auto">
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(2.5rem,1fr))] gap-1.5">
-              {filteredNumbers.map((n) => {
-                const active = mode === "duplicates" ? dupSet.has(n) : needSet.has(n)
-                const other = mode === "duplicates" ? needSet.has(n) : dupSet.has(n)
-                return (
-                  <button
-                    key={n}
-                    type="button"
-                    onClick={() => toggleSticker(n)}
-                    className={[
-                      "h-9 rounded-md text-xs font-medium transition-colors border",
-                      active
-                        ? mode === "duplicates"
-                          ? "bg-emerald-600 text-white border-emerald-700"
-                          : "bg-amber-500 text-slate-950 border-amber-600"
-                        : other
-                          ? "bg-muted/80 text-muted-foreground border-transparent opacity-70"
-                          : "bg-background hover:bg-accent border-input",
-                    ].join(" ")}
-                    title={other ? `On ${mode === "duplicates" ? "needs" : "duplicates"} list` : String(n)}
-                  >
-                    {n}
-                  </button>
-                )
-              })}
+          {isTeamAlbum ? (
+            <div className="grid grid-cols-1 lg:grid-cols-[360px,1fr] gap-4">
+              <div className="rounded-lg border bg-muted/20 p-3 max-h-[min(520px,60vh)] overflow-y-auto space-y-4">
+                {filteredGroups.map((group) => (
+                  <div key={group.id}>
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                        Group {group.id}
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {group.teams.map((t) => {
+                        const selected = t.code === activeTeam
+                        return (
+                          <button
+                            key={t.code}
+                            type="button"
+                            onClick={() => setActiveTeam(t.code)}
+                            className={[
+                              "rounded-md border px-3 py-2 text-left transition-colors",
+                              selected
+                                ? "bg-primary text-primary-foreground border-primary"
+                                : "bg-background hover:bg-accent border-input",
+                            ].join(" ")}
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="font-semibold">{t.code}</span>
+                            </div>
+                            <div className="text-xs opacity-80 line-clamp-1">{t.name}</div>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="space-y-4">
+                <div className="rounded-lg border bg-muted/30 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                    <div>
+                      <p className="text-sm font-semibold">
+                        {activeTeamMeta ? `${activeTeamMeta.name} (${activeTeamMeta.code})` : `Team ${activeTeam}`}
+                      </p>
+                      <p className="text-xs text-muted-foreground">Select 1–20 for this team</p>
+                    </div>
+                    <Badge variant="outline">Group {activeTeamMeta?.group ?? "—"}</Badge>
+                  </div>
+                  <div className="grid grid-cols-[repeat(5,minmax(0,1fr))] gap-2">
+                    {Array.from({ length: teamAlbum?.teamPerTeam ?? 20 }, (_, i) => i + 1).map((n) => {
+                      const id = teamAlbum?.makeTeamId(activeTeam, n) ?? `${activeTeam}-${n}`
+                      const active = mode === "duplicates" ? dupSet.has(id) : needSet.has(id)
+                      const other = mode === "duplicates" ? needSet.has(id) : dupSet.has(id)
+                      return (
+                        <button
+                          key={id}
+                          type="button"
+                          onClick={() => toggleId(id)}
+                          className={[
+                            "h-10 rounded-md text-sm font-semibold transition-colors border",
+                            active
+                              ? mode === "duplicates"
+                                ? "bg-emerald-600 text-white border-emerald-700"
+                                : "bg-amber-500 text-slate-950 border-amber-600"
+                              : other
+                                ? "bg-muted/80 text-muted-foreground border-transparent opacity-70"
+                                : "bg-background hover:bg-accent border-input",
+                          ].join(" ")}
+                          title={`${activeTeam}-${n}`}
+                        >
+                          {n}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                <div className="rounded-lg border bg-muted/30 p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <p className="text-sm font-semibold">FWC specials</p>
+                      <p className="text-xs text-muted-foreground">Special stickers labeled FWC-1…{teamAlbum?.fwcCount}</p>
+                    </div>
+                    <Badge variant="outline">FWC</Badge>
+                  </div>
+                  <div className="grid grid-cols-[repeat(6,minmax(0,1fr))] gap-2">
+                    {Array.from({ length: teamAlbum?.fwcCount ?? 0 }, (_, i) => i + 1).map((n) => {
+                      const id = teamAlbum?.makeFwcId(n) ?? `FWC-${n}`
+                      const active = mode === "duplicates" ? dupSet.has(id) : needSet.has(id)
+                      const other = mode === "duplicates" ? needSet.has(id) : dupSet.has(id)
+                      return (
+                        <button
+                          key={id}
+                          type="button"
+                          onClick={() => toggleId(id)}
+                          className={[
+                            "h-10 rounded-md text-sm font-semibold transition-colors border",
+                            active
+                              ? mode === "duplicates"
+                                ? "bg-emerald-600 text-white border-emerald-700"
+                                : "bg-amber-500 text-slate-950 border-amber-600"
+                              : other
+                                ? "bg-muted/80 text-muted-foreground border-transparent opacity-70"
+                                : "bg-background hover:bg-accent border-input",
+                          ].join(" ")}
+                          title={id}
+                        >
+                          {n}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="rounded-lg border bg-muted/30 p-3 max-h-[min(420px,50vh)] overflow-y-auto">
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(2.5rem,1fr))] gap-1.5">
+                {filteredNumbers.map((n) => {
+                  const id = String(n)
+                  const active = mode === "duplicates" ? dupSet.has(id) : needSet.has(id)
+                  const other = mode === "duplicates" ? needSet.has(id) : dupSet.has(id)
+                  return (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => toggleId(id)}
+                      className={[
+                        "h-9 rounded-md text-xs font-medium transition-colors border",
+                        active
+                          ? mode === "duplicates"
+                            ? "bg-emerald-600 text-white border-emerald-700"
+                            : "bg-amber-500 text-slate-950 border-amber-600"
+                          : other
+                            ? "bg-muted/80 text-muted-foreground border-transparent opacity-70"
+                            : "bg-background hover:bg-accent border-input",
+                      ].join(" ")}
+                      title={other ? `On ${mode === "duplicates" ? "needs" : "duplicates"} list` : String(n)}
+                    >
+                      {n}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -352,7 +552,7 @@ export function StickrMain() {
                       isDark ? "text-slate-100" : "text-slate-800"
                     }`}
                   >
-                    {formatStickerList(state.needs)}
+                    {teamAlbum ? teamAlbum.formatList(state.needs) : formatNumericStickerList(state.needs)}
                   </p>
                 </div>
                 <div>
@@ -368,7 +568,7 @@ export function StickrMain() {
                       isDark ? "text-slate-100" : "text-slate-800"
                     }`}
                   >
-                    {formatStickerList(state.duplicates)}
+                    {teamAlbum ? teamAlbum.formatList(state.duplicates) : formatNumericStickerList(state.duplicates)}
                   </p>
                 </div>
               </div>
