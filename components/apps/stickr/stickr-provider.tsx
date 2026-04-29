@@ -14,6 +14,7 @@ import {
 } from "@/lib/stickr/stickr-state"
 
 const DEBOUNCE_MS = 500
+const STICKR_DOC_ID = "default"
 
 function readLocal(): StickrPersistedState {
   if (typeof window === "undefined") return DEFAULT_STICKR_STATE
@@ -64,6 +65,12 @@ export function StickrProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = React.useState<StickrPersistedState>(DEFAULT_STICKR_STATE)
   const [hydrated, setHydrated] = React.useState(false)
   const debounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+  const stateRef = React.useRef<StickrPersistedState>(DEFAULT_STICKR_STATE)
+  const pendingClientUpdatedAtRef = React.useRef<number | null>(null)
+
+  React.useEffect(() => {
+    stateRef.current = state
+  }, [state])
 
   React.useEffect(() => {
     if (authLoading) return
@@ -73,14 +80,54 @@ export function StickrProvider({ children }: { children: React.ReactNode }) {
       return
     }
 
-    const ref = doc(db, "users", user.uid, "stickrSettings", "default")
+    const ref = doc(db, "users", user.uid, "stickrSettings", STICKR_DOC_ID)
     const unsub = onSnapshot(
       ref,
       (snap) => {
         if (snap.exists()) {
-          setState(firestoreToState(snap.data() as Record<string, unknown>))
+          const data = snap.data() as Record<string, unknown>
+          const remoteClientUpdatedAt =
+            typeof data.clientUpdatedAt === "number" ? (data.clientUpdatedAt as number) : null
+
+          // If we have a newer local write pending, ignore older remote snapshots to avoid clobbering edits.
+          if (
+            pendingClientUpdatedAtRef.current != null &&
+            remoteClientUpdatedAt != null &&
+            remoteClientUpdatedAt < pendingClientUpdatedAtRef.current
+          ) {
+            setHydrated(true)
+            return
+          }
+
+          if (
+            pendingClientUpdatedAtRef.current != null &&
+            remoteClientUpdatedAt != null &&
+            remoteClientUpdatedAt >= pendingClientUpdatedAtRef.current
+          ) {
+            pendingClientUpdatedAtRef.current = null
+          }
+
+          setState(firestoreToState(data))
         } else {
-          setState(readLocal())
+          // No remote doc yet: initialize from local (and create remote doc so the user can come back).
+          const local = readLocal()
+          setState(local)
+          pendingClientUpdatedAtRef.current = Date.now()
+          setDoc(
+            doc(db, "users", user.uid, "stickrSettings", STICKR_DOC_ID),
+            {
+              albumPresetId: local.albumPresetId,
+              customStickerCount: local.customStickerCount,
+              displayName: local.displayName,
+              shareCardTheme: local.shareCardTheme,
+              duplicates: local.duplicates,
+              needs: local.needs,
+              clientUpdatedAt: pendingClientUpdatedAtRef.current,
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp(),
+            },
+            { merge: true }
+          ).catch((e) => console.error("Stickr init save failed:", e))
         }
         setHydrated(true)
       },
@@ -92,6 +139,33 @@ export function StickrProvider({ children }: { children: React.ReactNode }) {
     return () => unsub()
   }, [user, authLoading])
 
+  const flushSave = React.useCallback(
+    async (snapshot: StickrPersistedState) => {
+      if (!user) return
+      const clientUpdatedAt = Date.now()
+      pendingClientUpdatedAtRef.current = clientUpdatedAt
+      try {
+        await setDoc(
+          doc(db, "users", user.uid, "stickrSettings", STICKR_DOC_ID),
+          {
+            albumPresetId: snapshot.albumPresetId,
+            customStickerCount: snapshot.customStickerCount,
+            displayName: snapshot.displayName,
+            shareCardTheme: snapshot.shareCardTheme,
+            duplicates: snapshot.duplicates,
+            needs: snapshot.needs,
+            clientUpdatedAt,
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true }
+        )
+      } catch (e) {
+        console.error("Stickr save failed:", e)
+      }
+    },
+    [user]
+  )
+
   const persist = React.useCallback(
     (next: StickrPersistedState | ((prev: StickrPersistedState) => StickrPersistedState)) => {
       setState((prev) => {
@@ -102,31 +176,30 @@ export function StickrProvider({ children }: { children: React.ReactNode }) {
         if (user) {
           if (debounceRef.current) clearTimeout(debounceRef.current)
           debounceRef.current = setTimeout(async () => {
-            try {
-              await setDoc(
-                doc(db, "users", user.uid, "stickrSettings", "default"),
-                {
-                  albumPresetId: resolved.albumPresetId,
-                  customStickerCount: resolved.customStickerCount,
-                  displayName: resolved.displayName,
-                  shareCardTheme: resolved.shareCardTheme,
-                  duplicates: resolved.duplicates,
-                  needs: resolved.needs,
-                  updatedAt: serverTimestamp(),
-                },
-                { merge: true }
-              )
-            } catch (e) {
-              console.error("Stickr save failed:", e)
-            }
+            await flushSave(resolved)
           }, DEBOUNCE_MS)
         }
 
         return resolved
       })
     },
-    [user]
+    [user, flushSave]
   )
+
+  // Flush any pending debounced save if the tab is closed/reloaded.
+  React.useEffect(() => {
+    if (!user) return
+    const handler = () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current)
+        debounceRef.current = null
+        // Fire and forget; best effort.
+        void flushSave(stateRef.current)
+      }
+    }
+    window.addEventListener("pagehide", handler)
+    return () => window.removeEventListener("pagehide", handler)
+  }, [user, flushSave])
 
   const stickerCount = resolveStickerCount(state)
 

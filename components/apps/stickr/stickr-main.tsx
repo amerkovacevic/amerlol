@@ -15,6 +15,7 @@ import {
   Trash2,
   Copy,
   Loader2,
+  CheckSquare,
 } from "lucide-react"
 import { toast } from "sonner"
 import { getPresetById } from "@/lib/stickr/album-presets"
@@ -51,6 +52,7 @@ export function StickrMain() {
   const [rangeStart, setRangeStart] = React.useState("")
   const [rangeEnd, setRangeEnd] = React.useState("")
   const [activeTeam, setActiveTeam] = React.useState("USA")
+  const [activePanel, setActivePanel] = React.useState<"team" | "fwc">("team")
   const shareRef = React.useRef<HTMLDivElement>(null)
   const [downloading, setDownloading] = React.useState(false)
 
@@ -179,6 +181,47 @@ export function StickrMain() {
     setRangeStart("")
     setRangeEnd("")
     toast.success(`Updated ${end - start + 1} stickers`)
+  }
+
+  const selectAllCurrent = () => {
+    setState((prev) => {
+      const dup = new Set(prev.duplicates)
+      const need = new Set(prev.needs)
+
+      const addIds: string[] = []
+      if (teamAlbum) {
+        if (activePanel === "fwc") {
+          for (let n = 1; n <= teamAlbum.fwcCount; n++) addIds.push(teamAlbum.makeFwcId(n))
+        } else {
+          // Select all 1..N for active team
+          for (let n = 1; n <= teamAlbum.teamPerTeam; n++) addIds.push(teamAlbum.makeTeamId(activeTeam, n))
+        }
+      } else {
+        // Select all currently visible numbers (respects filter)
+        for (const n of filteredNumbers) addIds.push(String(n))
+      }
+
+      for (const id of addIds) {
+        if (mode === "duplicates") {
+          dup.add(id)
+          need.delete(id)
+        } else {
+          need.add(id)
+          dup.delete(id)
+        }
+      }
+
+      return {
+        ...prev,
+        duplicates: teamAlbum ? [...dup].sort((a, b) => a.localeCompare(b)) : filterNumericToAlbum([...dup], stickerCount),
+        needs: teamAlbum ? [...need].sort((a, b) => a.localeCompare(b)) : filterNumericToAlbum([...need], stickerCount),
+      }
+    })
+    if (teamAlbum) {
+      toast.success(activePanel === "fwc" ? "Selected all FWC specials" : "Selected all stickers for this team")
+    } else {
+      toast.success("Selected all visible stickers")
+    }
   }
 
   const copyListsText = async () => {
@@ -334,6 +377,15 @@ export function StickrMain() {
               <Button type="button" variant="secondary" onClick={applyRange} disabled={isTeamAlbum && !activeTeamMeta}>
                 Apply range
               </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={selectAllCurrent}
+                disabled={isTeamAlbum && !activeTeamMeta}
+              >
+                <CheckSquare className="h-4 w-4 mr-2" />
+                Select all
+              </Button>
               <Button type="button" variant="outline" onClick={clearCurrentList}>
                 <Trash2 className="h-4 w-4 mr-2" />
                 Clear {mode}
@@ -358,7 +410,10 @@ export function StickrMain() {
                           <button
                             key={t.code}
                             type="button"
-                            onClick={() => setActiveTeam(t.code)}
+                            onClick={() => {
+                              setActiveTeam(t.code)
+                              setActivePanel("team")
+                            }}
                             className={[
                               "rounded-md border px-3 py-2 text-left transition-colors",
                               selected
@@ -376,84 +431,110 @@ export function StickrMain() {
                     </div>
                   </div>
                 ))}
+
+                <div className="pt-3 border-t">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                    Specials
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setActivePanel("fwc")}
+                    className={[
+                      "w-full rounded-md border px-3 py-2 text-left transition-colors",
+                      activePanel === "fwc"
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-background hover:bg-accent border-input",
+                    ].join(" ")}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-semibold">FWC</span>
+                      <span className="text-xs opacity-80">{teamAlbum?.fwcCount ?? 0}</span>
+                    </div>
+                    <div className="text-xs opacity-80">FWC specials</div>
+                  </button>
+                </div>
               </div>
 
-              <div className="space-y-4">
-                <div className="rounded-lg border bg-muted/30 p-4">
-                  <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-                    <div>
-                      <p className="text-sm font-semibold">
-                        {activeTeamMeta ? `${activeTeamMeta.name} (${activeTeamMeta.code})` : `Team ${activeTeam}`}
-                      </p>
-                      <p className="text-xs text-muted-foreground">Select 1–20 for this team</p>
+              <div className="rounded-lg border bg-muted/20 p-3 max-h-[min(520px,60vh)] overflow-y-auto">
+                {activePanel === "fwc" ? (
+                  <div className="rounded-lg border bg-background p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div>
+                        <p className="text-sm font-semibold">FWC specials</p>
+                        <p className="text-xs text-muted-foreground">
+                          Special stickers labeled FWC-1…{teamAlbum?.fwcCount}
+                        </p>
+                      </div>
+                      <Badge variant="outline">FWC</Badge>
                     </div>
-                    <Badge variant="outline">Group {activeTeamMeta?.group ?? "—"}</Badge>
-                  </div>
-                  <div className="grid grid-cols-[repeat(5,minmax(0,1fr))] gap-2">
-                    {Array.from({ length: teamAlbum?.teamPerTeam ?? 20 }, (_, i) => i + 1).map((n) => {
-                      const id = teamAlbum?.makeTeamId(activeTeam, n) ?? `${activeTeam}-${n}`
-                      const active = mode === "duplicates" ? dupSet.has(id) : needSet.has(id)
-                      const other = mode === "duplicates" ? needSet.has(id) : dupSet.has(id)
-                      return (
-                        <button
-                          key={id}
-                          type="button"
-                          onClick={() => toggleId(id)}
-                          className={[
-                            "h-10 rounded-md text-sm font-semibold transition-colors border",
-                            active
-                              ? mode === "duplicates"
-                                ? "bg-emerald-600 text-white border-emerald-700"
-                                : "bg-amber-500 text-slate-950 border-amber-600"
-                              : other
-                                ? "bg-muted/80 text-muted-foreground border-transparent opacity-70"
-                                : "bg-background hover:bg-accent border-input",
-                          ].join(" ")}
-                          title={`${activeTeam}-${n}`}
-                        >
-                          {n}
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-
-                <div className="rounded-lg border bg-muted/30 p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <div>
-                      <p className="text-sm font-semibold">FWC specials</p>
-                      <p className="text-xs text-muted-foreground">Special stickers labeled FWC-1…{teamAlbum?.fwcCount}</p>
+                    <div className="grid grid-cols-[repeat(6,minmax(0,1fr))] gap-2">
+                      {Array.from({ length: teamAlbum?.fwcCount ?? 0 }, (_, i) => i + 1).map((n) => {
+                        const id = teamAlbum?.makeFwcId(n) ?? `FWC-${n}`
+                        const active = mode === "duplicates" ? dupSet.has(id) : needSet.has(id)
+                        const other = mode === "duplicates" ? needSet.has(id) : dupSet.has(id)
+                        return (
+                          <button
+                            key={id}
+                            type="button"
+                            onClick={() => toggleId(id)}
+                            className={[
+                              "h-10 rounded-md text-sm font-semibold transition-colors border",
+                              active
+                                ? mode === "duplicates"
+                                  ? "bg-emerald-600 text-white border-emerald-700"
+                                  : "bg-amber-500 text-slate-950 border-amber-600"
+                                : other
+                                  ? "bg-muted/80 text-muted-foreground border-transparent opacity-70"
+                                  : "bg-background hover:bg-accent border-input",
+                            ].join(" ")}
+                            title={id}
+                          >
+                            {n}
+                          </button>
+                        )
+                      })}
                     </div>
-                    <Badge variant="outline">FWC</Badge>
                   </div>
-                  <div className="grid grid-cols-[repeat(6,minmax(0,1fr))] gap-2">
-                    {Array.from({ length: teamAlbum?.fwcCount ?? 0 }, (_, i) => i + 1).map((n) => {
-                      const id = teamAlbum?.makeFwcId(n) ?? `FWC-${n}`
-                      const active = mode === "duplicates" ? dupSet.has(id) : needSet.has(id)
-                      const other = mode === "duplicates" ? needSet.has(id) : dupSet.has(id)
-                      return (
-                        <button
-                          key={id}
-                          type="button"
-                          onClick={() => toggleId(id)}
-                          className={[
-                            "h-10 rounded-md text-sm font-semibold transition-colors border",
-                            active
-                              ? mode === "duplicates"
-                                ? "bg-emerald-600 text-white border-emerald-700"
-                                : "bg-amber-500 text-slate-950 border-amber-600"
-                              : other
-                                ? "bg-muted/80 text-muted-foreground border-transparent opacity-70"
-                                : "bg-background hover:bg-accent border-input",
-                          ].join(" ")}
-                          title={id}
-                        >
-                          {n}
-                        </button>
-                      )
-                    })}
+                ) : (
+                  <div className="rounded-lg border bg-background p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                      <div>
+                        <p className="text-sm font-semibold">
+                          {activeTeamMeta ? `${activeTeamMeta.name} (${activeTeamMeta.code})` : `Team ${activeTeam}`}
+                        </p>
+                        <p className="text-xs text-muted-foreground">Select 1–20 for this team</p>
+                      </div>
+                      <Badge variant="outline">Group {activeTeamMeta?.group ?? "—"}</Badge>
+                    </div>
+                    <div className="grid grid-cols-[repeat(5,minmax(0,1fr))] gap-2">
+                      {Array.from({ length: teamAlbum?.teamPerTeam ?? 20 }, (_, i) => i + 1).map((n) => {
+                        const id = teamAlbum?.makeTeamId(activeTeam, n) ?? `${activeTeam}-${n}`
+                        const active = mode === "duplicates" ? dupSet.has(id) : needSet.has(id)
+                        const other = mode === "duplicates" ? needSet.has(id) : dupSet.has(id)
+                        return (
+                          <button
+                            key={id}
+                            type="button"
+                            onClick={() => toggleId(id)}
+                            className={[
+                              "h-10 rounded-md text-sm font-semibold transition-colors border",
+                              active
+                                ? mode === "duplicates"
+                                  ? "bg-emerald-600 text-white border-emerald-700"
+                                  : "bg-amber-500 text-slate-950 border-amber-600"
+                                : other
+                                  ? "bg-muted/80 text-muted-foreground border-transparent opacity-70"
+                                  : "bg-background hover:bg-accent border-input",
+                            ].join(" ")}
+                            title={`${activeTeam}-${n}`}
+                          >
+                            {n}
+                          </button>
+                        )
+                      })}
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             </div>
           ) : (

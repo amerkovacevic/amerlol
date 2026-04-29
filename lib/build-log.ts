@@ -9,7 +9,7 @@ export const buildLog: BuildLogEntry[] = [
     date: "2026-04-03",
     title: "Stickr",
     description:
-      "Added Stickr for Panini FIFA World Cup™ collectors: pick duplicates and needs from a full album grid, then download a square PNG or copy text to post trades on social media. Album presets (including custom size), local storage when signed out, and Firestore sync when signed in.",
+      "Added Stickr for Panini FIFA World Cup™ collectors: track duplicates and needs, then download a clean share card PNG or copy text for trading. Supports team-coded albums (Qatar 2022 groups A–H + 18 FWC specials; USA 2026 groups A–L + 19 FWC specials) with a group/team picker and per-team 1–20 selection. Saves locally when signed out and syncs to Firestore when signed in (with race-safe saving).",
   },
   {
     date: "2026-01-15",

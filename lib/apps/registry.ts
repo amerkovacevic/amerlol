@@ -39,7 +39,6 @@ export const APP_REGISTRY: AppEntry[] = [
     status: "live",
     icon: Lock,
     accent: "from-blue-500 to-cyan-500",
-    featured: true,
   },
   {
     appId: "diffchecker",
@@ -50,7 +49,6 @@ export const APP_REGISTRY: AppEntry[] = [
     status: "live",
     icon: GitCompare,
     accent: "from-purple-500 to-pink-500",
-    featured: true,
   },
   {
     appId: "timezone",
@@ -61,7 +59,6 @@ export const APP_REGISTRY: AppEntry[] = [
     status: "live",
     icon: Globe,
     accent: "from-orange-500 to-red-500",
-    featured: true,
   },
   {
     appId: "pickup-soccer",
@@ -72,7 +69,6 @@ export const APP_REGISTRY: AppEntry[] = [
     status: "live",
     icon: Users,
     accent: "from-green-500 to-emerald-500",
-    featured: true,
   },
   {
     appId: "secret-santa",
@@ -83,7 +79,6 @@ export const APP_REGISTRY: AppEntry[] = [
     status: "live",
     icon: Gift,
     accent: "from-red-500 to-pink-500",
-    featured: true,
   },
   {
     appId: "football-manager-team-picker",
@@ -94,7 +89,6 @@ export const APP_REGISTRY: AppEntry[] = [
     status: "live",
     icon: Trophy,
     accent: "from-yellow-500 to-orange-500",
-    featured: true,
   },
   {
     appId: "color-palette-crafter",
@@ -105,7 +99,6 @@ export const APP_REGISTRY: AppEntry[] = [
     status: "live",
     icon: Palette,
     accent: "from-indigo-500 to-purple-500",
-    featured: true,
   },
   {
     appId: "amer-gauntlet",
@@ -116,7 +109,6 @@ export const APP_REGISTRY: AppEntry[] = [
     status: "live",
     icon: Shield,
     accent: "from-red-500 to-orange-500",
-    featured: true,
   },
   {
     appId: "stl-monitor",
