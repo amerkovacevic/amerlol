@@ -4,6 +4,8 @@
 
 The Tarkov module is a first-class Amer.lol application for tracking Escape from Tarkov quest progression, objectives, required items, maps, traders, and long-term progression goals.
 
+A primary product requirement is accuracy of the player's **actual current quest list**. The tracker must not confuse “the data model predicts this quest is available” with “this quest is actually visible on this player's Tarkov character.”
+
 ## Existing Stack
 
 The repository uses Next.js 14 App Router, React 18, TypeScript in strict mode, Tailwind CSS, Firebase/Firestore, Zod, Radix UI primitives, Lucide icons, Framer Motion, and the existing Amer.lol shared layout/component system.
@@ -48,6 +50,18 @@ Flow:
 
 Static quests/items must not be duplicated into each user's Firestore documents.
 
+### Quest eligibility vs. quest presence
+
+This is a hard boundary, not a UI preference.
+
+`Eligibility` is calculated from level, faction, prerequisite quest status, trader requirements, branch state, and timing rules.
+
+`Presence` means the player has actually confirmed the quest exists on their current character, whether manually or through a future reliable import/sync mechanism.
+
+The default tracker view is **My Quests**, which is presence-backed. Eligible-but-unconfirmed quests are hidden by default and may only appear in an explicit planning view.
+
+This prevents false positives caused by incomplete upstream relationships, delayed quest issuance, failed/completed branch semantics, faction differences, or Tarkov data changing before a tracker dataset catches up.
+
 ## Module layout
 
 ```text
@@ -58,7 +72,7 @@ lib/tarkov/adapters/          Provider-to-canonical adapters
 lib/tarkov/schemas/           Runtime validation
 lib/tarkov/types/             Canonical domain types
 lib/tarkov/cache/             Client cache utilities
-lib/tarkov/domain/            Quest/progression calculations
+lib/tarkov/domain/            Quest/progression/visibility calculations
 lib/tarkov/overrides/         Local upstream-data corrections
 docs/tarkov/                  Architecture and implementation documentation
 ```
@@ -76,17 +90,25 @@ docs/tarkov/                  Architecture and implementation documentation
 9. Local data corrections must be possible without forking the upstream dataset.
 10. Every persistent user mutation must be ownership-protected by Firestore rules.
 11. Mobile and desktop are both first-class targets.
+12. Calculated eligibility must never silently place an unconfirmed quest into My Quests.
+13. Failed/completed prerequisite status branches must be modeled explicitly rather than flattened into “completed prerequisite IDs.”
+14. Availability delays must be preserved by normalization even when the current client cannot yet calculate them exactly.
 
 ## Initial delivery sequence
 
-1. App Hub registration and application shell.
-2. Canonical game-data types and schemas.
-3. Isolated `json.tarkov.dev` transport boundary.
-4. Quest normalization/adapters.
-5. Player profile persistence.
-6. Quest state/dependency engine.
-7. Quest list and quest detail UI.
-8. Item aggregation and map planning.
-9. Kappa/Lightkeeper and recommendation engines.
-10. Decide whether to migrate deployment for an Amer.lol server-side proxy/cache.
-11. Hardening, migrations, tests, and monitoring.
+1. App Hub registration and application shell. **Done**
+2. Canonical game-data types and schemas. **In progress**
+3. Isolated `json.tarkov.dev` transport boundary. **Done**
+4. Strict quest visibility/presence engine. **Done**
+5. Branch-aware quest dependency engine. **Done**
+6. Quest normalization/adapters, including faction, prerequisite statuses, and availability delays.
+7. Player profile and quest-presence persistence.
+8. Quest reconciliation flow: search/select the quests actually visible in-game, with fast “I have this quest” and “not on my character” actions.
+9. Real My Quests list using confirmed presence as its source of truth.
+10. Explicit Eligible/Planning view for predicted quests, clearly labeled as predictions.
+11. Quest detail/objective tracking.
+12. Item aggregation and map planning based primarily on confirmed active quests.
+13. Kappa/Lightkeeper and recommendation engines.
+14. Add import/sync adapters only when a data source is reliable enough to assert in-game presence.
+15. Decide whether to migrate deployment for an Amer.lol server-side proxy/cache.
+16. Hardening, migrations, tests, and monitoring.
