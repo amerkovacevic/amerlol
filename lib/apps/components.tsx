@@ -35,19 +35,60 @@ interface AppComponents {
   Settings?: React.ComponentType
 }
 
+// Registry mapping appId to components
+// To add a new app:
+// 1. Add the app to APP_REGISTRY in registry.ts
+// 2. Import the components above using React.lazy
+// 3. Add an entry here mapping appId to { Main, Settings? }
 const APP_COMPONENTS: Record<string, AppComponents> = {
-  encryption: { Main: EncryptionTools, Settings: EncryptionSettings },
-  diffchecker: { Main: DiffChecker, Settings: DiffCheckerSettings },
-  timezone: { Main: TimeZoneConverter, Settings: TimeZoneSettings },
-  "pickup-soccer": { Main: PickupSoccerMain, Settings: PickupSoccerSettings },
-  "secret-santa": { Main: SecretSantaMain, Settings: SecretSantaSettings },
-  "football-manager-team-picker": { Main: FootballManagerTeamPickerMain, Settings: FootballManagerTeamPickerSettings },
-  "color-palette-crafter": { Main: ColorPaletteCrafterMain, Settings: ColorPaletteCrafterSettings },
-  "amer-gauntlet": { Main: AmerGauntletMain, Settings: AmerGauntletSettings },
-  "stl-monitor": { Main: STLMonitorMain, Settings: STLMonitorSettings },
-  lmgtfy: { Main: LMGTFYMain, Settings: LMGTFYSettings },
-  stickr: { Main: StickrMain, Settings: StickrSettings },
-  tarkov: { Main: TarkovMain, Settings: TarkovSettings },
+  encryption: {
+    Main: EncryptionTools,
+    Settings: EncryptionSettings,
+  },
+  diffchecker: {
+    Main: DiffChecker,
+    Settings: DiffCheckerSettings,
+  },
+  timezone: {
+    Main: TimeZoneConverter,
+    Settings: TimeZoneSettings,
+  },
+  "pickup-soccer": {
+    Main: PickupSoccerMain,
+    Settings: PickupSoccerSettings,
+  },
+  "secret-santa": {
+    Main: SecretSantaMain,
+    Settings: SecretSantaSettings,
+  },
+  "football-manager-team-picker": {
+    Main: FootballManagerTeamPickerMain,
+    Settings: FootballManagerTeamPickerSettings,
+  },
+  "color-palette-crafter": {
+    Main: ColorPaletteCrafterMain,
+    Settings: ColorPaletteCrafterSettings,
+  },
+  "amer-gauntlet": {
+    Main: AmerGauntletMain,
+    Settings: AmerGauntletSettings,
+  },
+  "stl-monitor": {
+    Main: STLMonitorMain,
+    Settings: STLMonitorSettings,
+  },
+  "lmgtfy": {
+    Main: LMGTFYMain,
+    Settings: LMGTFYSettings,
+  },
+  stickr: {
+    Main: StickrMain,
+    Settings: StickrSettings,
+  },
+  tarkov: {
+    Main: TarkovMain,
+    Settings: TarkovSettings,
+  },
 }
 
 export function getAppComponents(appId: string): AppComponents | null {
@@ -58,6 +99,7 @@ export function hasAppComponents(appId: string): boolean {
   return appId in APP_COMPONENTS
 }
 
+// Helper to render app (no Suspense needed with direct imports)
 export function renderApp(app: AppEntry, components: AppComponents): React.ReactNode {
   const { Main, Settings } = components
 
