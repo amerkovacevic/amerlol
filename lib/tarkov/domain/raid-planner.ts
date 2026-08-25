@@ -1,5 +1,5 @@
 import { orderRaidStepsGeographically, type RouteCoordinateSource } from "@/lib/tarkov/routing/route-engine"
-import type { MapRoutingData, RouteContext } from "@/lib/tarkov/routing/types"
+import type { MapRoutingData, RouteContext, RouteStrategy } from "@/lib/tarkov/routing/types"
 import type { QuestObjective, QuestProgress, QuestPresence, TarkovQuest } from "@/lib/tarkov/types"
 
 export interface RaidPlanStep {
@@ -28,6 +28,10 @@ export interface RaidRouteMetadata {
   usedSpawn: boolean
   usedExtract: boolean
   coordinateSource: RouteCoordinateSource
+  selectedSpawnLocationId?: string
+  selectedExtractLocationId?: string
+  selectedExtractName?: string
+  distanceToExtract?: number
 }
 
 export interface RaidMapPlan {
@@ -54,6 +58,7 @@ type PresenceLookup = Readonly<Record<string, QuestPresence | undefined>>
 export interface RaidPlannerOptions {
   routingData?: Readonly<Record<string, MapRoutingData | undefined>>
   routeContextByMap?: Readonly<Record<string, RouteContext | undefined>>
+  strategy?: RouteStrategy
 }
 
 function objectiveRoutePriority(description: string, bringCount: number, keyCount: number): number {
@@ -99,12 +104,45 @@ function shouldWatchForObjective(description: string, foundInRaid: boolean, item
   return /find|obtain|retrieve|collect|hand over|turn in|deliver/.test(description.toLowerCase())
 }
 
+function scorePlan(
+  plan: RaidMapPlan,
+  quests: readonly TarkovQuest[],
+  strategy: RouteStrategy
+): number {
+  const kappaCount = plan.questIds.reduce(
+    (count, id) => count + (quests.find((q) => q.id === id)?.kappaRequired ? 1 : 0),
+    0
+  )
+
+  const base =
+    plan.objectives.length * 100 +
+    plan.questIds.length * 35 +
+    plan.bringItemIds.length * 8 +
+    plan.requiredKeyIds.length * 10 +
+    plan.watchForItems.filter((item) => item.foundInRaid).length * 6
+
+  switch (strategy) {
+    case "kappa-focus":
+      return base + kappaCount * 120 + Math.min(35, Math.round(plan.potentialExperience / 1500))
+    case "fast-xp":
+      return base + Math.min(180, Math.round(plan.potentialExperience / 500)) + kappaCount * 10
+    case "shortest-line":
+      return base + plan.route.geographicObjectiveCount * 20 - plan.route.fallbackObjectiveCount * 10 + kappaCount * 10
+    case "safer-line":
+      return base + plan.route.geographicObjectiveCount * 12 + kappaCount * 10
+    case "max-progression":
+    default:
+      return base + kappaCount * 20 + Math.min(50, Math.round(plan.potentialExperience / 1000))
+  }
+}
+
 export function buildRaidPlans(
   quests: readonly TarkovQuest[],
   progress: ProgressLookup,
   presence: PresenceLookup,
   options: RaidPlannerOptions = {}
 ): RaidPlannerResult {
+  const strategy = options.strategy ?? "max-progression"
   const mapPlans = new Map<string, RaidMapPlan>()
 
   for (const quest of quests) {
@@ -190,7 +228,12 @@ export function buildRaidPlans(
       .sort((a, b) => Number(b.foundInRaid) - Number(a.foundInRaid) || b.count - a.count)
 
     const priorityOrdered = [...plan.objectives].sort((a, b) => b.priority - a.priority || a.questName.localeCompare(b.questName))
-    const routed = orderRaidStepsGeographically(priorityOrdered, options.routingData?.[plan.mapId], options.routeContextByMap?.[plan.mapId])
+    const mapContext = options.routeContextByMap?.[plan.mapId]
+    const routed = orderRaidStepsGeographically(
+      priorityOrdered,
+      options.routingData?.[plan.mapId],
+      { ...mapContext, strategy: mapContext?.strategy ?? strategy }
+    )
     plan.objectives = routed.ordered
     plan.route = {
       mode: routed.geographicCount === 0 ? "priority" : routed.fallbackCount === 0 ? "geographic" : "partial",
@@ -199,18 +242,13 @@ export function buildRaidPlans(
       usedSpawn: routed.usedSpawn,
       usedExtract: routed.usedExtract,
       coordinateSource: routed.coordinateSource,
+      selectedSpawnLocationId: routed.selectedSpawnLocationId,
+      selectedExtractLocationId: routed.selectedExtractLocationId,
+      selectedExtractName: routed.selectedExtractName,
+      distanceToExtract: routed.distanceToExtract,
     }
 
-    const kappaCount = plan.questIds.reduce((count, id) => count + (quests.find((q) => q.id === id)?.kappaRequired ? 1 : 0), 0)
-    plan.score =
-      plan.objectives.length * 100 +
-      plan.questIds.length * 35 +
-      plan.bringItemIds.length * 8 +
-      plan.requiredKeyIds.length * 10 +
-      plan.watchForItems.filter((item) => item.foundInRaid).length * 6 +
-      kappaCount * 20 +
-      Math.min(50, Math.round(plan.potentialExperience / 1000))
-
+    plan.score = scorePlan(plan, quests, strategy)
     plan.reasons = [
       `${plan.objectives.length} incomplete objective${plan.objectives.length === 1 ? "" : "s"}`,
       `${plan.questIds.length} confirmed quest${plan.questIds.length === 1 ? "" : "s"}`,
