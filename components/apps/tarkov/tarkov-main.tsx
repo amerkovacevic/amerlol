@@ -59,10 +59,18 @@ export function TarkovMain() {
     const controller = new AbortController()
     setDatasetStatus({ state: "loading" })
 
-    fetchTarkovDataset({ mode, dataset: "tasks", signal: controller.signal })
-      .then((payload) => {
-        const quests = normalizeTasksPayload(payload.data)
-        const references = buildTaskReferenceMaps(payload.data)
+    Promise.all([
+      fetchTarkovDataset({ mode, dataset: "tasks", signal: controller.signal }),
+      fetchTarkovDataset({ mode, dataset: "traders", signal: controller.signal }),
+      fetchTarkovDataset({ mode, dataset: "maps", signal: controller.signal }),
+    ])
+      .then(([tasksPayload, tradersPayload, mapsPayload]) => {
+        const quests = normalizeTasksPayload(tasksPayload.data)
+        const references = buildTaskReferenceMaps(
+          tasksPayload.data,
+          tradersPayload.data,
+          mapsPayload.data
+        )
         setDatasetStatus({
           state: "ready",
           quests,
