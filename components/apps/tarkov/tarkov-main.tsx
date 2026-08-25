@@ -49,6 +49,8 @@ type DatasetStatus =
   | ReadyDataset
   | { state: "error"; message: string }
 
+const MODE_STORAGE_KEY = "amerlol:tarkov:default-mode"
+
 const navigation: Array<{
   id: TrackerView
   label: string
@@ -64,10 +66,26 @@ const navigation: Array<{
   { id: "progress", label: "Progress", icon: Target },
 ]
 
+function modeLabel(mode: TarkovGameMode): string {
+  if (mode === "pve") return "PvE"
+  if (mode === "seasonal") return "Seasonal PvP"
+  return "PvP"
+}
+
 export function TarkovMain() {
   const [view, setView] = React.useState<TrackerView>("overview")
   const [mode, setMode] = React.useState<TarkovGameMode>("pvp")
   const [datasetStatus, setDatasetStatus] = React.useState<DatasetStatus>({ state: "loading" })
+
+  React.useEffect(() => {
+    const stored = window.localStorage.getItem(MODE_STORAGE_KEY)
+    if (stored === "pvp" || stored === "pve" || stored === "seasonal") setMode(stored)
+  }, [])
+
+  const changeMode = (nextMode: TarkovGameMode) => {
+    setMode(nextMode)
+    window.localStorage.setItem(MODE_STORAGE_KEY, nextMode)
+  }
 
   React.useEffect(() => {
     const controller = new AbortController()
@@ -118,9 +136,10 @@ export function TarkovMain() {
 
         <Card>
           <CardHeader className="pb-3"><CardTitle className="text-sm">Game mode</CardTitle></CardHeader>
-          <CardContent className="grid grid-cols-2 gap-2">
-            <Button size="sm" variant={mode === "pvp" ? "default" : "outline"} onClick={() => setMode("pvp")}>PvP</Button>
-            <Button size="sm" variant={mode === "pve" ? "default" : "outline"} onClick={() => setMode("pve")}>PvE</Button>
+          <CardContent className="grid gap-2">
+            <Button size="sm" variant={mode === "pvp" ? "default" : "outline"} onClick={() => changeMode("pvp")}>PvP</Button>
+            <Button size="sm" variant={mode === "pve" ? "default" : "outline"} onClick={() => changeMode("pve")}>PvE</Button>
+            <Button size="sm" variant={mode === "seasonal" ? "default" : "outline"} onClick={() => changeMode("seasonal")}>Seasonal PvP</Button>
           </CardContent>
         </Card>
       </aside>
@@ -133,7 +152,7 @@ export function TarkovMain() {
               <Badge variant="secondary">Beta</Badge>
               <TarkovCloudSync mode={mode} />
             </div>
-            <p className="mt-1 text-sm text-muted-foreground">{mode === "pvp" ? "PvP" : "PvE"} progression profile</p>
+            <p className="mt-1 text-sm text-muted-foreground">{modeLabel(mode)} progression profile</p>
           </div>
           <Button variant="outline" className="gap-2" disabled><Search className="h-4 w-4" />Global search</Button>
         </div>
