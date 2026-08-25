@@ -29,22 +29,25 @@ export function buildRaidPlans(quests: readonly TarkovQuest[], progress: Progres
     for (const objective of quest.objectives) {
       if (objective.optional || completed.has(objective.id)) continue
       const maps = objectiveMapIds(quest, objective.mapIds); if (maps.length === 0) continue
-      const bringItemIds = objective.bringItemIds ?? []; const requiredKeyGroups = objective.requiredKeyGroups ?? ((objective.requiredKeyIds ?? []).map((id) => [id])); const requiredKeyIds = [...new Set(requiredKeyGroups.flat())]
+      const bringItemIds = objective.bringItemIds ?? []; const requiredKeyGroups = objective.requiredKeyGroups ?? ((objective.requiredKeyIds ?? []).map((id) => [id])); const allKeyCandidates = [...new Set(requiredKeyGroups.flat())]
       const priority = objectiveRoutePriority(objective.description, bringItemIds.length, requiredKeyGroups.length)
       for (const mapId of maps) {
         const current = mapPlans.get(mapId) ?? { mapId, score: 0, questIds: [], objectives: [], bringItemIds: [], requiredKeyGroups: [], requiredKeyIds: [], watchForItems: [], potentialExperience: 0, reasons: [], route: { mode: "priority" as const, geographicObjectiveCount: 0, fallbackObjectiveCount: 0, usedSpawn: false, usedExtract: false, coordinateSource: "none" as const } }
         if (!current.questIds.includes(quest.id)) { current.questIds.push(quest.id); current.potentialExperience += quest.experience }
         current.objectives.push({ questId: quest.id, questName: quest.name, objectiveId: objective.id, description: objective.description, priority, routePoint: routePointForObjective(objective, mapId), reason: priority >= 75 ? "Do early: requires setup, access, or a carried quest item." : priority <= 35 ? "Do while moving or near extract." : "Progress along the main route." })
-        current.bringItemIds.push(...bringItemIds); current.requiredKeyGroups.push(...requiredKeyGroups); current.requiredKeyIds.push(...requiredKeyIds)
-        if (shouldWatchForObjective(objective.description, objective.foundInRaid === true, objective.itemIds.length)) { const excluded = new Set([...bringItemIds, ...requiredKeyIds]); const count = Math.max(1, objective.count ?? 1); for (const itemId of objective.itemIds) if (!excluded.has(itemId)) mergeWatchForItem(current.watchForItems, itemId, count, objective.foundInRaid === true, quest.id, objective.id) }
+        current.bringItemIds.push(...bringItemIds); current.requiredKeyGroups.push(...requiredKeyGroups)
+        if (shouldWatchForObjective(objective.description, objective.foundInRaid === true, objective.itemIds.length)) { const excluded = new Set([...bringItemIds, ...allKeyCandidates]); const count = Math.max(1, objective.count ?? 1); for (const itemId of objective.itemIds) if (!excluded.has(itemId)) mergeWatchForItem(current.watchForItems, itemId, count, objective.foundInRaid === true, quest.id, objective.id) }
         mapPlans.set(mapId, current)
       }
     }
   }
   const plans = [...mapPlans.values()].map((plan) => {
-    plan.questIds = [...new Set(plan.questIds)]; plan.bringItemIds = [...new Set(plan.bringItemIds)]; plan.requiredKeyIds = [...new Set(plan.requiredKeyIds)]
+    plan.questIds = [...new Set(plan.questIds)]; plan.bringItemIds = [...new Set(plan.bringItemIds)]
     const seenGroups = new Set<string>(); plan.requiredKeyGroups = plan.requiredKeyGroups.filter((group) => { const key = groupKey(group); if (!key || seenGroups.has(key)) return false; seenGroups.add(key); return true })
-    plan.watchForItems = plan.watchForItems.filter((entry) => !plan.bringItemIds.includes(entry.itemId) && !plan.requiredKeyIds.includes(entry.itemId)).sort((a, b) => Number(b.foundInRaid) - Number(a.foundInRaid) || b.count - a.count)
+    const allKeyCandidates = [...new Set(plan.requiredKeyGroups.flat())]
+    // Legacy flat UI may only show unambiguous mandatory keys. Alternative groups remain available via requiredKeyGroups.
+    plan.requiredKeyIds = [...new Set(plan.requiredKeyGroups.filter((group) => group.length === 1).map((group) => group[0]))]
+    plan.watchForItems = plan.watchForItems.filter((entry) => !plan.bringItemIds.includes(entry.itemId) && !allKeyCandidates.includes(entry.itemId)).sort((a, b) => Number(b.foundInRaid) - Number(a.foundInRaid) || b.count - a.count)
     const priorityOrdered = [...plan.objectives].sort((a, b) => b.priority - a.priority || a.questName.localeCompare(b.questName)); const mapContext = options.routeContextByMap?.[plan.mapId]
     const routed = orderRaidStepsGeographically(priorityOrdered, options.routingData?.[plan.mapId], { ...mapContext, strategy: mapContext?.strategy ?? strategy }); plan.objectives = routed.ordered
     plan.route = { mode: routed.geographicCount === 0 ? "priority" : routed.fallbackCount === 0 ? "geographic" : "partial", geographicObjectiveCount: routed.geographicCount, fallbackObjectiveCount: routed.fallbackCount, usedSpawn: routed.usedSpawn, usedExtract: routed.usedExtract, coordinateSource: routed.coordinateSource, selectedSpawnLocationId: routed.selectedSpawnLocationId, selectedExtractLocationId: routed.selectedExtractLocationId, selectedExtractName: routed.selectedExtractName, distanceToExtract: routed.distanceToExtract, objectiveDistance: routed.objectiveDistance, totalDistance: routed.totalDistance }
