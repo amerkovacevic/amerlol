@@ -75,14 +75,10 @@ function adaptDependencyRequirements(taskRequirements: unknown): QuestDependency
 function adaptGeneralRequirements(raw: JsonRecord): QuestRequirement[] {
   const requirements: QuestRequirement[] = []
   const minimumLevel = readNumber(raw.minPlayerLevel)
-  if (minimumLevel !== undefined) {
-    requirements.push({ type: "level", level: minimumLevel })
-  }
+  if (minimumLevel !== undefined) requirements.push({ type: "level", level: minimumLevel })
 
   const faction = normalizeFaction(raw.factionName ?? raw.faction)
-  if (faction) {
-    requirements.push({ type: "faction", faction })
-  }
+  if (faction) requirements.push({ type: "faction", faction })
 
   for (const traderRequirement of asRecordArray(raw.traderRequirements)) {
     const traderId = readId(traderRequirement.trader)
@@ -101,11 +97,10 @@ function adaptGeneralRequirements(raw: JsonRecord): QuestRequirement[] {
       continue
     }
 
-    const reputation = readNumber(traderRequirement.reputation ?? traderRequirement.value)
     requirements.push({
       type: "trader",
       traderId,
-      reputation,
+      reputation: readNumber(traderRequirement.reputation ?? traderRequirement.value),
       description: typeof traderRequirement.description === "string"
         ? traderRequirement.description
         : undefined,
@@ -125,7 +120,6 @@ function collectMapIds(raw: JsonRecord): string[] {
       const id = readId(map)
       if (id) ids.add(id)
     }
-
     for (const zone of asRecordArray(objective.zones)) {
       const id = readId(zone.map)
       if (id) ids.add(id)
@@ -146,13 +140,41 @@ function collectItemIds(raw: JsonRecord): string[] {
   }
 
   for (const field of arrayFields) {
-    const values = Array.isArray(raw[field]) ? raw[field] as unknown[] : []
-    for (const value of values) {
+    for (const value of Array.isArray(raw[field]) ? raw[field] as unknown[] : []) {
       const id = readId(value)
       if (id) ids.add(id)
     }
   }
 
+  return [...ids]
+}
+
+function collectBringItemIds(raw: JsonRecord): string[] {
+  const ids = new Set<string>()
+  for (const field of ["markerItem", "usingWeapon"] as const) {
+    const id = readId(raw[field])
+    if (id) ids.add(id)
+  }
+  for (const field of ["usingWeaponMods", "wearing"] as const) {
+    for (const value of Array.isArray(raw[field]) ? raw[field] as unknown[] : []) {
+      const id = readId(value)
+      if (id) ids.add(id)
+    }
+  }
+  return [...ids]
+}
+
+function collectRequiredKeyIds(raw: JsonRecord): string[] {
+  const ids = new Set<string>()
+  if (!Array.isArray(raw.requiredKeys)) return []
+
+  for (const group of raw.requiredKeys) {
+    const values = Array.isArray(group) ? group : [group]
+    for (const value of values) {
+      const id = readId(value)
+      if (id) ids.add(id)
+    }
+  }
   return [...ids]
 }
 
@@ -175,6 +197,8 @@ function adaptObjective(raw: JsonRecord): QuestObjective {
       "Quest objective",
     mapIds: [...mapIds],
     itemIds: collectItemIds(raw),
+    bringItemIds: collectBringItemIds(raw),
+    requiredKeyIds: collectRequiredKeyIds(raw),
     count: readNumber(raw.count),
     foundInRaid: typeof raw.foundInRaid === "boolean" ? raw.foundInRaid : undefined,
     optional: typeof raw.optional === "boolean" ? raw.optional : undefined,
@@ -199,27 +223,23 @@ function derivedObjectiveId(raw: JsonRecord): string {
 export function normalizeTasksPayload(data: unknown): TarkovQuest[] {
   if (!isRecord(data)) return []
 
-  const rawTasks = asRecordArray(data.tasks)
-
-  return rawTasks.flatMap((raw): TarkovQuest[] => {
+  return asRecordArray(data.tasks).flatMap((raw): TarkovQuest[] => {
     const id = readId(raw)
     const name = typeof raw.name === "string" ? raw.name : undefined
     if (!id || !name) return []
 
     const dependencyRequirements = adaptDependencyRequirements(raw.taskRequirements)
     const prerequisites = [...new Set(dependencyRequirements.map((requirement) => requirement.questId))]
-    const objectives = asRecordArray(raw.objectives).map(adaptObjective)
-    const traderId = readId(raw.trader) ?? "unknown-trader"
 
     return [{
       id,
       name,
-      traderId,
+      traderId: readId(raw.trader) ?? "unknown-trader",
       mapIds: collectMapIds(raw),
       minimumLevel: readNumber(raw.minPlayerLevel) ?? 1,
       prerequisiteQuestIds: prerequisites,
       dependencyRequirements: dependencyRequirements.length > 0 ? dependencyRequirements : undefined,
-      objectives,
+      objectives: asRecordArray(raw.objectives).map(adaptObjective),
       requirements: adaptGeneralRequirements(raw),
       rewards: [],
       experience: readNumber(raw.experience) ?? 0,
@@ -232,11 +252,7 @@ export function normalizeTasksPayload(data: unknown): TarkovQuest[] {
   })
 }
 
-function collectNamedEntities(
-  data: unknown,
-  key: string,
-  target: Record<string, string>
-): void {
+function collectNamedEntities(data: unknown, key: string, target: Record<string, string>): void {
   if (!isRecord(data)) return
   for (const raw of asRecordArray(data[key])) {
     const id = readId(raw)
@@ -249,10 +265,7 @@ export function buildTaskReferenceMaps(
   taskData: unknown,
   traderData?: unknown,
   mapData?: unknown
-): {
-  traders: Record<string, string>
-  maps: Record<string, string>
-} {
+): { traders: Record<string, string>; maps: Record<string, string> } {
   const traders: Record<string, string> = {}
   const maps: Record<string, string> = {}
 
