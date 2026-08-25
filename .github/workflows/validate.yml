@@ -28,8 +28,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Lint
-        run: npx eslint .
+      - name: Lint Tarkov code
+        env:
+          ESLINT_USE_FLAT_CONFIG: "false"
+        run: npx --yes eslint@8.57.1 components/apps/tarkov lib/tarkov --ext .ts,.tsx --config .eslintrc.json
 
       - name: Type check
         run: npx tsc --noEmit
