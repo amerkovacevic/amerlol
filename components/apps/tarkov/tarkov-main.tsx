@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ItemsNeeded } from "@/components/apps/tarkov/items-needed"
 import { QuestReconciliation } from "@/components/apps/tarkov/quest-reconciliation"
+import { TarkovCloudSync } from "@/components/apps/tarkov/tarkov-cloud-sync"
 import { WhatToDoNext } from "@/components/apps/tarkov/what-to-do-next"
 import { cn } from "@/lib/utils"
 import { fetchTarkovDataset } from "@/lib/tarkov/api/json-tarkov-dev"
@@ -76,11 +77,7 @@ export function TarkovMain() {
     ])
       .then(([tasksPayload, tradersPayload, mapsPayload, itemsPayload, hideoutPayload]) => {
         const quests = normalizeTasksPayload(tasksPayload.data)
-        const references = buildTaskReferenceMaps(
-          tasksPayload.data,
-          tradersPayload.data,
-          mapsPayload.data
-        )
+        const references = buildTaskReferenceMaps(tasksPayload.data, tradersPayload.data, mapsPayload.data)
         setDatasetStatus({
           state: "ready",
           quests,
@@ -92,10 +89,7 @@ export function TarkovMain() {
       })
       .catch((error: unknown) => {
         if (controller.signal.aborted) return
-        setDatasetStatus({
-          state: "error",
-          message: error instanceof Error ? error.message : "Unable to load Tarkov data",
-        })
+        setDatasetStatus({ state: "error", message: error instanceof Error ? error.message : "Unable to load Tarkov data" })
       })
 
     return () => controller.abort()
@@ -109,14 +103,8 @@ export function TarkovMain() {
             {navigation.map((item) => {
               const Icon = item.icon
               return (
-                <Button
-                  key={item.id}
-                  variant={view === item.id ? "secondary" : "ghost"}
-                  className="w-full justify-start gap-2"
-                  onClick={() => setView(item.id)}
-                >
-                  <Icon className="h-4 w-4" />
-                  {item.label}
+                <Button key={item.id} variant={view === item.id ? "secondary" : "ghost"} className="w-full justify-start gap-2" onClick={() => setView(item.id)}>
+                  <Icon className="h-4 w-4" />{item.label}
                 </Button>
               )
             })}
@@ -124,9 +112,7 @@ export function TarkovMain() {
         </div>
 
         <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm">Game mode</CardTitle>
-          </CardHeader>
+          <CardHeader className="pb-3"><CardTitle className="text-sm">Game mode</CardTitle></CardHeader>
           <CardContent className="grid grid-cols-2 gap-2">
             <Button size="sm" variant={mode === "pvp" ? "default" : "outline"} onClick={() => setMode("pvp")}>PvP</Button>
             <Button size="sm" variant={mode === "pve" ? "default" : "outline"} onClick={() => setMode("pve")}>PvE</Button>
@@ -137,9 +123,10 @@ export function TarkovMain() {
       <section className="min-w-0 space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <h2 className="font-space-grotesk text-2xl font-bold">{navigation.find((item) => item.id === view)?.label}</h2>
               <Badge variant="secondary">Beta</Badge>
+              <TarkovCloudSync mode={mode} />
             </div>
             <p className="mt-1 text-sm text-muted-foreground">{mode === "pvp" ? "PvP" : "PvE"} progression profile</p>
           </div>
@@ -151,23 +138,11 @@ export function TarkovMain() {
         ) : view === "overview" ? (
           <Overview datasetStatus={datasetStatus} onOpenQuests={() => setView("quests")} onOpenNext={() => setView("next")} />
         ) : view === "next" ? (
-          datasetStatus.state === "ready" ? (
-            <WhatToDoNext mode={mode} quests={datasetStatus.quests} maps={datasetStatus.maps} items={datasetStatus.items} />
-          ) : (
-            <LoadingCard label="Building raid optimization data…" />
-          )
+          datasetStatus.state === "ready" ? <WhatToDoNext mode={mode} quests={datasetStatus.quests} maps={datasetStatus.maps} items={datasetStatus.items} /> : <LoadingCard label="Building raid optimization data…" />
         ) : view === "quests" ? (
-          datasetStatus.state === "ready" ? (
-            <QuestReconciliation mode={mode} quests={datasetStatus.quests} traders={datasetStatus.traders} maps={datasetStatus.maps} />
-          ) : (
-            <LoadingCard label="Loading and normalizing Tarkov quests…" />
-          )
+          datasetStatus.state === "ready" ? <QuestReconciliation mode={mode} quests={datasetStatus.quests} traders={datasetStatus.traders} maps={datasetStatus.maps} /> : <LoadingCard label="Loading and normalizing Tarkov quests…" />
         ) : view === "items" ? (
-          datasetStatus.state === "ready" ? (
-            <ItemsNeeded mode={mode} quests={datasetStatus.quests} items={datasetStatus.items} hideoutRequirements={datasetStatus.hideoutRequirements} />
-          ) : (
-            <LoadingCard label="Calculating quest and hideout item needs…" />
-          )
+          datasetStatus.state === "ready" ? <ItemsNeeded mode={mode} quests={datasetStatus.quests} items={datasetStatus.items} hideoutRequirements={datasetStatus.hideoutRequirements} /> : <LoadingCard label="Calculating quest and hideout item needs…" />
         ) : (
           <FeatureFoundation view={view} />
         )}
@@ -176,17 +151,8 @@ export function TarkovMain() {
   )
 }
 
-function Overview({
-  datasetStatus,
-  onOpenQuests,
-  onOpenNext,
-}: {
-  datasetStatus: DatasetStatus
-  onOpenQuests: () => void
-  onOpenNext: () => void
-}) {
+function Overview({ datasetStatus, onOpenQuests, onOpenNext }: { datasetStatus: DatasetStatus; onOpenQuests: () => void; onOpenNext: () => void }) {
   const questCount = datasetStatus.state === "ready" ? datasetStatus.quests.length : 0
-
   return (
     <div className="space-y-6">
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -199,9 +165,7 @@ function Overview({
       <Card>
         <CardHeader>
           <CardTitle>Min-max your next raid</CardTitle>
-          <CardDescription>
-            The planner uses only quests you confirmed on your character, then ranks maps by how much real progression you can stack in one raid. It separates what to carry from what to find so the plan is useful before and during the raid.
-          </CardDescription>
+          <CardDescription>The planner uses only quests you confirmed on your character, then ranks maps by how much real progression you can stack in one raid. It separates what to carry from what to find so the plan is useful before and during the raid.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-3 md:grid-cols-2">
@@ -210,10 +174,7 @@ function Overview({
             <FoundationRow icon={CheckCircle2} title="What to bring" description="Quest markers, required equipment, and key metadata are extracted into the raid checklist." />
             <FoundationRow icon={CheckCircle2} title="Watch for" description="FIR and current quest loot requirements are surfaced separately so you know what not to miss or sell." />
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Button onClick={onOpenNext}>What should I do next?</Button>
-            <Button variant="outline" onClick={onOpenQuests}>Update my quests</Button>
-          </div>
+          <div className="flex flex-wrap gap-2"><Button onClick={onOpenNext}>What should I do next?</Button><Button variant="outline" onClick={onOpenQuests}>Update my quests</Button></div>
         </CardContent>
       </Card>
     </div>
@@ -221,12 +182,7 @@ function Overview({
 }
 
 function DatasetError({ message }: { message: string }) {
-  return (
-    <Card>
-      <CardHeader><CardTitle>Unable to load Tarkov quest data</CardTitle><CardDescription>{message}</CardDescription></CardHeader>
-      <CardContent><p className="text-sm text-muted-foreground">Existing confirmations are not deleted when the upstream dataset is unavailable. Reload the page to retry.</p></CardContent>
-    </Card>
-  )
+  return <Card><CardHeader><CardTitle>Unable to load Tarkov quest data</CardTitle><CardDescription>{message}</CardDescription></CardHeader><CardContent><p className="text-sm text-muted-foreground">Existing confirmations are not deleted when the upstream dataset is unavailable. Reload the page to retry.</p></CardContent></Card>
 }
 
 function LoadingCard({ label }: { label: string }) {
@@ -234,12 +190,7 @@ function LoadingCard({ label }: { label: string }) {
 }
 
 function StatusCard({ title, value, detail, icon: Icon, healthy = false }: { title: string; value: string; detail: string; icon: React.ComponentType<{ className?: string }>; healthy?: boolean }) {
-  return (
-    <Card>
-      <CardHeader className="pb-2"><div className="flex items-center justify-between"><CardDescription>{title}</CardDescription><Icon className="h-4 w-4 text-muted-foreground" /></div><CardTitle className="text-xl">{value}</CardTitle></CardHeader>
-      <CardContent><p className={cn("text-xs text-muted-foreground", healthy && "text-foreground")}>{detail}</p></CardContent>
-    </Card>
-  )
+  return <Card><CardHeader className="pb-2"><div className="flex items-center justify-between"><CardDescription>{title}</CardDescription><Icon className="h-4 w-4 text-muted-foreground" /></div><CardTitle className="text-xl">{value}</CardTitle></CardHeader><CardContent><p className={cn("text-xs text-muted-foreground", healthy && "text-foreground")}>{detail}</p></CardContent></Card>
 }
 
 function FoundationRow({ icon: Icon, title, description }: { icon: React.ComponentType<{ className?: string }>; title: string; description: string }) {
