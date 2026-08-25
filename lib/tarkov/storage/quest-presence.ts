@@ -19,56 +19,44 @@ function storageKey(mode: TarkovGameMode): string {
 function isQuestPresence(value: unknown): value is QuestPresence {
   if (!value || typeof value !== "object") return false
   const record = value as Record<string, unknown>
-  return (
-    typeof record.questId === "string" &&
-    typeof record.status === "string" &&
-    typeof record.source === "string"
-  )
+  return typeof record.questId === "string" && typeof record.status === "string" && typeof record.source === "string"
 }
 
 export function loadQuestPresence(mode: TarkovGameMode): Record<string, QuestPresence> {
   if (typeof window === "undefined") return {}
-
   try {
     const raw = window.localStorage.getItem(storageKey(mode))
     if (!raw) return {}
-
     const parsed = JSON.parse(raw) as unknown
     if (!parsed || typeof parsed !== "object") return {}
-
     const envelope = parsed as Partial<StoredQuestPresenceEnvelope>
-    if (envelope.version !== STORAGE_VERSION || !envelope.entries || typeof envelope.entries !== "object") {
-      return {}
-    }
-
-    return Object.fromEntries(
-      Object.entries(envelope.entries).filter(([, value]) => isQuestPresence(value))
-    )
+    if (envelope.version !== STORAGE_VERSION || !envelope.entries || typeof envelope.entries !== "object") return {}
+    return Object.fromEntries(Object.entries(envelope.entries).filter(([, value]) => isQuestPresence(value)))
   } catch {
     return {}
   }
 }
 
-export function saveQuestPresence(
-  mode: TarkovGameMode,
-  entries: Record<string, QuestPresence>
-): void {
+export function saveQuestPresence(mode: TarkovGameMode, entries: Record<string, QuestPresence>): void {
   if (typeof window === "undefined") return
-
-  const envelope: StoredQuestPresenceEnvelope = {
-    version: STORAGE_VERSION,
-    entries,
-  }
-
+  const previous = loadQuestPresence(mode)
+  const envelope: StoredQuestPresenceEnvelope = { version: STORAGE_VERSION, entries }
   window.localStorage.setItem(storageKey(mode), JSON.stringify(envelope))
   window.dispatchEvent(new CustomEvent("amerlol:tarkov-progress-changed", { detail: { mode } }))
+
+  void import("@/lib/tarkov/storage/cloud-sync").then(async ({ syncQuestPresenceEntry, deleteQuestPresenceEntry }) => {
+    const ids = new Set([...Object.keys(previous), ...Object.keys(entries)])
+    await Promise.all([...ids].map((questId) => {
+      const before = previous[questId]
+      const after = entries[questId]
+      if (!after) return deleteQuestPresenceEntry(mode, questId)
+      if (JSON.stringify(before) === JSON.stringify(after)) return Promise.resolve()
+      return syncQuestPresenceEntry(mode, after)
+    }))
+  }).catch(() => undefined)
 }
 
-export function setQuestPresenceStatus(
-  current: Record<string, QuestPresence>,
-  questId: string,
-  status: QuestPresenceStatus
-): Record<string, QuestPresence> {
+export function setQuestPresenceStatus(current: Record<string, QuestPresence>, questId: string, status: QuestPresenceStatus): Record<string, QuestPresence> {
   const now = new Date().toISOString()
   return {
     ...current,
@@ -82,10 +70,7 @@ export function setQuestPresenceStatus(
   }
 }
 
-export function removeQuestPresence(
-  current: Record<string, QuestPresence>,
-  questId: string
-): Record<string, QuestPresence> {
+export function removeQuestPresence(current: Record<string, QuestPresence>, questId: string): Record<string, QuestPresence> {
   const next = { ...current }
   delete next[questId]
   return next
