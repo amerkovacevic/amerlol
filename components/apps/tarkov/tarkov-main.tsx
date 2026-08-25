@@ -7,10 +7,13 @@ import {
   CircleDot,
   ClipboardList,
   Database,
+  Eye,
+  EyeOff,
   KeyRound,
   Map,
   PackageSearch,
   Search,
+  ShieldCheck,
   Target,
   Users,
 } from "lucide-react"
@@ -129,6 +132,8 @@ export function TarkovMain() {
 
         {view === "overview" ? (
           <Overview datasetStatus={datasetStatus} />
+        ) : view === "quests" ? (
+          <QuestFoundation />
         ) : (
           <FeatureFoundation view={view} />
         )}
@@ -160,7 +165,7 @@ function Overview({ datasetStatus }: { datasetStatus: DatasetStatus }) {
           }
           healthy={datasetStatus.state === "ready"}
         />
-        <StatusCard title="Quest engine" icon={ClipboardList} value="Next" detail="Dependency and availability calculation" />
+        <StatusCard title="Quest engine" icon={ShieldCheck} value="Strict" detail="Confirmed in-game quests are separate from predicted eligibility" healthy />
         <StatusCard title="Item intelligence" icon={PackageSearch} value="Queued" detail="FIR and future quest requirements" />
         <StatusCard title="Raid planner" icon={Map} value="Queued" detail="Group objectives by map and raid" />
       </div>
@@ -175,10 +180,82 @@ function Overview({ datasetStatus }: { datasetStatus: DatasetStatus }) {
         <CardContent className="grid gap-3 md:grid-cols-2">
           <FoundationRow icon={CheckCircle2} title="Amer.lol app integration" description="Registered in the existing App Hub and application shell." complete />
           <FoundationRow icon={CheckCircle2} title="Typed game modes" description="PvP, PvE, and seasonal modes map to upstream identifiers." complete />
-          <FoundationRow icon={CheckCircle2} title="Validated upstream envelope" description="External JSON is checked before it reaches the domain layer." complete />
+          <FoundationRow icon={CheckCircle2} title="Strict quest visibility" description="Predicted eligibility cannot silently become a quest shown in My Quests." complete />
           <FoundationRow icon={CircleDot} title="Quest normalization" description="Next implementation step: adapt raw task records into canonical quests." />
         </CardContent>
       </Card>
+    </div>
+  )
+}
+
+function QuestFoundation() {
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <ShieldCheck className="h-5 w-5" />
+                My Quests is strict by default
+              </CardTitle>
+              <CardDescription className="mt-2 max-w-2xl">
+                The tracker will not put a quest in your normal list just because the dependency graph predicts you should have it. A quest must be confirmed on your current character first.
+              </CardDescription>
+            </div>
+            <Badge>Default</Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="grid gap-4 md:grid-cols-3">
+          <VisibilityCard
+            icon={Eye}
+            title="My Quests"
+            description="Only quests confirmed in-game, active quests, and optionally completed history. This is the normal tracker view."
+          />
+          <VisibilityCard
+            icon={CircleDot}
+            title="Eligible"
+            description="Planning view. Adds quests that level, faction, prerequisite status, and branch rules predict could be available."
+          />
+          <VisibilityCard
+            icon={EyeOff}
+            title="All Quests"
+            description="Research/debug view. Shows the whole loaded dataset and never contaminates your real current quest list."
+          />
+        </CardContent>
+      </Card>
+
+      <Card className="border-dashed">
+        <CardContent className="p-6">
+          <div className="flex gap-3">
+            <ClipboardList className="mt-0.5 h-5 w-5 shrink-0" />
+            <div>
+              <h3 className="font-semibold">Current implementation step</h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                The visibility and branch-aware dependency engines are implemented. The next step is normalizing the live task records, then wiring manual quest confirmation so you can quickly reconcile Amer.lol with the quests actually visible in Tarkov.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+function VisibilityCard({
+  icon: Icon,
+  title,
+  description,
+}: {
+  icon: React.ComponentType<{ className?: string }>
+  title: string
+  description: string
+}) {
+  return (
+    <div className="rounded-lg border p-4">
+      <Icon className="mb-3 h-5 w-5" />
+      <p className="font-medium">{title}</p>
+      <p className="mt-1 text-sm text-muted-foreground">{description}</p>
     </div>
   )
 }
@@ -234,9 +311,8 @@ function FoundationRow({
   )
 }
 
-function FeatureFoundation({ view }: { view: Exclude<TrackerView, "overview"> }) {
-  const details: Record<Exclude<TrackerView, "overview">, { icon: React.ComponentType<{ className?: string }>; title: string; description: string }> = {
-    quests: { icon: ClipboardList, title: "Quest tracker", description: "Quest normalization and the dependency state engine are the next foundation tasks." },
+function FeatureFoundation({ view }: { view: Exclude<TrackerView, "overview" | "quests"> }) {
+  const details: Record<Exclude<TrackerView, "overview" | "quests">, { icon: React.ComponentType<{ className?: string }>; title: string; description: string }> = {
     maps: { icon: Map, title: "Map planner", description: "This view will rank maps using active and available quest objectives." },
     items: { icon: PackageSearch, title: "Items needed", description: "This view will aggregate FIR, future quest, key, and hideout requirements." },
     traders: { icon: Users, title: "Trader progression", description: "This view will group active, completed, and locked quests by trader." },
