@@ -3,9 +3,11 @@
 import * as React from "react"
 import { ArrowRight, Backpack, CheckCircle2, Eye, KeyRound, MapPinned, Route, Sparkles } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { buildRaidPlans } from "@/lib/tarkov/domain/raid-planner"
 import { getMapRoutingData } from "@/lib/tarkov/routing/data"
+import type { RouteContext, RouteStrategy } from "@/lib/tarkov/routing/types"
 import { loadQuestPresence } from "@/lib/tarkov/storage/quest-presence"
 import { loadQuestProgress } from "@/lib/tarkov/storage/quest-progress"
 import type { TarkovGameMode, TarkovQuest } from "@/lib/tarkov/types"
@@ -17,8 +19,18 @@ interface WhatToDoNextProps {
   items: Record<string, string>
 }
 
+const STRATEGIES: Array<{ id: RouteStrategy; label: string; description: string }> = [
+  { id: "max-progression", label: "Max progression", description: "Stack the most confirmed quest progress into one raid." },
+  { id: "shortest-line", label: "Shortest line", description: "Prefer maps with stronger coordinate coverage and tighter geographic routing." },
+  { id: "safer-line", label: "Safer line", description: "Use route-pack risk weights when verified risk data exists." },
+  { id: "kappa-focus", label: "Kappa focus", description: "Heavily prioritize confirmed Kappa-required quest progression." },
+  { id: "fast-xp", label: "Fast XP", description: "Favor raids representing the highest quest XP opportunity." },
+]
+
 export function WhatToDoNext({ mode, quests, maps, items }: WhatToDoNextProps) {
   const [revision, setRevision] = React.useState(0)
+  const [strategy, setStrategy] = React.useState<RouteStrategy>("max-progression")
+  const [routeContext, setRouteContext] = React.useState<Record<string, RouteContext>>({})
 
   React.useEffect(() => {
     const refresh = () => setRevision((value) => value + 1)
@@ -30,16 +42,21 @@ export function WhatToDoNext({ mode, quests, maps, items }: WhatToDoNextProps) {
     }
   }, [])
 
+  const routingData = React.useMemo(() => Object.fromEntries(
+    [...new Set(quests.flatMap((quest) => quest.mapIds))]
+      .map((mapId) => [mapId, getMapRoutingData(mapId)] as const)
+      .filter((entry) => Boolean(entry[1]))
+  ), [quests])
+
   const result = React.useMemo(() => {
     void revision
-    const routingData = Object.fromEntries(
-      [...new Set(quests.flatMap((quest) => quest.mapIds))]
-        .map((mapId) => [mapId, getMapRoutingData(mapId)] as const)
-        .filter((entry) => Boolean(entry[1]))
+    return buildRaidPlans(
+      quests,
+      loadQuestProgress(mode),
+      loadQuestPresence(mode),
+      { routingData, routeContextByMap: routeContext, strategy }
     )
-
-    return buildRaidPlans(quests, loadQuestProgress(mode), loadQuestPresence(mode), { routingData })
-  }, [mode, quests, revision])
+  }, [mode, quests, revision, routeContext, routingData, strategy])
 
   if (!result.best) {
     return (
@@ -68,8 +85,53 @@ export function WhatToDoNext({ mode, quests, maps, items }: WhatToDoNextProps) {
       ? "Verified route pack"
       : "No coordinates"
 
+  const mapRouting = routingData[plan.mapId]
+  const spawnOptions = mapRouting?.locations.filter((location) => location.kind === "spawn") ?? []
+  const extractOptions = mapRouting?.locations.filter((location) => location.kind === "extract") ?? []
+  const currentContext = routeContext[plan.mapId] ?? {}
+
+  const setSpawn = (spawnLocationId?: string) => {
+    setRouteContext((current) => ({
+      ...current,
+      [plan.mapId]: { ...current[plan.mapId], spawnLocationId, strategy },
+    }))
+  }
+
+  const toggleExtract = (extractLocationId: string) => {
+    setRouteContext((current) => {
+      const existing = current[plan.mapId]?.extractLocationIds ?? []
+      const next = existing.includes(extractLocationId)
+        ? existing.filter((id) => id !== extractLocationId)
+        : [...existing, extractLocationId]
+      return {
+        ...current,
+        [plan.mapId]: { ...current[plan.mapId], extractLocationIds: next, strategy },
+      }
+    })
+  }
+
   return (
     <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Optimization strategy</CardTitle>
+          <CardDescription>Choose what “best raid” means. The map ranking and route behavior recalculate immediately.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
+          {STRATEGIES.map((option) => (
+            <Button
+              key={option.id}
+              variant={strategy === option.id ? "default" : "outline"}
+              className="h-auto min-h-16 flex-col items-start whitespace-normal px-3 py-2 text-left"
+              onClick={() => setStrategy(option.id)}
+            >
+              <span>{option.label}</span>
+              <span className="mt-1 text-xs font-normal opacity-75">{option.description}</span>
+            </Button>
+          ))}
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
@@ -77,23 +139,63 @@ export function WhatToDoNext({ mode, quests, maps, items }: WhatToDoNextProps) {
               <div className="flex flex-wrap items-center gap-2">
                 <Badge>Best raid now</Badge>
                 <Badge variant="outline">Score {plan.score}</Badge>
+                <Badge variant="outline">{STRATEGIES.find((entry) => entry.id === strategy)?.label}</Badge>
                 <Badge variant="outline">{routeLabel}</Badge>
                 <Badge variant="outline">{coordinateLabel}</Badge>
               </div>
               <CardTitle className="mt-3 text-2xl">Run {mapName}</CardTitle>
               <CardDescription className="mt-2">
-                Chosen only from quests confirmed on your character. The score favors stacking multiple incomplete objectives, quest overlap, setup-sensitive tasks, FIR opportunities, and represented quest XP.
+                Built only from quests confirmed on your character. Predicted quests never affect the recommendation.
               </CardDescription>
             </div>
             <MapPinned className="h-8 w-8 text-muted-foreground" />
           </div>
         </CardHeader>
         <CardContent className="grid gap-3 sm:grid-cols-3">
-          {plan.reasons.map((reason) => (
-            <div key={reason} className="rounded-lg border p-3 text-sm">{reason}</div>
-          ))}
+          {plan.reasons.map((reason) => <div key={reason} className="rounded-lg border p-3 text-sm">{reason}</div>)}
         </CardContent>
       </Card>
+
+      {(spawnOptions.length > 0 || extractOptions.length > 0) && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Raid start / finish</CardTitle>
+            <CardDescription>
+              Select the spawn you received and the extracts currently available to you. The planner will route from that spawn and finish at the best selected extract.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {spawnOptions.length > 0 && (
+              <div>
+                <p className="mb-2 text-sm font-medium">Spawn</p>
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" variant={!currentContext.spawnLocationId ? "default" : "outline"} onClick={() => setSpawn(undefined)}>Unknown</Button>
+                  {spawnOptions.map((location) => (
+                    <Button key={location.id} size="sm" variant={currentContext.spawnLocationId === location.id ? "default" : "outline"} onClick={() => setSpawn(location.id)}>
+                      {location.name}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {extractOptions.length > 0 && (
+              <div>
+                <p className="mb-2 text-sm font-medium">Available extracts</p>
+                <div className="flex flex-wrap gap-2">
+                  {extractOptions.map((location) => {
+                    const selected = (currentContext.extractLocationIds ?? []).includes(location.id)
+                    return (
+                      <Button key={location.id} size="sm" variant={selected ? "default" : "outline"} onClick={() => toggleExtract(location.id)}>
+                        {location.name}
+                      </Button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
         <Card>
@@ -101,12 +203,13 @@ export function WhatToDoNext({ mode, quests, maps, items }: WhatToDoNextProps) {
             <CardTitle className="flex items-center gap-2"><Route className="h-5 w-5" />Optimal objective line</CardTitle>
             <CardDescription>
               {plan.route.mode === "geographic"
-                ? plan.route.coordinateSource === "upstream-world"
-                  ? `All ${plan.route.geographicObjectiveCount} routed objectives expose Tarkov world-space positions. The planner orders them geographically on the X/Z map plane. Spawn-aware routing is the next step.`
-                  : `All ${plan.route.geographicObjectiveCount} routed objectives use verified route-pack coordinates.`
+                ? plan.route.usedSpawn
+                  ? `Route starts from your selected spawn and geographically orders all ${plan.route.geographicObjectiveCount} located objectives.`
+                  : `All ${plan.route.geographicObjectiveCount} routed objectives have coordinate data. Select a verified spawn when available to anchor the start of the line.`
                 : plan.route.mode === "partial"
                   ? `${plan.route.geographicObjectiveCount} objectives are geographically ordered; ${plan.route.fallbackObjectiveCount} still use priority fallback because coordinate data is missing.`
-                  : "Coordinate data is not available for these objectives, so the line uses deterministic priority ordering: carried-item/key objectives first, general location tasks next, passive kill tasks while moving, and extract/survive objectives last."}
+                  : "Coordinate data is not available for these objectives, so the line uses deterministic priority ordering."}
+              {plan.route.selectedExtractName ? ` Finish at ${plan.route.selectedExtractName}.` : ""}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -124,6 +227,15 @@ export function WhatToDoNext({ mode, quests, maps, items }: WhatToDoNextProps) {
                 </li>
               ))}
             </ol>
+            {plan.route.selectedExtractName && (
+              <div className="mt-3 flex gap-3 rounded-lg border p-4">
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-sm font-semibold">E</div>
+                <div>
+                  <p className="font-medium">Extract: {plan.route.selectedExtractName}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Chosen as the best finish among the extracts you marked available.</p>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -131,12 +243,8 @@ export function WhatToDoNext({ mode, quests, maps, items }: WhatToDoNextProps) {
           <Card>
             <CardHeader><CardTitle className="flex items-center gap-2"><Backpack className="h-5 w-5" />What to bring</CardTitle></CardHeader>
             <CardContent>
-              {plan.bringItemIds.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No mandatory carried quest items detected for this plan.</p>
-              ) : (
-                <ul className="space-y-2">
-                  {plan.bringItemIds.map((id) => <li key={id} className="flex items-center gap-2 text-sm"><CheckCircle2 className="h-4 w-4" />{items[id] ?? id}</li>)}
-                </ul>
+              {plan.bringItemIds.length === 0 ? <p className="text-sm text-muted-foreground">No mandatory carried quest items detected for this plan.</p> : (
+                <ul className="space-y-2">{plan.bringItemIds.map((id) => <li key={id} className="flex items-center gap-2 text-sm"><CheckCircle2 className="h-4 w-4" />{items[id] ?? id}</li>)}</ul>
               )}
             </CardContent>
           </Card>
@@ -144,12 +252,8 @@ export function WhatToDoNext({ mode, quests, maps, items }: WhatToDoNextProps) {
           <Card>
             <CardHeader><CardTitle className="flex items-center gap-2"><KeyRound className="h-5 w-5" />Keys / access</CardTitle></CardHeader>
             <CardContent>
-              {plan.requiredKeyIds.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No required key metadata detected for this route.</p>
-              ) : (
-                <ul className="space-y-2">
-                  {plan.requiredKeyIds.map((id) => <li key={id} className="flex items-center gap-2 text-sm"><KeyRound className="h-4 w-4" />{items[id] ?? id}</li>)}
-                </ul>
+              {plan.requiredKeyIds.length === 0 ? <p className="text-sm text-muted-foreground">No required key metadata detected for this route.</p> : (
+                <ul className="space-y-2">{plan.requiredKeyIds.map((id) => <li key={id} className="flex items-center gap-2 text-sm"><KeyRound className="h-4 w-4" />{items[id] ?? id}</li>)}</ul>
               )}
             </CardContent>
           </Card>
@@ -157,12 +261,10 @@ export function WhatToDoNext({ mode, quests, maps, items }: WhatToDoNextProps) {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2"><Eye className="h-5 w-5" />Watch for in raid</CardTitle>
-              <CardDescription>Quest loot detected from your confirmed incomplete objectives. FIR requirements are prioritized.</CardDescription>
+              <CardDescription>Quest loot from confirmed incomplete objectives. FIR requirements are prioritized.</CardDescription>
             </CardHeader>
             <CardContent>
-              {plan.watchForItems.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No quest loot to watch for was detected for this raid.</p>
-              ) : (
+              {plan.watchForItems.length === 0 ? <p className="text-sm text-muted-foreground">No quest loot to watch for was detected for this raid.</p> : (
                 <ul className="space-y-3">
                   {plan.watchForItems.map((entry) => (
                     <li key={entry.itemId} className="rounded-md border p-3">
