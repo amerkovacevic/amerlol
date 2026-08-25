@@ -1,9 +1,14 @@
 import { loadHideoutProgress, resetHideoutProgress, saveHideoutProgress } from "@/lib/tarkov/storage/hideout-progress"
-import { loadLocalTarkovProfile, saveLocalTarkovProfile, type LocalTarkovProfile } from "@/lib/tarkov/storage/profile"
+import {
+  createProgressGeneration,
+  loadLocalTarkovProfile,
+  saveLocalTarkovProfile,
+  type LocalTarkovProfile,
+} from "@/lib/tarkov/storage/profile"
 import { loadQuestPresence, saveQuestPresence } from "@/lib/tarkov/storage/quest-presence"
 import { loadQuestProgress, saveQuestProgress, type QuestProgressMap } from "@/lib/tarkov/storage/quest-progress"
 import type { HideoutProgress } from "@/lib/tarkov/storage/hideout-progress"
-import type { QuestPresence, TarkovGameMode } from "@/lib/tarkov/types"
+import type { QuestPresence, QuestProgress, TarkovGameMode } from "@/lib/tarkov/types"
 
 const BACKUP_VERSION = 1
 
@@ -37,6 +42,36 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value)
 }
 
+function isPresenceStatus(value: unknown): boolean {
+  return value === "not-present" || value === "available" || value === "active" || value === "completed" || value === "failed"
+}
+
+function isPresenceSource(value: unknown): boolean {
+  return value === "manual" || value === "import" || value === "sync"
+}
+
+function validPresenceMap(value: Record<string, unknown>): value is Record<string, QuestPresence> {
+  return Object.entries(value).every(([id, entry]) => {
+    if (!isRecord(entry)) return false
+    return entry.questId === id && isPresenceStatus(entry.status) && isPresenceSource(entry.source)
+  })
+}
+
+function validProgressMap(value: Record<string, unknown>): value is Record<string, QuestProgress> {
+  return Object.entries(value).every(([id, entry]) => {
+    if (!isRecord(entry)) return false
+    const status = entry.status
+    return entry.questId === id
+      && (status === "active" || status === "completed" || status === "failed")
+      && Array.isArray(entry.completedObjectiveIds)
+      && entry.completedObjectiveIds.every((objectiveId) => typeof objectiveId === "string")
+  })
+}
+
+function validHideoutMap(value: Record<string, unknown>): value is HideoutProgress {
+  return Object.values(value).every((level) => typeof level === "number" && Number.isFinite(level) && level >= 0)
+}
+
 export function parseTarkovBackup(raw: string): TarkovBackup {
   const parsed = JSON.parse(raw) as unknown
   if (!isRecord(parsed)) throw new Error("Backup is not a JSON object.")
@@ -45,8 +80,23 @@ export function parseTarkovBackup(raw: string): TarkovBackup {
   if (!isRecord(parsed.profile) || typeof parsed.profile.level !== "number" || (parsed.profile.faction !== "USEC" && parsed.profile.faction !== "BEAR")) {
     throw new Error("Backup profile data is invalid.")
   }
-  if (!isRecord(parsed.questPresence) || !isRecord(parsed.questProgress) || !isRecord(parsed.hideout)) {
-    throw new Error("Backup progression data is invalid.")
+  if (!Number.isFinite(parsed.profile.level) || parsed.profile.level < 1 || parsed.profile.level > 79) {
+    throw new Error("Backup PMC level is invalid.")
+  }
+  if (parsed.profile.generationId !== undefined && typeof parsed.profile.generationId !== "string") {
+    throw new Error("Backup progression generation is invalid.")
+  }
+  if (parsed.profile.generationStartedAt !== undefined && (typeof parsed.profile.generationStartedAt !== "string" || !Number.isFinite(Date.parse(parsed.profile.generationStartedAt)))) {
+    throw new Error("Backup progression generation timestamp is invalid.")
+  }
+  if (!isRecord(parsed.questPresence) || !validPresenceMap(parsed.questPresence)) {
+    throw new Error("Backup quest-presence data is invalid.")
+  }
+  if (!isRecord(parsed.questProgress) || !validProgressMap(parsed.questProgress)) {
+    throw new Error("Backup quest-progress data is invalid.")
+  }
+  if (!isRecord(parsed.hideout) || !validHideoutMap(parsed.hideout)) {
+    throw new Error("Backup hideout data is invalid.")
   }
 
   return parsed as unknown as TarkovBackup
@@ -63,5 +113,5 @@ export function resetTarkovModeProgress(mode: TarkovGameMode): void {
   saveQuestPresence(mode, {})
   saveQuestProgress(mode, {})
   resetHideoutProgress(mode)
-  saveLocalTarkovProfile(mode, { level: 1, faction: "USEC" })
+  saveLocalTarkovProfile(mode, { level: 1, faction: "USEC", ...createProgressGeneration() })
 }
