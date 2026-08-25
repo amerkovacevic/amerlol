@@ -3,9 +3,14 @@
 import * as React from "react"
 import { Cloud, CloudOff, RefreshCw } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
-import { loadTarkovCloudSnapshot, subscribeTarkovAuth } from "@/lib/tarkov/storage/cloud-sync"
+import {
+  loadTarkovCloudSnapshot,
+  replaceCloudProgress,
+  subscribeTarkovAuth,
+  type CloudTarkovSnapshot,
+} from "@/lib/tarkov/storage/cloud-sync"
 import { loadHideoutProgress, saveHideoutProgress } from "@/lib/tarkov/storage/hideout-progress"
-import { loadLocalTarkovProfile, saveLocalTarkovProfile } from "@/lib/tarkov/storage/profile"
+import { loadLocalTarkovProfile, saveLocalTarkovProfile, type LocalTarkovProfile } from "@/lib/tarkov/storage/profile"
 import { loadQuestPresence, saveQuestPresence } from "@/lib/tarkov/storage/quest-presence"
 import { loadQuestProgress, saveQuestProgress } from "@/lib/tarkov/storage/quest-progress"
 import type { QuestProgress, QuestPresence, TarkovGameMode } from "@/lib/tarkov/types"
@@ -35,8 +40,15 @@ function mergeHideout(local: Record<string, number>, remote: Record<string, numb
   return merged
 }
 
-function isDefaultProfile(profile: ReturnType<typeof loadLocalTarkovProfile>) {
-  return profile.level === 1 && profile.faction === "USEC"
+function generationTime(profile: LocalTarkovProfile | undefined): number {
+  if (!profile?.generationStartedAt) return 0
+  const parsed = Date.parse(profile.generationStartedAt)
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+function generationsDiffer(local: LocalTarkovProfile, remote: LocalTarkovProfile | undefined): boolean {
+  if (!local.generationId && !remote?.generationId) return false
+  return local.generationId !== remote?.generationId
 }
 
 async function hydrateMode(mode: TarkovGameMode) {
@@ -44,10 +56,39 @@ async function hydrateMode(mode: TarkovGameMode) {
   if (!cloud) return
 
   const localProfile = loadLocalTarkovProfile(mode)
-  const profile = cloud.profile && isDefaultProfile(localProfile) ? cloud.profile : localProfile
-  const presence = mergeTimed<QuestPresence>(loadQuestPresence(mode), cloud.presence)
-  const progress = mergeTimed<QuestProgress>(loadQuestProgress(mode), cloud.progress)
-  const hideout = mergeHideout(loadHideoutProgress(mode), cloud.hideout)
+  const localSnapshot: CloudTarkovSnapshot = {
+    profile: localProfile,
+    presence: loadQuestPresence(mode),
+    progress: loadQuestProgress(mode),
+    hideout: loadHideoutProgress(mode),
+  }
+
+  let profile: LocalTarkovProfile
+  let presence: Record<string, QuestPresence>
+  let progress: Record<string, QuestProgress>
+  let hideout: Record<string, number>
+
+  if (generationsDiffer(localProfile, cloud.profile)) {
+    const localIsNewer = generationTime(localProfile) > generationTime(cloud.profile)
+
+    if (localIsNewer) {
+      profile = localProfile
+      presence = localSnapshot.presence
+      progress = localSnapshot.progress
+      hideout = localSnapshot.hideout
+      await replaceCloudProgress(mode, localSnapshot)
+    } else {
+      profile = cloud.profile ?? localProfile
+      presence = cloud.presence
+      progress = cloud.progress
+      hideout = cloud.hideout
+    }
+  } else {
+    profile = cloud.profile ?? localProfile
+    presence = mergeTimed<QuestPresence>(localSnapshot.presence, cloud.presence)
+    progress = mergeTimed<QuestProgress>(localSnapshot.progress, cloud.progress)
+    hideout = mergeHideout(localSnapshot.hideout, cloud.hideout)
+  }
 
   saveLocalTarkovProfile(mode, profile)
   saveQuestPresence(mode, presence)
