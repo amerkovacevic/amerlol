@@ -77,11 +77,33 @@ export async function deleteCloudHideoutStation(mode: TarkovGameMode, stationId:
   await deleteDoc(doc(db, "users", uid, "tarkovProfiles", mode, "hideout", stationId))
 }
 
-export async function clearCloudHideoutProgress(mode: TarkovGameMode): Promise<void> {
+async function clearSubcollection(mode: TarkovGameMode, name: "questPresence" | "questProgress" | "hideout"): Promise<void> {
   const uid = currentUid()
   if (!uid || !db) return
-  const snapshots = await getDocs(collection(db, "users", uid, "tarkovProfiles", mode, "hideout"))
+  const snapshots = await getDocs(collection(db, "users", uid, "tarkovProfiles", mode, name))
   await Promise.all(snapshots.docs.map((snapshot) => deleteDoc(snapshot.ref)))
+}
+
+export function clearCloudHideoutProgress(mode: TarkovGameMode): Promise<void> {
+  return clearSubcollection(mode, "hideout")
+}
+
+export async function replaceCloudProgress(mode: TarkovGameMode, snapshot: CloudTarkovSnapshot): Promise<void> {
+  const uid = currentUid()
+  if (!uid || !db) return
+
+  await Promise.all([
+    clearSubcollection(mode, "questPresence"),
+    clearSubcollection(mode, "questProgress"),
+    clearSubcollection(mode, "hideout"),
+  ])
+
+  if (snapshot.profile) await syncTarkovProfile(mode, snapshot.profile)
+  await Promise.all([
+    ...Object.values(snapshot.presence).map((entry) => syncQuestPresenceEntry(mode, entry)),
+    ...Object.values(snapshot.progress).map((entry) => syncQuestProgressEntry(mode, entry)),
+    ...Object.entries(snapshot.hideout).map(([stationId, level]) => syncHideoutStation(mode, stationId, level)),
+  ])
 }
 
 export async function loadTarkovCloudSnapshot(mode: TarkovGameMode): Promise<CloudTarkovSnapshot | undefined> {
