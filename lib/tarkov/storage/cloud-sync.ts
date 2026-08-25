@@ -31,21 +31,13 @@ function profileRef(uid: string, mode: TarkovGameMode) {
 export async function syncTarkovProfile(mode: TarkovGameMode, profile: LocalTarkovProfile): Promise<void> {
   const uid = currentUid()
   if (!uid || !db) return
-  await setDoc(profileRef(uid, mode), {
-    mode,
-    level: profile.level,
-    faction: profile.faction,
-    updatedAt: serverTimestamp(),
-  }, { merge: true })
+  await setDoc(profileRef(uid, mode), { mode, level: profile.level, faction: profile.faction, updatedAt: serverTimestamp() }, { merge: true })
 }
 
 export async function syncQuestPresenceEntry(mode: TarkovGameMode, entry: QuestPresence): Promise<void> {
   const uid = currentUid()
   if (!uid || !db) return
-  await setDoc(doc(db, "users", uid, "tarkovProfiles", mode, "questPresence", entry.questId), {
-    ...entry,
-    updatedAtServer: serverTimestamp(),
-  }, { merge: true })
+  await setDoc(doc(db, "users", uid, "tarkovProfiles", mode, "questPresence", entry.questId), { ...entry, updatedAtServer: serverTimestamp() }, { merge: true })
 }
 
 export async function deleteQuestPresenceEntry(mode: TarkovGameMode, questId: string): Promise<void> {
@@ -57,10 +49,7 @@ export async function deleteQuestPresenceEntry(mode: TarkovGameMode, questId: st
 export async function syncQuestProgressEntry(mode: TarkovGameMode, entry: QuestProgress): Promise<void> {
   const uid = currentUid()
   if (!uid || !db) return
-  await setDoc(doc(db, "users", uid, "tarkovProfiles", mode, "questProgress", entry.questId), {
-    ...entry,
-    updatedAtServer: serverTimestamp(),
-  }, { merge: true })
+  await setDoc(doc(db, "users", uid, "tarkovProfiles", mode, "questProgress", entry.questId), { ...entry, updatedAtServer: serverTimestamp() }, { merge: true })
 }
 
 export async function deleteQuestProgressEntry(mode: TarkovGameMode, questId: string): Promise<void> {
@@ -72,11 +61,14 @@ export async function deleteQuestProgressEntry(mode: TarkovGameMode, questId: st
 export async function syncHideoutStation(mode: TarkovGameMode, stationId: string, level: number): Promise<void> {
   const uid = currentUid()
   if (!uid || !db) return
-  await setDoc(doc(db, "users", uid, "tarkovProfiles", mode, "hideout", stationId), {
-    stationId,
-    level,
-    updatedAt: serverTimestamp(),
-  }, { merge: true })
+  await setDoc(doc(db, "users", uid, "tarkovProfiles", mode, "hideout", stationId), { stationId, level, updatedAt: serverTimestamp() }, { merge: true })
+}
+
+export async function clearCloudHideoutProgress(mode: TarkovGameMode): Promise<void> {
+  const uid = currentUid()
+  if (!uid || !db) return
+  const snapshots = await getDocs(collection(db, "users", uid, "tarkovProfiles", mode, "hideout"))
+  await Promise.all(snapshots.docs.map((snapshot) => deleteDoc(snapshot.ref)))
 }
 
 export async function loadTarkovCloudSnapshot(mode: TarkovGameMode): Promise<CloudTarkovSnapshot | undefined> {
@@ -92,26 +84,15 @@ export async function loadTarkovCloudSnapshot(mode: TarkovGameMode): Promise<Clo
 
   const profileData = profileSnap.data()
   const profile = profileData && typeof profileData.level === "number"
-    ? {
-        level: Math.max(1, Math.floor(profileData.level)),
-        faction: profileData.faction === "BEAR" ? "BEAR" as const : "USEC" as const,
-      }
+    ? { level: Math.max(1, Math.floor(profileData.level)), faction: profileData.faction === "BEAR" ? "BEAR" as const : "USEC" as const }
     : undefined
 
   const presence = Object.fromEntries(
-    presenceSnap.docs
-      .map((snapshot) => snapshot.data() as QuestPresence)
-      .filter((entry) => typeof entry.questId === "string")
-      .map((entry) => [entry.questId, entry])
+    presenceSnap.docs.map((snapshot) => snapshot.data() as QuestPresence).filter((entry) => typeof entry.questId === "string").map((entry) => [entry.questId, entry])
   )
-
   const progress = Object.fromEntries(
-    progressSnap.docs
-      .map((snapshot) => snapshot.data() as QuestProgress)
-      .filter((entry) => typeof entry.questId === "string")
-      .map((entry) => [entry.questId, entry])
+    progressSnap.docs.map((snapshot) => snapshot.data() as QuestProgress).filter((entry) => typeof entry.questId === "string").map((entry) => [entry.questId, entry])
   )
-
   const hideout = Object.fromEntries(
     hideoutSnap.docs
       .map((snapshot) => snapshot.data() as { stationId?: string; level?: number })
