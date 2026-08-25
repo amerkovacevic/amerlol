@@ -61,6 +61,7 @@ export function saveQuestPresence(
   }
 
   window.localStorage.setItem(storageKey(mode), JSON.stringify(envelope))
+  window.dispatchEvent(new CustomEvent("amerlol:tarkov-progress-changed", { detail: { mode } }))
 }
 
 export function setQuestPresenceStatus(
