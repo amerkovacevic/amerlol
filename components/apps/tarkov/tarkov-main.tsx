@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   ClipboardList,
   Database,
+  GitBranch,
   Map,
   PackageSearch,
   Search,
@@ -20,6 +21,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ItemsNeeded } from "@/components/apps/tarkov/items-needed"
 import { MapPlanner } from "@/components/apps/tarkov/map-planner"
 import { ProgressDashboard } from "@/components/apps/tarkov/progress-dashboard"
+import { QuestChain } from "@/components/apps/tarkov/quest-chain"
 import { QuestReconciliation } from "@/components/apps/tarkov/quest-reconciliation"
 import { TarkovCloudSync } from "@/components/apps/tarkov/tarkov-cloud-sync"
 import { TraderProgression } from "@/components/apps/tarkov/trader-progression"
@@ -31,7 +33,7 @@ import { buildItemReferenceMap } from "@/lib/tarkov/adapters/items"
 import { buildTaskReferenceMaps, normalizeTasksPayload } from "@/lib/tarkov/adapters/tasks"
 import type { TarkovGameMode, TarkovQuest } from "@/lib/tarkov/types"
 
-type TrackerView = "overview" | "next" | "quests" | "maps" | "items" | "traders" | "progress"
+type TrackerView = "overview" | "next" | "quests" | "chains" | "maps" | "items" | "traders" | "progress"
 
 interface ReadyDataset {
   state: "ready"
@@ -55,6 +57,7 @@ const navigation: Array<{
   { id: "overview", label: "Overview", icon: BarChart3 },
   { id: "next", label: "What to do next", icon: Sparkles },
   { id: "quests", label: "Quests", icon: ClipboardList },
+  { id: "chains", label: "Quest Chains", icon: GitBranch },
   { id: "maps", label: "Map Planner", icon: Map },
   { id: "items", label: "Items Needed", icon: PackageSearch },
   { id: "traders", label: "Traders", icon: Users },
@@ -143,6 +146,8 @@ export function TarkovMain() {
           datasetStatus.state === "ready" ? <WhatToDoNext mode={mode} quests={datasetStatus.quests} maps={datasetStatus.maps} items={datasetStatus.items} /> : <LoadingCard label="Building raid optimization data…" />
         ) : view === "quests" ? (
           datasetStatus.state === "ready" ? <QuestReconciliation mode={mode} quests={datasetStatus.quests} traders={datasetStatus.traders} maps={datasetStatus.maps} /> : <LoadingCard label="Loading and normalizing Tarkov quests…" />
+        ) : view === "chains" ? (
+          datasetStatus.state === "ready" ? <QuestChain mode={mode} quests={datasetStatus.quests} traders={datasetStatus.traders} /> : <LoadingCard label="Building quest dependency graph…" />
         ) : view === "maps" ? (
           datasetStatus.state === "ready" ? <MapPlanner mode={mode} quests={datasetStatus.quests} maps={datasetStatus.maps} /> : <LoadingCard label="Ranking maps from confirmed quest progress…" />
         ) : view === "items" ? (
