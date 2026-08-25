@@ -6,7 +6,6 @@ import {
   CheckCircle2,
   ClipboardList,
   Database,
-  KeyRound,
   Map,
   PackageSearch,
   Search,
@@ -19,9 +18,11 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ItemsNeeded } from "@/components/apps/tarkov/items-needed"
+import { MapPlanner } from "@/components/apps/tarkov/map-planner"
 import { ProgressDashboard } from "@/components/apps/tarkov/progress-dashboard"
 import { QuestReconciliation } from "@/components/apps/tarkov/quest-reconciliation"
 import { TarkovCloudSync } from "@/components/apps/tarkov/tarkov-cloud-sync"
+import { TraderProgression } from "@/components/apps/tarkov/trader-progression"
 import { WhatToDoNext } from "@/components/apps/tarkov/what-to-do-next"
 import { cn } from "@/lib/utils"
 import { fetchTarkovDataset } from "@/lib/tarkov/api/json-tarkov-dev"
@@ -142,12 +143,14 @@ export function TarkovMain() {
           datasetStatus.state === "ready" ? <WhatToDoNext mode={mode} quests={datasetStatus.quests} maps={datasetStatus.maps} items={datasetStatus.items} /> : <LoadingCard label="Building raid optimization data…" />
         ) : view === "quests" ? (
           datasetStatus.state === "ready" ? <QuestReconciliation mode={mode} quests={datasetStatus.quests} traders={datasetStatus.traders} maps={datasetStatus.maps} /> : <LoadingCard label="Loading and normalizing Tarkov quests…" />
+        ) : view === "maps" ? (
+          datasetStatus.state === "ready" ? <MapPlanner mode={mode} quests={datasetStatus.quests} maps={datasetStatus.maps} /> : <LoadingCard label="Ranking maps from confirmed quest progress…" />
         ) : view === "items" ? (
           datasetStatus.state === "ready" ? <ItemsNeeded mode={mode} quests={datasetStatus.quests} items={datasetStatus.items} hideoutRequirements={datasetStatus.hideoutRequirements} /> : <LoadingCard label="Calculating quest and hideout item needs…" />
-        ) : view === "progress" ? (
-          datasetStatus.state === "ready" ? <ProgressDashboard mode={mode} quests={datasetStatus.quests} traders={datasetStatus.traders} /> : <LoadingCard label="Calculating Kappa and Lightkeeper progression…" />
+        ) : view === "traders" ? (
+          datasetStatus.state === "ready" ? <TraderProgression mode={mode} quests={datasetStatus.quests} traders={datasetStatus.traders} /> : <LoadingCard label="Calculating trader progression…" />
         ) : (
-          <FeatureFoundation view={view} />
+          datasetStatus.state === "ready" ? <ProgressDashboard mode={mode} quests={datasetStatus.quests} traders={datasetStatus.traders} /> : <LoadingCard label="Calculating Kappa and Lightkeeper progression…" />
         )}
       </section>
     </div>
@@ -198,14 +201,4 @@ function StatusCard({ title, value, detail, icon: Icon, healthy = false }: { tit
 
 function FoundationRow({ icon: Icon, title, description }: { icon: React.ComponentType<{ className?: string }>; title: string; description: string }) {
   return <div className="flex gap-3 rounded-lg border p-4"><Icon className="mt-0.5 h-5 w-5 shrink-0" /><div><p className="font-medium">{title}</p><p className="mt-1 text-sm text-muted-foreground">{description}</p></div></div>
-}
-
-function FeatureFoundation({ view }: { view: Exclude<TrackerView, "overview" | "next" | "quests" | "items" | "progress"> }) {
-  const details: Record<Exclude<TrackerView, "overview" | "next" | "quests" | "items" | "progress">, { icon: React.ComponentType<{ className?: string }>; title: string; description: string }> = {
-    maps: { icon: Map, title: "Map planner", description: "This will expand the raid optimizer with interactive map locations and coordinate-backed pathing." },
-    traders: { icon: Users, title: "Trader progression", description: "This view will group confirmed, completed, and predicted quests by trader." },
-  }
-  const detail = details[view]
-  const Icon = detail.icon
-  return <Card className="border-dashed"><CardContent className="flex min-h-[320px] flex-col items-center justify-center p-8 text-center"><div className="mb-4 rounded-full border bg-muted p-3"><Icon className="h-6 w-6" /></div><h3 className="text-lg font-semibold">{detail.title}</h3><p className="mt-2 max-w-md text-sm text-muted-foreground">{detail.description}</p></CardContent></Card>
 }
