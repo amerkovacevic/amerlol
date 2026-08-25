@@ -3,7 +3,10 @@ export type TarkovUpstreamGameMode = "regular" | "pve" | "pvp-season"
 export type TarkovFaction = "USEC" | "BEAR"
 
 export type QuestProgressStatus = "active" | "completed" | "failed"
+export type QuestPresenceStatus = "available" | QuestProgressStatus
+export type QuestPresenceSource = "manual" | "import" | "sync"
 export type DerivedQuestState = "locked" | "available" | QuestProgressStatus
+export type QuestVisibilityMode = "my-quests" | "eligible" | "all"
 
 export interface TarkovEntityRef {
   id: string
@@ -61,6 +64,8 @@ export interface TarkovQuest extends TarkovEntityRef {
   experience: number
   kappaRequired: boolean
   lightkeeperRequired: boolean
+  availableDelaySecondsMin?: number
+  availableDelaySecondsMax?: number
   wikiUrl?: string
 }
 
@@ -80,6 +85,20 @@ export interface QuestProgress {
   questId: string
   status: QuestProgressStatus
   completedObjectiveIds: string[]
+  updatedAt: unknown
+}
+
+/**
+ * Records that the player has actually seen this quest in-game. This is
+ * intentionally separate from calculated eligibility: eligibility means the
+ * data model thinks the quest could be available, while presence means the
+ * player has confirmed it exists on their current character.
+ */
+export interface QuestPresence {
+  questId: string
+  status: QuestPresenceStatus
+  source: QuestPresenceSource
+  confirmedAt: unknown
   updatedAt: unknown
 }
 
