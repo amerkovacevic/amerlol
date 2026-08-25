@@ -7,10 +7,10 @@ import {
   Trophy,
   Palette,
   Shield,
-  BarChart3,
   Radio,
   Search,
   LayoutGrid,
+  ClipboardCheck,
   type LucideIcon
 } from "lucide-react"
 
@@ -142,6 +142,17 @@ export const APP_REGISTRY: AppEntry[] = [
     status: "live",
     icon: LayoutGrid,
     accent: "from-green-600 to-teal-500",
+    featured: true,
+  },
+  {
+    appId: "tarkov",
+    name: "Tarkov Tracker",
+    description: "Track quests, progression, items to keep, and the best objectives for your next raid",
+    category: "Games",
+    tags: ["tarkov", "eft", "quests", "progression", "raid", "tracker"],
+    status: "beta",
+    icon: ClipboardCheck,
+    accent: "from-stone-600 to-amber-700",
     featured: true,
   },
 ]
