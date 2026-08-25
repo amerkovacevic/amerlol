@@ -74,18 +74,24 @@ export function QuestReconciliation({ mode, quests, traders, maps }: QuestReconc
 
   const setStatus = (questId: string, status: "active" | "completed" | "failed") => {
     persistProgress(setQuestProgressStatus(progress, questId, status))
-    if (presence[questId]?.status === "not-present" || !presence[questId]) {
-      persistPresence(setQuestPresenceStatus(presence, questId, status))
-    }
+    persistPresence(setQuestPresenceStatus(presence, questId, status))
   }
 
   const toggleObjective = (questId: string, objectiveId: string) => {
     persistProgress(toggleObjectiveCompletion(progress, questId, objectiveId))
   }
 
-  const confirmedIds = React.useMemo(
-    () => new Set(Object.values(presence).filter((entry) => entry.status !== "not-present").map((entry) => entry.questId)),
-    [presence]
+  const currentQuestIds = React.useMemo(
+    () => new Set(
+      Object.values(presence)
+        .filter((entry) => {
+          if (entry.status !== "available" && entry.status !== "active") return false
+          const state = progress[entry.questId]?.status
+          return state !== "completed" && state !== "failed"
+        })
+        .map((entry) => entry.questId)
+    ),
+    [presence, progress]
   )
   const rejectedIds = React.useMemo(
     () => new Set(Object.values(presence).filter((entry) => entry.status === "not-present").map((entry) => entry.questId)),
@@ -104,7 +110,7 @@ export function QuestReconciliation({ mode, quests, traders, maps }: QuestReconc
   const normalizedQuery = query.trim().toLowerCase()
   const visibleQuests = React.useMemo(() => {
     const base = view === "my-quests"
-      ? quests.filter((quest) => confirmedIds.has(quest.id))
+      ? quests.filter((quest) => currentQuestIds.has(quest.id))
       : view === "eligible"
         ? quests.filter((quest) => eligibleIds.has(quest.id) && !rejectedIds.has(quest.id))
         : quests
@@ -120,7 +126,7 @@ export function QuestReconciliation({ mode, quests, traders, maps }: QuestReconc
     return [...filtered]
       .sort((a, b) => a.minimumLevel - b.minimumLevel || a.name.localeCompare(b.name))
       .slice(0, MAX_RESULTS)
-  }, [confirmedIds, eligibleIds, maps, normalizedQuery, quests, rejectedIds, traders, view])
+  }, [currentQuestIds, eligibleIds, maps, normalizedQuery, quests, rejectedIds, traders, view])
 
   if (!hydrated) {
     return <Card><CardContent className="py-12 text-center text-sm text-muted-foreground">Loading Tarkov profile…</CardContent></Card>
@@ -159,7 +165,7 @@ export function QuestReconciliation({ mode, quests, traders, maps }: QuestReconc
       </Card>
 
       <div className="grid gap-3 sm:grid-cols-4">
-        <SummaryCard label="Confirmed on character" value={confirmedIds.size} />
+        <SummaryCard label="Confirmed on character" value={currentQuestIds.size} />
         <SummaryCard label="Calculated eligible" value={eligibleIds.size} />
         <SummaryCard label="Hidden false positives" value={rejectedIds.size} />
         <SummaryCard label="Quest catalog" value={quests.length} />
@@ -187,10 +193,10 @@ export function QuestReconciliation({ mode, quests, traders, maps }: QuestReconc
             <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search quest, trader, or map…" className="pl-9" />
           </div>
 
-          {view === "my-quests" && confirmedIds.size === 0 ? (
+          {view === "my-quests" && currentQuestIds.size === 0 ? (
             <div className="rounded-lg border border-dashed p-8 text-center">
               <ShieldCheck className="mx-auto h-8 w-8 text-muted-foreground" />
-              <p className="mt-3 font-medium">No quests confirmed yet</p>
+              <p className="mt-3 font-medium">No current quests confirmed</p>
               <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">Open Find / Reconcile and confirm only the quests actually visible on your current character.</p>
               <Button className="mt-4" onClick={() => setView("find")}>Reconcile my quests</Button>
             </div>
@@ -204,6 +210,7 @@ export function QuestReconciliation({ mode, quests, traders, maps }: QuestReconc
                 const traderName = traders[quest.traderId] ?? "Unknown trader"
                 const mapNames = quest.mapIds.map((id) => maps[id]).filter(Boolean)
                 const completedObjectives = new Set(questProgress?.completedObjectiveIds ?? [])
+                const current = currentQuestIds.has(quest.id)
 
                 return (
                   <div key={quest.id} className="space-y-3 p-4">
@@ -215,7 +222,7 @@ export function QuestReconciliation({ mode, quests, traders, maps }: QuestReconc
                           {quest.kappaRequired && <Badge variant="secondary">Kappa</Badge>}
                           {questProgress?.status && <Badge>{questProgress.status}</Badge>}
                           {decision?.status === "not-present" && <Badge variant="destructive">Not on character</Badge>}
-                          {view === "eligible" && !confirmedIds.has(quest.id) && <Badge variant="outline">Unconfirmed</Badge>}
+                          {view === "eligible" && !current && <Badge variant="outline">Unconfirmed</Badge>}
                         </div>
                         <p className="mt-1 text-sm text-muted-foreground">
                           {traderName}{mapNames.length > 0 ? ` · ${mapNames.join(", ")}` : ""}{quest.objectives.length > 0 ? ` · ${quest.objectives.length} objective${quest.objectives.length === 1 ? "" : "s"}` : ""}
@@ -223,16 +230,17 @@ export function QuestReconciliation({ mode, quests, traders, maps }: QuestReconc
                       </div>
 
                       <div className="flex shrink-0 flex-wrap gap-2">
-                        {decision?.status !== "available" && decision?.status !== "active" && decision?.status !== "completed" && (
+                        {(!decision || decision.status === "not-present") && (
                           <Button size="sm" onClick={() => markPresent(quest.id)} className="gap-1.5"><Check className="h-4 w-4" />I have this</Button>
                         )}
-                        {confirmedIds.has(quest.id) && (
+                        {current && (
                           <>
                             <Button size="sm" variant={questProgress?.status === "active" ? "default" : "outline"} onClick={() => setStatus(quest.id, "active")}>Active</Button>
-                            <Button size="sm" variant={questProgress?.status === "completed" ? "default" : "outline"} onClick={() => setStatus(quest.id, "completed")}>Complete</Button>
+                            <Button size="sm" variant="outline" onClick={() => setStatus(quest.id, "completed")}>Complete</Button>
+                            <Button size="sm" variant="outline" onClick={() => setStatus(quest.id, "failed")}>Failed</Button>
                           </>
                         )}
-                        {decision?.status !== "not-present" && view !== "my-quests" && (
+                        {decision?.status !== "not-present" && view !== "my-quests" && current && (
                           <Button size="sm" variant="outline" onClick={() => markNotPresent(quest.id)} className="gap-1.5"><CircleSlash2 className="h-4 w-4" />Not on my character</Button>
                         )}
                         {decision && view === "find" && (
@@ -241,7 +249,7 @@ export function QuestReconciliation({ mode, quests, traders, maps }: QuestReconc
                       </div>
                     </div>
 
-                    {confirmedIds.has(quest.id) && quest.objectives.length > 0 && questProgress?.status !== "completed" && (
+                    {current && quest.objectives.length > 0 && (
                       <div className="grid gap-2 border-t pt-3 md:grid-cols-2">
                         {quest.objectives.map((objective) => {
                           const done = completedObjectives.has(objective.id)
