@@ -51,17 +51,27 @@ export function parseTarkovBackup(raw: string): TarkovBackup {
   return parsed as unknown as TarkovBackup
 }
 
+function reconcileAuthoritativeCloud(mode: TarkovGameMode, profile: LocalTarkovProfile, presence: Record<string, QuestPresence>, progress: QuestProgressMap, hideout: HideoutProgress): void {
+  void import("@/lib/tarkov/storage/cloud-sync")
+    .then(({ replaceCloudProgress }) => replaceCloudProgress(mode, { profile, presence, progress, hideout }))
+    .catch(() => undefined)
+}
+
 export function restoreTarkovBackup(backup: TarkovBackup): void {
   // Restores are authoritative snapshots. Rotate generation so stale devices cannot merge older wipe data back in.
-  saveLocalTarkovProfile(backup.mode, { ...backup.profile, ...createProgressGeneration() })
+  const profile = { ...backup.profile, ...createProgressGeneration() }
+  saveLocalTarkovProfile(backup.mode, profile)
   saveQuestPresence(backup.mode, backup.questPresence)
   saveQuestProgress(backup.mode, backup.questProgress)
   saveHideoutProgress(backup.mode, backup.hideout)
+  reconcileAuthoritativeCloud(backup.mode, profile, backup.questPresence, backup.questProgress, backup.hideout)
 }
 
 export function resetTarkovModeProgress(mode: TarkovGameMode): void {
+  const profile = { level: 1, faction: "USEC" as const, ...createProgressGeneration() }
   saveQuestPresence(mode, {})
   saveQuestProgress(mode, {})
   resetHideoutProgress(mode)
-  saveLocalTarkovProfile(mode, { level: 1, faction: "USEC", ...createProgressGeneration() })
+  saveLocalTarkovProfile(mode, profile)
+  reconcileAuthoritativeCloud(mode, profile, {}, {}, {})
 }
