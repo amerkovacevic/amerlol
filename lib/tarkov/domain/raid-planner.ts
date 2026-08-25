@@ -52,6 +52,7 @@ export interface RaidMapPlan {
 export interface RaidPlannerResult {
   best?: RaidMapPlan
   alternatives: RaidMapPlan[]
+  ranked: RaidMapPlan[]
 }
 
 type ProgressLookup = Readonly<Record<string, QuestProgress | undefined>>
@@ -113,11 +114,7 @@ function distanceEfficiencyBonus(plan: RaidMapPlan): number {
   return Math.min(160, Math.round(objectivesPerDistance * 120))
 }
 
-function scorePlan(
-  plan: RaidMapPlan,
-  quests: readonly TarkovQuest[],
-  strategy: RouteStrategy
-): number {
+function scorePlan(plan: RaidMapPlan, quests: readonly TarkovQuest[], strategy: RouteStrategy): number {
   const kappaCount = plan.questIds.reduce(
     (count, id) => count + (quests.find((q) => q.id === id)?.kappaRequired ? 1 : 0),
     0
@@ -268,5 +265,5 @@ export function buildRaidPlans(
     return plan
   }).sort((a, b) => b.score - a.score || b.objectives.length - a.objectives.length)
 
-  return { best: plans[0], alternatives: plans.slice(1, 4) }
+  return { best: plans[0], alternatives: plans.slice(1, 4), ranked: plans }
 }
