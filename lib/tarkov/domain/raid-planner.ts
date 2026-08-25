@@ -1,3 +1,5 @@
+import { orderRaidStepsGeographically } from "@/lib/tarkov/routing/route-engine"
+import type { MapRoutingData, RouteContext } from "@/lib/tarkov/routing/types"
 import type { QuestProgress, QuestPresence, TarkovQuest } from "@/lib/tarkov/types"
 
 export interface RaidPlanStep {
@@ -17,6 +19,14 @@ export interface RaidPlanItemRequirement {
   objectiveIds: string[]
 }
 
+export interface RaidRouteMetadata {
+  mode: "geographic" | "partial" | "priority"
+  geographicObjectiveCount: number
+  fallbackObjectiveCount: number
+  usedSpawn: boolean
+  usedExtract: boolean
+}
+
 export interface RaidMapPlan {
   mapId: string
   score: number
@@ -27,6 +37,7 @@ export interface RaidMapPlan {
   watchForItems: RaidPlanItemRequirement[]
   potentialExperience: number
   reasons: string[]
+  route: RaidRouteMetadata
 }
 
 export interface RaidPlannerResult {
@@ -36,6 +47,11 @@ export interface RaidPlannerResult {
 
 type ProgressLookup = Readonly<Record<string, QuestProgress | undefined>>
 type PresenceLookup = Readonly<Record<string, QuestPresence | undefined>>
+
+export interface RaidPlannerOptions {
+  routingData?: Readonly<Record<string, MapRoutingData | undefined>>
+  routeContextByMap?: Readonly<Record<string, RouteContext | undefined>>
+}
 
 function objectiveRoutePriority(description: string, bringCount: number, keyCount: number): number {
   const text = description.toLowerCase()
@@ -92,7 +108,8 @@ function shouldWatchForObjective(description: string, foundInRaid: boolean, item
 export function buildRaidPlans(
   quests: readonly TarkovQuest[],
   progress: ProgressLookup,
-  presence: PresenceLookup
+  presence: PresenceLookup,
+  options: RaidPlannerOptions = {}
 ): RaidPlannerResult {
   const mapPlans = new Map<string, RaidMapPlan>()
 
@@ -126,6 +143,13 @@ export function buildRaidPlans(
           watchForItems: [],
           potentialExperience: 0,
           reasons: [],
+          route: {
+            mode: "priority" as const,
+            geographicObjectiveCount: 0,
+            fallbackObjectiveCount: 0,
+            usedSpawn: false,
+            usedExtract: false,
+          },
         }
 
         if (!current.questIds.includes(quest.id)) {
@@ -177,9 +201,32 @@ export function buildRaidPlans(
     plan.watchForItems = plan.watchForItems
       .filter((entry) => !plan.bringItemIds.includes(entry.itemId) && !plan.requiredKeyIds.includes(entry.itemId))
       .sort((a, b) => Number(b.foundInRaid) - Number(a.foundInRaid) || b.count - a.count)
-    plan.objectives.sort((a, b) => b.priority - a.priority || a.questName.localeCompare(b.questName))
 
-    const kappaCount = plan.questIds.reduce((count, id) => count + (quests.find((q) => q.id === id)?.kappaRequired ? 1 : 0), 0)
+    const priorityOrdered = [...plan.objectives].sort(
+      (a, b) => b.priority - a.priority || a.questName.localeCompare(b.questName)
+    )
+    const routed = orderRaidStepsGeographically(
+      priorityOrdered,
+      options.routingData?.[plan.mapId],
+      options.routeContextByMap?.[plan.mapId]
+    )
+    plan.objectives = routed.ordered
+    plan.route = {
+      mode: routed.geographicCount === 0
+        ? "priority"
+        : routed.fallbackCount === 0
+          ? "geographic"
+          : "partial",
+      geographicObjectiveCount: routed.geographicCount,
+      fallbackObjectiveCount: routed.fallbackCount,
+      usedSpawn: routed.usedSpawn,
+      usedExtract: routed.usedExtract,
+    }
+
+    const kappaCount = plan.questIds.reduce(
+      (count, id) => count + (quests.find((q) => q.id === id)?.kappaRequired ? 1 : 0),
+      0
+    )
     plan.score =
       plan.objectives.length * 100 +
       plan.questIds.length * 35 +
@@ -192,7 +239,9 @@ export function buildRaidPlans(
     plan.reasons = [
       `${plan.objectives.length} incomplete objective${plan.objectives.length === 1 ? "" : "s"}`,
       `${plan.questIds.length} confirmed quest${plan.questIds.length === 1 ? "" : "s"}`,
-      plan.potentialExperience > 0 ? `${plan.potentialExperience.toLocaleString()} quest XP represented` : "Multiple progression opportunities",
+      plan.potentialExperience > 0
+        ? `${plan.potentialExperience.toLocaleString()} quest XP represented`
+        : "Multiple progression opportunities",
     ]
 
     return plan
