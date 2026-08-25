@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ItemsNeeded } from "@/components/apps/tarkov/items-needed"
+import { ProgressDashboard } from "@/components/apps/tarkov/progress-dashboard"
 import { QuestReconciliation } from "@/components/apps/tarkov/quest-reconciliation"
 import { TarkovCloudSync } from "@/components/apps/tarkov/tarkov-cloud-sync"
 import { WhatToDoNext } from "@/components/apps/tarkov/what-to-do-next"
@@ -143,6 +144,8 @@ export function TarkovMain() {
           datasetStatus.state === "ready" ? <QuestReconciliation mode={mode} quests={datasetStatus.quests} traders={datasetStatus.traders} maps={datasetStatus.maps} /> : <LoadingCard label="Loading and normalizing Tarkov quests…" />
         ) : view === "items" ? (
           datasetStatus.state === "ready" ? <ItemsNeeded mode={mode} quests={datasetStatus.quests} items={datasetStatus.items} hideoutRequirements={datasetStatus.hideoutRequirements} /> : <LoadingCard label="Calculating quest and hideout item needs…" />
+        ) : view === "progress" ? (
+          datasetStatus.state === "ready" ? <ProgressDashboard mode={mode} quests={datasetStatus.quests} traders={datasetStatus.traders} /> : <LoadingCard label="Calculating Kappa and Lightkeeper progression…" />
         ) : (
           <FeatureFoundation view={view} />
         )}
@@ -197,11 +200,10 @@ function FoundationRow({ icon: Icon, title, description }: { icon: React.Compone
   return <div className="flex gap-3 rounded-lg border p-4"><Icon className="mt-0.5 h-5 w-5 shrink-0" /><div><p className="font-medium">{title}</p><p className="mt-1 text-sm text-muted-foreground">{description}</p></div></div>
 }
 
-function FeatureFoundation({ view }: { view: Exclude<TrackerView, "overview" | "next" | "quests" | "items"> }) {
-  const details: Record<Exclude<TrackerView, "overview" | "next" | "quests" | "items">, { icon: React.ComponentType<{ className?: string }>; title: string; description: string }> = {
+function FeatureFoundation({ view }: { view: Exclude<TrackerView, "overview" | "next" | "quests" | "items" | "progress"> }) {
+  const details: Record<Exclude<TrackerView, "overview" | "next" | "quests" | "items" | "progress">, { icon: React.ComponentType<{ className?: string }>; title: string; description: string }> = {
     maps: { icon: Map, title: "Map planner", description: "This will expand the raid optimizer with interactive map locations and coordinate-backed pathing." },
     traders: { icon: Users, title: "Trader progression", description: "This view will group confirmed, completed, and predicted quests by trader." },
-    progress: { icon: KeyRound, title: "Progress", description: "This view will track overall, Kappa, Lightkeeper, and wipe progression." },
   }
   const detail = details[view]
   const Icon = detail.icon
