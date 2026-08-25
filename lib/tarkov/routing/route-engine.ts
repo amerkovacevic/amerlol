@@ -10,6 +10,10 @@ export interface RoutedRaidSteps {
   usedSpawn: boolean
   usedExtract: boolean
   coordinateSource: RouteCoordinateSource
+  selectedSpawnLocationId?: string
+  selectedExtractLocationId?: string
+  selectedExtractName?: string
+  distanceToExtract?: number
 }
 
 interface LocatedStep {
@@ -47,6 +51,23 @@ function nearestLocation(from: NormalizedPoint, candidates: LocatedStep[], safer
   }
 
   return bestIndex
+}
+
+function nearestExtract(from: NormalizedPoint, extracts: RouteLocation[], safer: boolean): RouteLocation | undefined {
+  let selected: RouteLocation | undefined
+  let bestScore = Number.POSITIVE_INFINITY
+
+  for (const extract of extracts) {
+    const travel = distance(from, extract.point)
+    const riskPenalty = safer ? (extract.risk ?? 0) * 0.08 : 0
+    const score = travel + riskPenalty
+    if (score < bestScore) {
+      bestScore = score
+      selected = extract
+    }
+  }
+
+  return selected
 }
 
 function splitByOverrideCoordinates(
@@ -148,6 +169,9 @@ export function orderRaidStepsGeographically(
     cursor = next.point
   }
 
+  const selectedExtract = nearestExtract(cursor, extracts, safer)
+  const extractDistance = selectedExtract ? distance(cursor, selectedExtract.point) : undefined
+
   const sortedFallback = [...fallback].sort((a, b) => b.priority - a.priority)
   const extractLike = sortedFallback.filter((step) => /extract|survive|exit/i.test(step.description))
   const normalFallback = sortedFallback.filter((step) => !/extract|survive|exit/i.test(step.description))
@@ -157,7 +181,11 @@ export function orderRaidStepsGeographically(
     geographicCount: orderedLocated.length,
     fallbackCount: fallback.length,
     usedSpawn: Boolean(spawn),
-    usedExtract: extracts.length > 0,
+    usedExtract: Boolean(selectedExtract),
     coordinateSource,
+    selectedSpawnLocationId: spawn?.id,
+    selectedExtractLocationId: selectedExtract?.id,
+    selectedExtractName: selectedExtract?.name,
+    distanceToExtract: extractDistance,
   }
 }
