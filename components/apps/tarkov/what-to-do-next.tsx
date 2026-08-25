@@ -5,6 +5,7 @@ import { ArrowRight, Backpack, CheckCircle2, Eye, KeyRound, MapPinned, Route, Sp
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { RaidRouteMap } from "@/components/apps/tarkov/raid-route-map"
 import { buildRaidPlans } from "@/lib/tarkov/domain/raid-planner"
 import { getMapRoutingData } from "@/lib/tarkov/routing/data"
 import type { RouteContext, RouteStrategy } from "@/lib/tarkov/routing/types"
@@ -252,6 +253,8 @@ export function WhatToDoNext({ mode, quests, maps, items }: WhatToDoNextProps) {
           </CardContent>
         </Card>
       )}
+
+      <RaidRouteMap plan={plan} mapName={mapName} routingData={mapRouting} />
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
         <Card>
