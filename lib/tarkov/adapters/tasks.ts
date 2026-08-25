@@ -168,7 +168,7 @@ function adaptObjective(raw: JsonRecord): QuestObjective {
   }
 
   return {
-    id: readId(raw) ?? cryptoSafeObjectiveId(raw),
+    id: readId(raw) ?? derivedObjectiveId(raw),
     description:
       (typeof raw.description === "string" && raw.description) ||
       (typeof raw.type === "string" && raw.type) ||
@@ -181,7 +181,7 @@ function adaptObjective(raw: JsonRecord): QuestObjective {
   }
 }
 
-function cryptoSafeObjectiveId(raw: JsonRecord): string {
+function derivedObjectiveId(raw: JsonRecord): string {
   const basis = JSON.stringify([
     raw.description ?? "objective",
     raw.type ?? "unknown",
@@ -211,7 +211,7 @@ export function normalizeTasksPayload(data: unknown): TarkovQuest[] {
     const objectives = asRecordArray(raw.objectives).map(adaptObjective)
     const traderId = readId(raw.trader) ?? "unknown-trader"
 
-    const quest: TarkovQuest = {
+    return [{
       id,
       name,
       traderId,
@@ -228,22 +228,40 @@ export function normalizeTasksPayload(data: unknown): TarkovQuest[] {
       availableDelaySecondsMin: readNumber(raw.minTimeToFinish ?? raw.minTimeToAvailable ?? raw.availableAfterMin),
       availableDelaySecondsMax: readNumber(raw.maxTimeToFinish ?? raw.maxTimeToAvailable ?? raw.availableAfterMax),
       wikiUrl: typeof raw.wikiLink === "string" ? raw.wikiLink : undefined,
-    }
-
-    return [quest]
+    }]
   })
 }
 
-export function buildTaskReferenceMaps(data: unknown): {
+function collectNamedEntities(
+  data: unknown,
+  key: string,
+  target: Record<string, string>
+): void {
+  if (!isRecord(data)) return
+  for (const raw of asRecordArray(data[key])) {
+    const id = readId(raw)
+    const name = typeof raw.name === "string" ? raw.name : undefined
+    if (id && name) target[id] = name
+  }
+}
+
+export function buildTaskReferenceMaps(
+  taskData: unknown,
+  traderData?: unknown,
+  mapData?: unknown
+): {
   traders: Record<string, string>
   maps: Record<string, string>
 } {
-  if (!isRecord(data)) return { traders: {}, maps: {} }
-
   const traders: Record<string, string> = {}
   const maps: Record<string, string> = {}
 
-  for (const raw of asRecordArray(data.tasks)) {
+  collectNamedEntities(traderData, "traders", traders)
+  collectNamedEntities(mapData, "maps", maps)
+
+  if (!isRecord(taskData)) return { traders, maps }
+
+  for (const raw of asRecordArray(taskData.tasks)) {
     const traderId = readId(raw.trader)
     const traderName = readName(raw.trader)
     if (traderId && traderName) traders[traderId] = traderName
