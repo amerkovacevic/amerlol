@@ -6,13 +6,31 @@ function key(mode: TarkovGameMode) {
   return `amerlol:tarkov:quest-progress:${mode}`
 }
 
+function validIsoDate(value: unknown): value is string {
+  return typeof value === "string" && Number.isFinite(Date.parse(value))
+}
+
+function isQuestProgress(value: unknown, expectedQuestId: string): value is QuestProgress {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false
+  const record = value as Record<string, unknown>
+  return record.questId === expectedQuestId
+    && (record.status === "active" || record.status === "completed" || record.status === "failed")
+    && Array.isArray(record.completedObjectiveIds)
+    && record.completedObjectiveIds.every((id) => typeof id === "string")
+    && validIsoDate(record.updatedAt)
+    && (record.statusChangedAt === undefined || validIsoDate(record.statusChangedAt))
+}
+
 export function loadQuestProgress(mode: TarkovGameMode): QuestProgressMap {
   if (typeof window === "undefined") return {}
   try {
     const raw = window.localStorage.getItem(key(mode))
     if (!raw) return {}
-    const parsed = JSON.parse(raw)
-    return parsed && typeof parsed === "object" ? parsed as QuestProgressMap : {}
+    const parsed = JSON.parse(raw) as unknown
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {}
+    return Object.fromEntries(
+      Object.entries(parsed as Record<string, unknown>).filter(([questId, value]) => isQuestProgress(value, questId))
+    )
   } catch {
     return {}
   }
