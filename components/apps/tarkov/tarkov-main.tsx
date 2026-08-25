@@ -4,11 +4,8 @@ import * as React from "react"
 import {
   BarChart3,
   CheckCircle2,
-  CircleDot,
   ClipboardList,
   Database,
-  Eye,
-  EyeOff,
   KeyRound,
   Map,
   PackageSearch,
@@ -20,15 +17,24 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { QuestReconciliation } from "@/components/apps/tarkov/quest-reconciliation"
 import { cn } from "@/lib/utils"
 import { fetchTarkovDataset } from "@/lib/tarkov/api/json-tarkov-dev"
-import type { TarkovGameMode } from "@/lib/tarkov/types"
+import { buildTaskReferenceMaps, normalizeTasksPayload } from "@/lib/tarkov/adapters/tasks"
+import type { TarkovGameMode, TarkovQuest } from "@/lib/tarkov/types"
 
 type TrackerView = "overview" | "quests" | "maps" | "items" | "traders" | "progress"
 
+interface ReadyDataset {
+  state: "ready"
+  quests: TarkovQuest[]
+  traders: Record<string, string>
+  maps: Record<string, string>
+}
+
 type DatasetStatus =
   | { state: "loading" }
-  | { state: "ready"; taskCount: number }
+  | ReadyDataset
   | { state: "error"; message: string }
 
 const navigation: Array<{
@@ -44,14 +50,6 @@ const navigation: Array<{
   { id: "progress", label: "Progress", icon: Target },
 ]
 
-function countEntities(data: unknown, key: string): number {
-  if (!data || typeof data !== "object") return 0
-  const value = (data as Record<string, unknown>)[key]
-  if (Array.isArray(value)) return value.length
-  if (value && typeof value === "object") return Object.keys(value).length
-  return 0
-}
-
 export function TarkovMain() {
   const [view, setView] = React.useState<TrackerView>("overview")
   const [mode, setMode] = React.useState<TarkovGameMode>("pvp")
@@ -63,7 +61,14 @@ export function TarkovMain() {
 
     fetchTarkovDataset({ mode, dataset: "tasks", signal: controller.signal })
       .then((payload) => {
-        setDatasetStatus({ state: "ready", taskCount: countEntities(payload.data, "tasks") })
+        const quests = normalizeTasksPayload(payload.data)
+        const references = buildTaskReferenceMaps(payload.data)
+        setDatasetStatus({
+          state: "ready",
+          quests,
+          traders: references.traders,
+          maps: references.maps,
+        })
       })
       .catch((error: unknown) => {
         if (controller.signal.aborted) return
@@ -118,7 +123,7 @@ export function TarkovMain() {
           <div>
             <div className="flex items-center gap-2">
               <h2 className="font-space-grotesk text-2xl font-bold">{navigation.find((item) => item.id === view)?.label}</h2>
-              <Badge variant="secondary">Foundation</Badge>
+              <Badge variant="secondary">Beta</Badge>
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
               {mode === "pvp" ? "PvP" : "PvE"} progression profile
@@ -126,14 +131,25 @@ export function TarkovMain() {
           </div>
           <Button variant="outline" className="gap-2" disabled>
             <Search className="h-4 w-4" />
-            Search Tarkov
+            Global search
           </Button>
         </div>
 
-        {view === "overview" ? (
-          <Overview datasetStatus={datasetStatus} />
+        {datasetStatus.state === "error" ? (
+          <DatasetError message={datasetStatus.message} />
+        ) : view === "overview" ? (
+          <Overview datasetStatus={datasetStatus} onOpenQuests={() => setView("quests")} />
         ) : view === "quests" ? (
-          <QuestFoundation />
+          datasetStatus.state === "ready" ? (
+            <QuestReconciliation
+              mode={mode}
+              quests={datasetStatus.quests}
+              traders={datasetStatus.traders}
+              maps={datasetStatus.maps}
+            />
+          ) : (
+            <LoadingCard label="Loading and normalizing Tarkov quests…" />
+          )
         ) : (
           <FeatureFoundation view={view} />
         )}
@@ -142,121 +158,72 @@ export function TarkovMain() {
   )
 }
 
-function Overview({ datasetStatus }: { datasetStatus: DatasetStatus }) {
+function Overview({
+  datasetStatus,
+  onOpenQuests,
+}: {
+  datasetStatus: DatasetStatus
+  onOpenQuests: () => void
+}) {
+  const questCount = datasetStatus.state === "ready" ? datasetStatus.quests.length : 0
+
   return (
     <div className="space-y-6">
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatusCard
           title="Game data"
           icon={Database}
-          value={
-            datasetStatus.state === "loading"
-              ? "Loading"
-              : datasetStatus.state === "error"
-                ? "Unavailable"
-                : "Connected"
-          }
-          detail={
-            datasetStatus.state === "ready"
-              ? `${datasetStatus.taskCount.toLocaleString()} quests discovered`
-              : datasetStatus.state === "error"
-                ? datasetStatus.message
-                : "Connecting to json.tarkov.dev"
-          }
+          value={datasetStatus.state === "loading" ? "Loading" : "Connected"}
+          detail={datasetStatus.state === "ready" ? `${questCount.toLocaleString()} quests normalized` : "Connecting to json.tarkov.dev"}
           healthy={datasetStatus.state === "ready"}
         />
-        <StatusCard title="Quest engine" icon={ShieldCheck} value="Strict" detail="Confirmed in-game quests are separate from predicted eligibility" healthy />
+        <StatusCard title="Quest engine" icon={ShieldCheck} value="Strict" detail="Eligibility never equals confirmed quest presence" healthy />
         <StatusCard title="Item intelligence" icon={PackageSearch} value="Queued" detail="FIR and future quest requirements" />
         <StatusCard title="Raid planner" icon={Map} value="Queued" detail="Group objectives by map and raid" />
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Tracker foundation</CardTitle>
+          <CardTitle>Usable quest reconciliation is live</CardTitle>
           <CardDescription>
-            The app shell and validated Tarkov data boundary are active. Player progress is not fabricated before the profile and quest-state engine exist.
+            The live Tarkov task dataset is now normalized into Amer.lol quest records. Your real quest list is built only from confirmations you make against what Tarkov actually shows on your character.
           </CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-3 md:grid-cols-2">
-          <FoundationRow icon={CheckCircle2} title="Amer.lol app integration" description="Registered in the existing App Hub and application shell." complete />
-          <FoundationRow icon={CheckCircle2} title="Typed game modes" description="PvP, PvE, and seasonal modes map to upstream identifiers." complete />
-          <FoundationRow icon={CheckCircle2} title="Strict quest visibility" description="Predicted eligibility cannot silently become a quest shown in My Quests." complete />
-          <FoundationRow icon={CircleDot} title="Quest normalization" description="Next implementation step: adapt raw task records into canonical quests." />
+        <CardContent className="space-y-4">
+          <div className="grid gap-3 md:grid-cols-2">
+            <FoundationRow icon={CheckCircle2} title="Live quest normalization" description="Raw json.tarkov.dev tasks are converted into canonical Amer.lol quest records." />
+            <FoundationRow icon={CheckCircle2} title="Negative confirmation" description="Not on my character persists and suppresses repeat false-positive suggestions." />
+            <FoundationRow icon={CheckCircle2} title="Mode-isolated presence" description="PvP and PvE confirmations are stored separately." />
+            <FoundationRow icon={CheckCircle2} title="Searchable reconciliation" description="Find quests by quest name, trader, or map and reconcile them against Tarkov." />
+          </div>
+          <Button onClick={onOpenQuests}>Open quest reconciliation</Button>
         </CardContent>
       </Card>
     </div>
   )
 }
 
-function QuestFoundation() {
+function DatasetError({ message }: { message: string }) {
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <ShieldCheck className="h-5 w-5" />
-                My Quests is strict by default
-              </CardTitle>
-              <CardDescription className="mt-2 max-w-2xl">
-                The tracker will not put a quest in your normal list just because the dependency graph predicts you should have it. A quest must be confirmed on your current character first.
-              </CardDescription>
-            </div>
-            <Badge>Default</Badge>
-          </div>
-        </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-3">
-          <VisibilityCard
-            icon={Eye}
-            title="My Quests"
-            description="Only quests confirmed in-game, active quests, and optionally completed history. This is the normal tracker view."
-          />
-          <VisibilityCard
-            icon={CircleDot}
-            title="Eligible"
-            description="Planning view. Adds quests that level, faction, prerequisite status, and branch rules predict could be available."
-          />
-          <VisibilityCard
-            icon={EyeOff}
-            title="All Quests"
-            description="Research/debug view. Shows the whole loaded dataset and never contaminates your real current quest list."
-          />
-        </CardContent>
-      </Card>
-
-      <Card className="border-dashed">
-        <CardContent className="p-6">
-          <div className="flex gap-3">
-            <ClipboardList className="mt-0.5 h-5 w-5 shrink-0" />
-            <div>
-              <h3 className="font-semibold">Current implementation step</h3>
-              <p className="mt-1 text-sm text-muted-foreground">
-                The visibility and branch-aware dependency engines are implemented. The next step is normalizing the live task records, then wiring manual quest confirmation so you can quickly reconcile Amer.lol with the quests actually visible in Tarkov.
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+    <Card>
+      <CardHeader>
+        <CardTitle>Unable to load Tarkov quest data</CardTitle>
+        <CardDescription>{message}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <p className="text-sm text-muted-foreground">
+          Existing confirmations are not deleted when the upstream dataset is unavailable. Reload the page to retry.
+        </p>
+      </CardContent>
+    </Card>
   )
 }
 
-function VisibilityCard({
-  icon: Icon,
-  title,
-  description,
-}: {
-  icon: React.ComponentType<{ className?: string }>
-  title: string
-  description: string
-}) {
+function LoadingCard({ label }: { label: string }) {
   return (
-    <div className="rounded-lg border p-4">
-      <Icon className="mb-3 h-5 w-5" />
-      <p className="font-medium">{title}</p>
-      <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-    </div>
+    <Card>
+      <CardContent className="py-12 text-center text-sm text-muted-foreground">{label}</CardContent>
+    </Card>
   )
 }
 
@@ -293,16 +260,14 @@ function FoundationRow({
   icon: Icon,
   title,
   description,
-  complete = false,
 }: {
   icon: React.ComponentType<{ className?: string }>
   title: string
   description: string
-  complete?: boolean
 }) {
   return (
     <div className="flex gap-3 rounded-lg border p-4">
-      <Icon className={cn("mt-0.5 h-5 w-5 shrink-0 text-muted-foreground", complete && "text-foreground")} />
+      <Icon className="mt-0.5 h-5 w-5 shrink-0" />
       <div>
         <p className="font-medium">{title}</p>
         <p className="mt-1 text-sm text-muted-foreground">{description}</p>
@@ -313,9 +278,9 @@ function FoundationRow({
 
 function FeatureFoundation({ view }: { view: Exclude<TrackerView, "overview" | "quests"> }) {
   const details: Record<Exclude<TrackerView, "overview" | "quests">, { icon: React.ComponentType<{ className?: string }>; title: string; description: string }> = {
-    maps: { icon: Map, title: "Map planner", description: "This view will rank maps using active and available quest objectives." },
+    maps: { icon: Map, title: "Map planner", description: "This view will rank maps using confirmed active quest objectives first, with predicted quests kept separate." },
     items: { icon: PackageSearch, title: "Items needed", description: "This view will aggregate FIR, future quest, key, and hideout requirements." },
-    traders: { icon: Users, title: "Trader progression", description: "This view will group active, completed, and locked quests by trader." },
+    traders: { icon: Users, title: "Trader progression", description: "This view will group confirmed, completed, and predicted quests by trader." },
     progress: { icon: KeyRound, title: "Progress", description: "This view will track overall, Kappa, Lightkeeper, and wipe progression." },
   }
   const detail = details[view]
