@@ -3,7 +3,7 @@ export type TarkovUpstreamGameMode = "regular" | "pve" | "pvp-season"
 export type TarkovFaction = "USEC" | "BEAR"
 
 export type QuestProgressStatus = "active" | "completed" | "failed"
-export type QuestPresenceStatus = "available" | QuestProgressStatus
+export type QuestPresenceStatus = "available" | QuestProgressStatus | "not-present"
 export type QuestPresenceSource = "manual" | "import" | "sync"
 export type DerivedQuestState = "locked" | "available" | QuestProgressStatus
 export type QuestVisibilityMode = "my-quests" | "eligible" | "all"
@@ -102,10 +102,9 @@ export interface QuestProgress {
 }
 
 /**
- * Records that the player has actually seen this quest in-game. This is
- * intentionally separate from calculated eligibility: eligibility means the
- * data model thinks the quest could be available, while presence means the
- * player has confirmed it exists on their current character.
+ * Records the player's explicit knowledge about whether a quest is actually on
+ * their current character. `not-present` is a first-class negative confirmation
+ * so an eligibility calculation cannot repeatedly reintroduce a false positive.
  */
 export interface QuestPresence {
   questId: string
