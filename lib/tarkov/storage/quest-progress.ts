@@ -21,6 +21,7 @@ export function loadQuestProgress(mode: TarkovGameMode): QuestProgressMap {
 export function saveQuestProgress(mode: TarkovGameMode, progress: QuestProgressMap) {
   if (typeof window === "undefined") return
   window.localStorage.setItem(key(mode), JSON.stringify(progress))
+  window.dispatchEvent(new CustomEvent("amerlol:tarkov-progress-changed", { detail: { mode } }))
 }
 
 export function setQuestProgressStatus(
