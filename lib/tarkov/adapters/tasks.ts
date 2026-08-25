@@ -1,6 +1,7 @@
 import type {
   QuestDependencyRequirement,
   QuestObjective,
+  QuestObjectiveWorldPosition,
   QuestRequirement,
   QuestRequirementStatus,
   TarkovFaction,
@@ -124,6 +125,10 @@ function collectMapIds(raw: JsonRecord): string[] {
       const id = readId(zone.map)
       if (id) ids.add(id)
     }
+    for (const location of asRecordArray(objective.possibleLocations)) {
+      const id = readId(location.map)
+      if (id) ids.add(id)
+    }
   }
 
   return [...ids]
@@ -178,6 +183,41 @@ function collectRequiredKeyIds(raw: JsonRecord): string[] {
   return [...ids]
 }
 
+function readWorldPoint(value: unknown, mapId: string | undefined): QuestObjectiveWorldPosition | undefined {
+  if (!mapId || !isRecord(value)) return undefined
+  const x = readNumber(value.x)
+  const y = readNumber(value.y)
+  const z = readNumber(value.z)
+  if (x === undefined || y === undefined || z === undefined) return undefined
+  return { mapId, x, y, z }
+}
+
+function collectWorldPositions(raw: JsonRecord): QuestObjectiveWorldPosition[] {
+  const positions: QuestObjectiveWorldPosition[] = []
+
+  for (const zone of asRecordArray(raw.zones)) {
+    const mapId = readId(zone.map)
+    const point = readWorldPoint(zone.position, mapId)
+    if (point) positions.push(point)
+  }
+
+  for (const location of asRecordArray(raw.possibleLocations)) {
+    const mapId = readId(location.map)
+    for (const rawPoint of Array.isArray(location.positions) ? location.positions : []) {
+      const point = readWorldPoint(rawPoint, mapId)
+      if (point) positions.push(point)
+    }
+  }
+
+  const seen = new Set<string>()
+  return positions.filter((position) => {
+    const key = `${position.mapId}:${position.x}:${position.y}:${position.z}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
 function adaptObjective(raw: JsonRecord): QuestObjective {
   const mapIds = new Set<string>()
   for (const map of Array.isArray(raw.maps) ? raw.maps : []) {
@@ -188,6 +228,12 @@ function adaptObjective(raw: JsonRecord): QuestObjective {
     const id = readId(zone.map)
     if (id) mapIds.add(id)
   }
+  for (const location of asRecordArray(raw.possibleLocations)) {
+    const id = readId(location.map)
+    if (id) mapIds.add(id)
+  }
+
+  const worldPositions = collectWorldPositions(raw)
 
   return {
     id: readId(raw) ?? derivedObjectiveId(raw),
@@ -199,6 +245,7 @@ function adaptObjective(raw: JsonRecord): QuestObjective {
     itemIds: collectItemIds(raw),
     bringItemIds: collectBringItemIds(raw),
     requiredKeyIds: collectRequiredKeyIds(raw),
+    worldPositions: worldPositions.length > 0 ? worldPositions : undefined,
     count: readNumber(raw.count),
     foundInRaid: typeof raw.foundInRaid === "boolean" ? raw.foundInRaid : undefined,
     optional: typeof raw.optional === "boolean" ? raw.optional : undefined,
