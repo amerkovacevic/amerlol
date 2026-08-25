@@ -27,6 +27,12 @@ const STRATEGIES: Array<{ id: RouteStrategy; label: string; description: string 
   { id: "fast-xp", label: "Fast XP", description: "Favor raids representing the highest quest XP opportunity." },
 ]
 
+function formatRouteDistance(distance: number | undefined): string {
+  if (distance === undefined) return "Unknown"
+  if (distance < 10) return distance.toFixed(2)
+  return Math.round(distance).toLocaleString()
+}
+
 export function WhatToDoNext({ mode, quests, maps, items }: WhatToDoNextProps) {
   const [revision, setRevision] = React.useState(0)
   const [strategy, setStrategy] = React.useState<RouteStrategy>("max-progression")
@@ -48,15 +54,30 @@ export function WhatToDoNext({ mode, quests, maps, items }: WhatToDoNextProps) {
       .filter((entry) => Boolean(entry[1]))
   ), [quests])
 
-  const result = React.useMemo(() => {
+  const playerState = React.useMemo(() => {
     void revision
-    return buildRaidPlans(
+    return {
+      progress: loadQuestProgress(mode),
+      presence: loadQuestPresence(mode),
+    }
+  }, [mode, revision])
+
+  const result = React.useMemo(() => buildRaidPlans(
+    quests,
+    playerState.progress,
+    playerState.presence,
+    { routingData, routeContextByMap: routeContext, strategy }
+  ), [playerState, quests, routeContext, routingData, strategy])
+
+  const strategyComparisons = React.useMemo(() => STRATEGIES.map((option) => ({
+    ...option,
+    result: buildRaidPlans(
       quests,
-      loadQuestProgress(mode),
-      loadQuestPresence(mode),
-      { routingData, routeContextByMap: routeContext, strategy }
-    )
-  }, [mode, quests, revision, routeContext, routingData, strategy])
+      playerState.progress,
+      playerState.presence,
+      { routingData, routeContextByMap: routeContext, strategy: option.id }
+    ).best,
+  })), [playerState, quests, routeContext, routingData])
 
   if (!result.best) {
     return (
@@ -134,6 +155,37 @@ export function WhatToDoNext({ mode, quests, maps, items }: WhatToDoNextProps) {
 
       <Card>
         <CardHeader>
+          <CardTitle>Strategy comparison</CardTitle>
+          <CardDescription>
+            Compare the top raid under each goal before committing. Known route distance includes only geographic legs the tracker can actually calculate; an unknown spawn is never estimated.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+          {strategyComparisons.map((comparison) => {
+            const candidate = comparison.result
+            if (!candidate) return null
+            return (
+              <button
+                key={comparison.id}
+                type="button"
+                className={`rounded-lg border p-3 text-left transition-colors hover:bg-muted/50 ${strategy === comparison.id ? "bg-muted" : ""}`}
+                onClick={() => setStrategy(comparison.id)}
+              >
+                <p className="text-sm font-semibold">{comparison.label}</p>
+                <p className="mt-2 font-medium">{maps[candidate.mapId] ?? candidate.mapId}</p>
+                <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+                  <p>{candidate.objectives.length} objectives · {candidate.questIds.length} quests</p>
+                  <p>{candidate.potentialExperience.toLocaleString()} represented XP</p>
+                  <p>Known route: {formatRouteDistance(candidate.route.totalDistance ?? candidate.route.objectiveDistance)}</p>
+                </div>
+              </button>
+            )
+          })}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div>
               <div className="flex flex-wrap items-center gap-2">
@@ -151,8 +203,12 @@ export function WhatToDoNext({ mode, quests, maps, items }: WhatToDoNextProps) {
             <MapPinned className="h-8 w-8 text-muted-foreground" />
           </div>
         </CardHeader>
-        <CardContent className="grid gap-3 sm:grid-cols-3">
+        <CardContent className="grid gap-3 sm:grid-cols-4">
           {plan.reasons.map((reason) => <div key={reason} className="rounded-lg border p-3 text-sm">{reason}</div>)}
+          <div className="rounded-lg border p-3 text-sm">
+            <p className="font-medium">Known route distance</p>
+            <p className="mt-1 text-muted-foreground">{formatRouteDistance(plan.route.totalDistance ?? plan.route.objectiveDistance)}</p>
+          </div>
         </CardContent>
       </Card>
 
@@ -295,7 +351,9 @@ export function WhatToDoNext({ mode, quests, maps, items }: WhatToDoNextProps) {
               <div key={alternate.mapId} className="flex items-center justify-between rounded-lg border p-3">
                 <div>
                   <p className="font-medium">{maps[alternate.mapId] ?? alternate.mapId}</p>
-                  <p className="text-xs text-muted-foreground">{alternate.objectives.length} objectives across {alternate.questIds.length} confirmed quests · {alternate.route.mode} routing</p>
+                  <p className="text-xs text-muted-foreground">
+                    {alternate.objectives.length} objectives across {alternate.questIds.length} confirmed quests · {alternate.route.mode} routing · known route {formatRouteDistance(alternate.route.totalDistance ?? alternate.route.objectiveDistance)}
+                  </p>
                 </div>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">{alternate.score}<ArrowRight className="h-4 w-4" /></div>
               </div>
