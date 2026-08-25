@@ -7,6 +7,7 @@ export type QuestPresenceStatus = "available" | QuestProgressStatus
 export type QuestPresenceSource = "manual" | "import" | "sync"
 export type DerivedQuestState = "locked" | "available" | QuestProgressStatus
 export type QuestVisibilityMode = "my-quests" | "eligible" | "all"
+export type QuestRequirementStatus = "completed" | "failed"
 
 export interface TarkovEntityRef {
   id: string
@@ -45,6 +46,16 @@ export interface QuestRequirement {
   description?: string
 }
 
+/**
+ * Represents Tarkov's actual taskRequirements semantics. A prerequisite may
+ * require another quest to be completed OR failed, which is important for
+ * mutually exclusive trader branches.
+ */
+export interface QuestDependencyRequirement {
+  questId: string
+  statuses: QuestRequirementStatus[]
+}
+
 export interface QuestReward {
   type: "experience" | "item" | "money" | "reputation" | "unlock" | "other"
   itemId?: string
@@ -58,6 +69,7 @@ export interface TarkovQuest extends TarkovEntityRef {
   mapIds: string[]
   minimumLevel: number
   prerequisiteQuestIds: string[]
+  dependencyRequirements?: QuestDependencyRequirement[]
   objectives: QuestObjective[]
   requirements: QuestRequirement[]
   rewards: QuestReward[]
@@ -85,6 +97,7 @@ export interface QuestProgress {
   questId: string
   status: QuestProgressStatus
   completedObjectiveIds: string[]
+  statusChangedAt?: unknown
   updatedAt: unknown
 }
 
