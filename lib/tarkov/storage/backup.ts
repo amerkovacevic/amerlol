@@ -23,87 +23,35 @@ export interface TarkovBackup {
 }
 
 export function createTarkovBackup(mode: TarkovGameMode): TarkovBackup {
-  return {
-    version: BACKUP_VERSION,
-    exportedAt: new Date().toISOString(),
-    mode,
-    profile: loadLocalTarkovProfile(mode),
-    questPresence: loadQuestPresence(mode),
-    questProgress: loadQuestProgress(mode),
-    hideout: loadHideoutProgress(mode),
-  }
+  return { version: BACKUP_VERSION, exportedAt: new Date().toISOString(), mode, profile: loadLocalTarkovProfile(mode), questPresence: loadQuestPresence(mode), questProgress: loadQuestProgress(mode), hideout: loadHideoutProgress(mode) }
 }
 
-export function serializeTarkovBackup(mode: TarkovGameMode): string {
-  return JSON.stringify(createTarkovBackup(mode), null, 2)
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return Boolean(value) && typeof value === "object" && !Array.isArray(value)
-}
-
-function isPresenceStatus(value: unknown): boolean {
-  return value === "not-present" || value === "available" || value === "active" || value === "completed" || value === "failed"
-}
-
-function isPresenceSource(value: unknown): boolean {
-  return value === "manual" || value === "import" || value === "sync"
-}
-
-function validPresenceMap(value: Record<string, unknown>): value is Record<string, QuestPresence> {
-  return Object.entries(value).every(([id, entry]) => {
-    if (!isRecord(entry)) return false
-    return entry.questId === id && isPresenceStatus(entry.status) && isPresenceSource(entry.source)
-  })
-}
-
-function validProgressMap(value: Record<string, unknown>): value is Record<string, QuestProgress> {
-  return Object.entries(value).every(([id, entry]) => {
-    if (!isRecord(entry)) return false
-    const status = entry.status
-    return entry.questId === id
-      && (status === "active" || status === "completed" || status === "failed")
-      && Array.isArray(entry.completedObjectiveIds)
-      && entry.completedObjectiveIds.every((objectiveId) => typeof objectiveId === "string")
-  })
-}
-
-function validHideoutMap(value: Record<string, unknown>): value is HideoutProgress {
-  return Object.values(value).every((level) => typeof level === "number" && Number.isFinite(level) && level >= 0)
-}
+export function serializeTarkovBackup(mode: TarkovGameMode): string { return JSON.stringify(createTarkovBackup(mode), null, 2) }
+function isRecord(value: unknown): value is Record<string, unknown> { return Boolean(value) && typeof value === "object" && !Array.isArray(value) }
+function isPresenceStatus(value: unknown): boolean { return value === "not-present" || value === "available" || value === "active" || value === "completed" || value === "failed" }
+function isPresenceSource(value: unknown): boolean { return value === "manual" || value === "import" || value === "sync" }
+function validPresenceMap(value: Record<string, unknown>): value is Record<string, QuestPresence> { return Object.entries(value).every(([id, entry]) => isRecord(entry) && entry.questId === id && isPresenceStatus(entry.status) && isPresenceSource(entry.source)) }
+function validProgressMap(value: Record<string, unknown>): value is Record<string, QuestProgress> { return Object.entries(value).every(([id, entry]) => isRecord(entry) && entry.questId === id && (entry.status === "active" || entry.status === "completed" || entry.status === "failed") && Array.isArray(entry.completedObjectiveIds) && entry.completedObjectiveIds.every((objectiveId) => typeof objectiveId === "string")) }
+function validHideoutMap(value: Record<string, unknown>): value is HideoutProgress { return Object.values(value).every((level) => typeof level === "number" && Number.isFinite(level) && level >= 0) }
 
 export function parseTarkovBackup(raw: string): TarkovBackup {
   const parsed = JSON.parse(raw) as unknown
   if (!isRecord(parsed)) throw new Error("Backup is not a JSON object.")
   if (parsed.version !== BACKUP_VERSION) throw new Error(`Unsupported Tarkov backup version: ${String(parsed.version)}`)
   if (parsed.mode !== "pvp" && parsed.mode !== "pve" && parsed.mode !== "seasonal") throw new Error("Backup has an invalid game mode.")
-  if (!isRecord(parsed.profile) || typeof parsed.profile.level !== "number" || (parsed.profile.faction !== "USEC" && parsed.profile.faction !== "BEAR")) {
-    throw new Error("Backup profile data is invalid.")
-  }
-  if (!Number.isFinite(parsed.profile.level) || parsed.profile.level < 1 || parsed.profile.level > 79) {
-    throw new Error("Backup PMC level is invalid.")
-  }
-  if (parsed.profile.generationId !== undefined && typeof parsed.profile.generationId !== "string") {
-    throw new Error("Backup progression generation is invalid.")
-  }
-  if (parsed.profile.generationStartedAt !== undefined && (typeof parsed.profile.generationStartedAt !== "string" || !Number.isFinite(Date.parse(parsed.profile.generationStartedAt)))) {
-    throw new Error("Backup progression generation timestamp is invalid.")
-  }
-  if (!isRecord(parsed.questPresence) || !validPresenceMap(parsed.questPresence)) {
-    throw new Error("Backup quest-presence data is invalid.")
-  }
-  if (!isRecord(parsed.questProgress) || !validProgressMap(parsed.questProgress)) {
-    throw new Error("Backup quest-progress data is invalid.")
-  }
-  if (!isRecord(parsed.hideout) || !validHideoutMap(parsed.hideout)) {
-    throw new Error("Backup hideout data is invalid.")
-  }
-
+  if (!isRecord(parsed.profile) || typeof parsed.profile.level !== "number" || (parsed.profile.faction !== "USEC" && parsed.profile.faction !== "BEAR")) throw new Error("Backup profile data is invalid.")
+  if (!Number.isFinite(parsed.profile.level) || parsed.profile.level < 1 || parsed.profile.level > 79) throw new Error("Backup PMC level is invalid.")
+  if (parsed.profile.generationId !== undefined && typeof parsed.profile.generationId !== "string") throw new Error("Backup progression generation is invalid.")
+  if (parsed.profile.generationStartedAt !== undefined && (typeof parsed.profile.generationStartedAt !== "string" || !Number.isFinite(Date.parse(parsed.profile.generationStartedAt)))) throw new Error("Backup progression generation timestamp is invalid.")
+  if (!isRecord(parsed.questPresence) || !validPresenceMap(parsed.questPresence)) throw new Error("Backup quest-presence data is invalid.")
+  if (!isRecord(parsed.questProgress) || !validProgressMap(parsed.questProgress)) throw new Error("Backup quest-progress data is invalid.")
+  if (!isRecord(parsed.hideout) || !validHideoutMap(parsed.hideout)) throw new Error("Backup hideout data is invalid.")
   return parsed as unknown as TarkovBackup
 }
 
 export function restoreTarkovBackup(backup: TarkovBackup): void {
-  saveLocalTarkovProfile(backup.mode, backup.profile)
+  // Restores are authoritative snapshots. Rotate generation so stale devices cannot merge older wipe data back in.
+  saveLocalTarkovProfile(backup.mode, { ...backup.profile, ...createProgressGeneration() })
   saveQuestPresence(backup.mode, backup.questPresence)
   saveQuestProgress(backup.mode, backup.questProgress)
   saveHideoutProgress(backup.mode, backup.hideout)
