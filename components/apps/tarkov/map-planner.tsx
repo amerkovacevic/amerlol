@@ -39,13 +39,12 @@ export function MapPlanner({ mode, quests, maps }: MapPlannerProps) {
     const routingData = Object.fromEntries(
       mapIds.map((mapId) => [mapId, getMapRoutingData(mapId)] as const).filter((entry) => Boolean(entry[1]))
     )
-    const result = buildRaidPlans(
+    return buildRaidPlans(
       quests,
       loadQuestProgress(mode),
       loadQuestPresence(mode),
       { routingData, strategy: "max-progression" }
-    )
-    return [result.best, ...result.alternatives].filter(Boolean)
+    ).ranked
   }, [mode, quests, revision])
 
   return (
@@ -62,34 +61,32 @@ export function MapPlanner({ mode, quests, maps }: MapPlannerProps) {
             <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">Confirm active quests to generate map recommendations.</div>
           ) : (
             <div className="space-y-3">
-              {plans.map((plan, index) => {
-                if (!plan) return null
-                return (
-                  <div key={plan.mapId} className="rounded-lg border p-4">
-                    <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                      <div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className="text-lg font-semibold">{maps[plan.mapId] ?? plan.mapId}</p>
-                          {index === 0 && <Badge>Best now</Badge>}
-                          <Badge variant="outline">Score {plan.score}</Badge>
-                          <Badge variant="outline">{plan.route.mode}</Badge>
-                        </div>
-                        <p className="mt-1 text-sm text-muted-foreground">{plan.objectives.length} objectives across {plan.questIds.length} confirmed quests</p>
+              {plans.map((plan, index) => (
+                <div key={plan.mapId} className="rounded-lg border p-4">
+                  <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-lg font-semibold">{maps[plan.mapId] ?? plan.mapId}</p>
+                        {index === 0 && <Badge>Best now</Badge>}
+                        <Badge variant="outline">#{index + 1}</Badge>
+                        <Badge variant="outline">Score {plan.score}</Badge>
+                        <Badge variant="outline">{plan.route.mode}</Badge>
                       </div>
-                      <div className="text-left text-sm md:text-right">
-                        <p>{plan.potentialExperience.toLocaleString()} XP represented</p>
-                        <p className="text-muted-foreground">Known route {formatDistance(plan.route.totalDistance ?? plan.route.objectiveDistance)}</p>
-                      </div>
+                      <p className="mt-1 text-sm text-muted-foreground">{plan.objectives.length} objectives across {plan.questIds.length} confirmed quests</p>
                     </div>
-                    <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-                      <div className="rounded-md border p-3 text-sm"><span className="text-muted-foreground">Bring items</span><p className="mt-1 font-medium">{plan.bringItemIds.length}</p></div>
-                      <div className="rounded-md border p-3 text-sm"><span className="text-muted-foreground">Keys/access</span><p className="mt-1 font-medium">{plan.requiredKeyIds.length}</p></div>
-                      <div className="rounded-md border p-3 text-sm"><span className="text-muted-foreground">Watch-for items</span><p className="mt-1 font-medium">{plan.watchForItems.length}</p></div>
-                      <div className="rounded-md border p-3 text-sm"><span className="text-muted-foreground">Located objectives</span><p className="mt-1 font-medium">{plan.route.geographicObjectiveCount}</p></div>
+                    <div className="text-left text-sm md:text-right">
+                      <p>{plan.potentialExperience.toLocaleString()} XP represented</p>
+                      <p className="text-muted-foreground">Known route {formatDistance(plan.route.totalDistance ?? plan.route.objectiveDistance)}</p>
                     </div>
                   </div>
-                )
-              })}
+                  <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                    <div className="rounded-md border p-3 text-sm"><span className="text-muted-foreground">Bring items</span><p className="mt-1 font-medium">{plan.bringItemIds.length}</p></div>
+                    <div className="rounded-md border p-3 text-sm"><span className="text-muted-foreground">Keys/access</span><p className="mt-1 font-medium">{plan.requiredKeyIds.length}</p></div>
+                    <div className="rounded-md border p-3 text-sm"><span className="text-muted-foreground">Watch-for items</span><p className="mt-1 font-medium">{plan.watchForItems.length}</p></div>
+                    <div className="rounded-md border p-3 text-sm"><span className="text-muted-foreground">Located objectives</span><p className="mt-1 font-medium">{plan.route.geographicObjectiveCount}</p></div>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </CardContent>
