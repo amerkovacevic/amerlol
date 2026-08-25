@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { ArrowRight, Backpack, CheckCircle2, KeyRound, MapPinned, Route, Sparkles } from "lucide-react"
+import { ArrowRight, Backpack, CheckCircle2, Eye, KeyRound, MapPinned, Route, Sparkles } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { buildRaidPlans } from "@/lib/tarkov/domain/raid-planner"
@@ -63,7 +63,7 @@ export function WhatToDoNext({ mode, quests, maps, items }: WhatToDoNextProps) {
               </div>
               <CardTitle className="mt-3 text-2xl">Run {mapName}</CardTitle>
               <CardDescription className="mt-2">
-                Chosen only from quests confirmed on your character. The score favors stacking multiple incomplete objectives, quest overlap, setup-sensitive tasks, and represented quest XP.
+                Chosen only from quests confirmed on your character. The score favors stacking multiple incomplete objectives, quest overlap, setup-sensitive tasks, FIR opportunities, and represented quest XP.
               </CardDescription>
             </div>
             <MapPinned className="h-8 w-8 text-muted-foreground" />
@@ -131,6 +131,37 @@ export function WhatToDoNext({ mode, quests, maps, items }: WhatToDoNextProps) {
                 <ul className="space-y-2">
                   {plan.requiredKeyIds.map((id) => (
                     <li key={id} className="flex items-center gap-2 text-sm"><KeyRound className="h-4 w-4" />{items[id] ?? id}</li>
+                  ))}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><Eye className="h-5 w-5" />Watch for in raid</CardTitle>
+              <CardDescription>Quest loot detected from your confirmed incomplete objectives. FIR requirements are prioritized.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {plan.watchForItems.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No quest loot to watch for was detected for this raid.</p>
+              ) : (
+                <ul className="space-y-3">
+                  {plan.watchForItems.map((entry) => (
+                    <li key={entry.itemId} className="rounded-md border p-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-medium">{items[entry.itemId] ?? entry.itemId}</p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            Needed for {entry.questIds.length} confirmed quest{entry.questIds.length === 1 ? "" : "s"}
+                          </p>
+                        </div>
+                        <div className="flex shrink-0 flex-wrap gap-1.5">
+                          {entry.count > 1 && <Badge variant="outline">×{entry.count}</Badge>}
+                          {entry.foundInRaid && <Badge>FIR</Badge>}
+                        </div>
+                      </div>
+                    </li>
                   ))}
                 </ul>
               )}
