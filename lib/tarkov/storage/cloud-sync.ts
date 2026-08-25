@@ -64,6 +64,12 @@ export async function syncHideoutStation(mode: TarkovGameMode, stationId: string
   await setDoc(doc(db, "users", uid, "tarkovProfiles", mode, "hideout", stationId), { stationId, level, updatedAt: serverTimestamp() }, { merge: true })
 }
 
+export async function deleteCloudHideoutStation(mode: TarkovGameMode, stationId: string): Promise<void> {
+  const uid = currentUid()
+  if (!uid || !db) return
+  await deleteDoc(doc(db, "users", uid, "tarkovProfiles", mode, "hideout", stationId))
+}
+
 export async function clearCloudHideoutProgress(mode: TarkovGameMode): Promise<void> {
   const uid = currentUid()
   if (!uid || !db) return
