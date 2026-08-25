@@ -8,7 +8,6 @@ function storageKey(mode: TarkovGameMode): string {
 
 export function loadHideoutProgress(mode: TarkovGameMode): HideoutProgress {
   if (typeof window === "undefined") return {}
-
   try {
     const raw = window.localStorage.getItem(storageKey(mode))
     if (!raw) return {}
@@ -23,19 +22,27 @@ export function loadHideoutProgress(mode: TarkovGameMode): HideoutProgress {
   }
 }
 
+export function saveHideoutProgress(mode: TarkovGameMode, progress: HideoutProgress): void {
+  if (typeof window === "undefined") return
+  window.localStorage.setItem(storageKey(mode), JSON.stringify(progress))
+  window.dispatchEvent(new CustomEvent("amerlol:tarkov-progress-changed", { detail: { mode } }))
+}
+
 export function saveHideoutStationLevel(mode: TarkovGameMode, stationId: string, level: number): void {
   if (typeof window === "undefined") return
+  const nextLevel = Math.max(0, Math.floor(level))
   const current = loadHideoutProgress(mode)
-  const next = {
-    ...current,
-    [stationId]: Math.max(0, Math.floor(level)),
-  }
-  window.localStorage.setItem(storageKey(mode), JSON.stringify(next))
-  window.dispatchEvent(new CustomEvent("amerlol:tarkov-progress-changed"))
+  saveHideoutProgress(mode, { ...current, [stationId]: nextLevel })
+  void import("@/lib/tarkov/storage/cloud-sync")
+    .then(({ syncHideoutStation }) => syncHideoutStation(mode, stationId, nextLevel))
+    .catch(() => undefined)
 }
 
 export function resetHideoutProgress(mode: TarkovGameMode): void {
   if (typeof window === "undefined") return
   window.localStorage.removeItem(storageKey(mode))
-  window.dispatchEvent(new CustomEvent("amerlol:tarkov-progress-changed"))
+  window.dispatchEvent(new CustomEvent("amerlol:tarkov-progress-changed", { detail: { mode } }))
+  void import("@/lib/tarkov/storage/cloud-sync")
+    .then(({ clearCloudHideoutProgress }) => clearCloudHideoutProgress(mode))
+    .catch(() => undefined)
 }
