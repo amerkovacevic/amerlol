@@ -105,16 +105,16 @@ export interface QuestProgress {
   questId: string
   status: QuestProgressStatus
   completedObjectiveIds: string[]
-  statusChangedAt?: unknown
-  updatedAt: unknown
+  statusChangedAt?: string
+  updatedAt: string
 }
 
 export interface QuestPresence {
   questId: string
   status: QuestPresenceStatus
   source: QuestPresenceSource
-  confirmedAt: unknown
-  updatedAt: unknown
+  confirmedAt: string
+  updatedAt: string
 }
 
 export interface TarkovDatasetMetadata {
