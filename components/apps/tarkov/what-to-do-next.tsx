@@ -38,12 +38,7 @@ export function WhatToDoNext({ mode, quests, maps, items }: WhatToDoNextProps) {
         .filter((entry) => Boolean(entry[1]))
     )
 
-    return buildRaidPlans(
-      quests,
-      loadQuestProgress(mode),
-      loadQuestPresence(mode),
-      { routingData }
-    )
+    return buildRaidPlans(quests, loadQuestProgress(mode), loadQuestPresence(mode), { routingData })
   }, [mode, quests, revision])
 
   if (!result.best) {
@@ -67,6 +62,11 @@ export function WhatToDoNext({ mode, quests, maps, items }: WhatToDoNextProps) {
     : plan.route.mode === "partial"
       ? "Partial geographic route"
       : "Priority route"
+  const coordinateLabel = plan.route.coordinateSource === "upstream-world"
+    ? "Live world coordinates"
+    : plan.route.coordinateSource === "override"
+      ? "Verified route pack"
+      : "No coordinates"
 
   return (
     <div className="space-y-6">
@@ -78,6 +78,7 @@ export function WhatToDoNext({ mode, quests, maps, items }: WhatToDoNextProps) {
                 <Badge>Best raid now</Badge>
                 <Badge variant="outline">Score {plan.score}</Badge>
                 <Badge variant="outline">{routeLabel}</Badge>
+                <Badge variant="outline">{coordinateLabel}</Badge>
               </div>
               <CardTitle className="mt-3 text-2xl">Run {mapName}</CardTitle>
               <CardDescription className="mt-2">
@@ -100,10 +101,12 @@ export function WhatToDoNext({ mode, quests, maps, items }: WhatToDoNextProps) {
             <CardTitle className="flex items-center gap-2"><Route className="h-5 w-5" />Optimal objective line</CardTitle>
             <CardDescription>
               {plan.route.mode === "geographic"
-                ? `All ${plan.route.geographicObjectiveCount} routed objectives have verified map coordinates. The line is geographically ordered.`
+                ? plan.route.coordinateSource === "upstream-world"
+                  ? `All ${plan.route.geographicObjectiveCount} routed objectives expose Tarkov world-space positions. The planner orders them geographically on the X/Z map plane. Spawn-aware routing is the next step.`
+                  : `All ${plan.route.geographicObjectiveCount} routed objectives use verified route-pack coordinates.`
                 : plan.route.mode === "partial"
-                  ? `${plan.route.geographicObjectiveCount} objectives are geographically ordered; ${plan.route.fallbackObjectiveCount} still use priority fallback until their coordinates are verified.`
-                  : "Verified objective coordinates are not available for this plan yet, so the line uses deterministic priority ordering: carried-item/key objectives first, general location tasks next, passive kill tasks while moving, and extract/survive objectives last."}
+                  ? `${plan.route.geographicObjectiveCount} objectives are geographically ordered; ${plan.route.fallbackObjectiveCount} still use priority fallback because coordinate data is missing.`
+                  : "Coordinate data is not available for these objectives, so the line uses deterministic priority ordering: carried-item/key objectives first, general location tasks next, passive kill tasks while moving, and extract/survive objectives last."}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -126,34 +129,26 @@ export function WhatToDoNext({ mode, quests, maps, items }: WhatToDoNextProps) {
 
         <div className="space-y-6">
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2"><Backpack className="h-5 w-5" />What to bring</CardTitle>
-            </CardHeader>
+            <CardHeader><CardTitle className="flex items-center gap-2"><Backpack className="h-5 w-5" />What to bring</CardTitle></CardHeader>
             <CardContent>
               {plan.bringItemIds.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No mandatory carried quest items detected for this plan.</p>
               ) : (
                 <ul className="space-y-2">
-                  {plan.bringItemIds.map((id) => (
-                    <li key={id} className="flex items-center gap-2 text-sm"><CheckCircle2 className="h-4 w-4" />{items[id] ?? id}</li>
-                  ))}
+                  {plan.bringItemIds.map((id) => <li key={id} className="flex items-center gap-2 text-sm"><CheckCircle2 className="h-4 w-4" />{items[id] ?? id}</li>)}
                 </ul>
               )}
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2"><KeyRound className="h-5 w-5" />Keys / access</CardTitle>
-            </CardHeader>
+            <CardHeader><CardTitle className="flex items-center gap-2"><KeyRound className="h-5 w-5" />Keys / access</CardTitle></CardHeader>
             <CardContent>
               {plan.requiredKeyIds.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No required key metadata detected for this route.</p>
               ) : (
                 <ul className="space-y-2">
-                  {plan.requiredKeyIds.map((id) => (
-                    <li key={id} className="flex items-center gap-2 text-sm"><KeyRound className="h-4 w-4" />{items[id] ?? id}</li>
-                  ))}
+                  {plan.requiredKeyIds.map((id) => <li key={id} className="flex items-center gap-2 text-sm"><KeyRound className="h-4 w-4" />{items[id] ?? id}</li>)}
                 </ul>
               )}
             </CardContent>
@@ -174,9 +169,7 @@ export function WhatToDoNext({ mode, quests, maps, items }: WhatToDoNextProps) {
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <p className="text-sm font-medium">{items[entry.itemId] ?? entry.itemId}</p>
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            Needed for {entry.questIds.length} confirmed quest{entry.questIds.length === 1 ? "" : "s"}
-                          </p>
+                          <p className="mt-1 text-xs text-muted-foreground">Needed for {entry.questIds.length} confirmed quest{entry.questIds.length === 1 ? "" : "s"}</p>
                         </div>
                         <div className="flex shrink-0 flex-wrap gap-1.5">
                           {entry.count > 1 && <Badge variant="outline">×{entry.count}</Badge>}
@@ -194,10 +187,7 @@ export function WhatToDoNext({ mode, quests, maps, items }: WhatToDoNextProps) {
 
       {result.alternatives.length > 0 && (
         <Card>
-          <CardHeader>
-            <CardTitle>Next-best maps</CardTitle>
-            <CardDescription>Useful when you do not want to run the top-ranked map.</CardDescription>
-          </CardHeader>
+          <CardHeader><CardTitle>Next-best maps</CardTitle><CardDescription>Useful when you do not want to run the top-ranked map.</CardDescription></CardHeader>
           <CardContent className="space-y-2">
             {result.alternatives.map((alternate) => (
               <div key={alternate.mapId} className="flex items-center justify-between rounded-lg border p-3">
@@ -205,9 +195,7 @@ export function WhatToDoNext({ mode, quests, maps, items }: WhatToDoNextProps) {
                   <p className="font-medium">{maps[alternate.mapId] ?? alternate.mapId}</p>
                   <p className="text-xs text-muted-foreground">{alternate.objectives.length} objectives across {alternate.questIds.length} confirmed quests · {alternate.route.mode} routing</p>
                 </div>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  {alternate.score}<ArrowRight className="h-4 w-4" />
-                </div>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">{alternate.score}<ArrowRight className="h-4 w-4" /></div>
               </div>
             ))}
           </CardContent>
