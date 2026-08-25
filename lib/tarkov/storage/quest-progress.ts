@@ -20,15 +20,23 @@ export function loadQuestProgress(mode: TarkovGameMode): QuestProgressMap {
 
 export function saveQuestProgress(mode: TarkovGameMode, progress: QuestProgressMap) {
   if (typeof window === "undefined") return
+  const previous = loadQuestProgress(mode)
   window.localStorage.setItem(key(mode), JSON.stringify(progress))
   window.dispatchEvent(new CustomEvent("amerlol:tarkov-progress-changed", { detail: { mode } }))
+
+  void import("@/lib/tarkov/storage/cloud-sync").then(async ({ syncQuestProgressEntry, deleteQuestProgressEntry }) => {
+    const ids = new Set([...Object.keys(previous), ...Object.keys(progress)])
+    await Promise.all([...ids].map((questId) => {
+      const before = previous[questId]
+      const after = progress[questId]
+      if (!after) return deleteQuestProgressEntry(mode, questId)
+      if (JSON.stringify(before) === JSON.stringify(after)) return Promise.resolve()
+      return syncQuestProgressEntry(mode, after)
+    }))
+  }).catch(() => undefined)
 }
 
-export function setQuestProgressStatus(
-  progress: QuestProgressMap,
-  questId: string,
-  status: QuestProgressStatus
-): QuestProgressMap {
+export function setQuestProgressStatus(progress: QuestProgressMap, questId: string, status: QuestProgressStatus): QuestProgressMap {
   const now = new Date().toISOString()
   const current = progress[questId]
   return {
@@ -43,11 +51,7 @@ export function setQuestProgressStatus(
   }
 }
 
-export function toggleObjectiveCompletion(
-  progress: QuestProgressMap,
-  questId: string,
-  objectiveId: string
-): QuestProgressMap {
+export function toggleObjectiveCompletion(progress: QuestProgressMap, questId: string, objectiveId: string): QuestProgressMap {
   const now = new Date().toISOString()
   const current = progress[questId] ?? {
     questId,
