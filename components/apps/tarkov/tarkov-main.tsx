@@ -23,6 +23,7 @@ import { QuestReconciliation } from "@/components/apps/tarkov/quest-reconciliati
 import { WhatToDoNext } from "@/components/apps/tarkov/what-to-do-next"
 import { cn } from "@/lib/utils"
 import { fetchTarkovDataset } from "@/lib/tarkov/api/json-tarkov-dev"
+import { normalizeHideoutItemRequirements, type HideoutItemRequirement } from "@/lib/tarkov/adapters/hideout"
 import { buildItemReferenceMap } from "@/lib/tarkov/adapters/items"
 import { buildTaskReferenceMaps, normalizeTasksPayload } from "@/lib/tarkov/adapters/tasks"
 import type { TarkovGameMode, TarkovQuest } from "@/lib/tarkov/types"
@@ -35,6 +36,7 @@ interface ReadyDataset {
   traders: Record<string, string>
   maps: Record<string, string>
   items: Record<string, string>
+  hideoutRequirements: HideoutItemRequirement[]
 }
 
 type DatasetStatus =
@@ -70,8 +72,9 @@ export function TarkovMain() {
       fetchTarkovDataset({ mode, dataset: "traders", signal: controller.signal }),
       fetchTarkovDataset({ mode, dataset: "maps", signal: controller.signal }),
       fetchTarkovDataset({ mode, dataset: "items", signal: controller.signal }),
+      fetchTarkovDataset({ mode, dataset: "hideout", signal: controller.signal }),
     ])
-      .then(([tasksPayload, tradersPayload, mapsPayload, itemsPayload]) => {
+      .then(([tasksPayload, tradersPayload, mapsPayload, itemsPayload, hideoutPayload]) => {
         const quests = normalizeTasksPayload(tasksPayload.data)
         const references = buildTaskReferenceMaps(
           tasksPayload.data,
@@ -84,6 +87,7 @@ export function TarkovMain() {
           traders: references.traders,
           maps: references.maps,
           items: buildItemReferenceMap(itemsPayload.data),
+          hideoutRequirements: normalizeHideoutItemRequirements(hideoutPayload.data),
         })
       })
       .catch((error: unknown) => {
@@ -160,9 +164,9 @@ export function TarkovMain() {
           )
         ) : view === "items" ? (
           datasetStatus.state === "ready" ? (
-            <ItemsNeeded mode={mode} quests={datasetStatus.quests} items={datasetStatus.items} />
+            <ItemsNeeded mode={mode} quests={datasetStatus.quests} items={datasetStatus.items} hideoutRequirements={datasetStatus.hideoutRequirements} />
           ) : (
-            <LoadingCard label="Calculating confirmed quest item needs…" />
+            <LoadingCard label="Calculating quest and hideout item needs…" />
           )
         ) : (
           <FeatureFoundation view={view} />
@@ -189,7 +193,7 @@ function Overview({
         <StatusCard title="Game data" icon={Database} value={datasetStatus.state === "loading" ? "Loading" : "Connected"} detail={datasetStatus.state === "ready" ? `${questCount.toLocaleString()} quests normalized` : "Connecting to json.tarkov.dev"} healthy={datasetStatus.state === "ready"} />
         <StatusCard title="Quest engine" icon={ShieldCheck} value="Strict" detail="Eligibility never equals confirmed quest presence" healthy />
         <StatusCard title="Raid optimizer" icon={Sparkles} value="Live" detail="Ranks confirmed objectives and builds a raid line" healthy />
-        <StatusCard title="Item intelligence" icon={PackageSearch} value="Live" detail="Bring, key, FIR, and current quest loot needs are separated" healthy />
+        <StatusCard title="Item intelligence" icon={PackageSearch} value="Live" detail="Current, future, FIR, and hideout needs are separated" healthy />
       </div>
 
       <Card>
