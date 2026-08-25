@@ -31,7 +31,14 @@ function profileRef(uid: string, mode: TarkovGameMode) {
 export async function syncTarkovProfile(mode: TarkovGameMode, profile: LocalTarkovProfile): Promise<void> {
   const uid = currentUid()
   if (!uid || !db) return
-  await setDoc(profileRef(uid, mode), { mode, level: profile.level, faction: profile.faction, updatedAt: serverTimestamp() }, { merge: true })
+  await setDoc(profileRef(uid, mode), {
+    mode,
+    level: profile.level,
+    faction: profile.faction,
+    generationId: profile.generationId ?? null,
+    generationStartedAt: profile.generationStartedAt ?? null,
+    updatedAt: serverTimestamp(),
+  }, { merge: true })
 }
 
 export async function syncQuestPresenceEntry(mode: TarkovGameMode, entry: QuestPresence): Promise<void> {
@@ -90,7 +97,14 @@ export async function loadTarkovCloudSnapshot(mode: TarkovGameMode): Promise<Clo
 
   const profileData = profileSnap.data()
   const profile = profileData && typeof profileData.level === "number"
-    ? { level: Math.max(1, Math.floor(profileData.level)), faction: profileData.faction === "BEAR" ? "BEAR" as const : "USEC" as const }
+    ? {
+        level: Math.max(1, Math.min(79, Math.floor(profileData.level))),
+        faction: profileData.faction === "BEAR" ? "BEAR" as const : "USEC" as const,
+        generationId: typeof profileData.generationId === "string" ? profileData.generationId : undefined,
+        generationStartedAt: typeof profileData.generationStartedAt === "string" && Number.isFinite(Date.parse(profileData.generationStartedAt))
+          ? profileData.generationStartedAt
+          : undefined,
+      }
     : undefined
 
   const presence = Object.fromEntries(
