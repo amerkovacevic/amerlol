@@ -1,9 +1,10 @@
 "use client"
 
 import * as React from "react"
-import { Clock3, Eye, PackageSearch } from "lucide-react"
+import { Clock3, Eye, Hammer, PackageSearch } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import type { HideoutItemRequirement } from "@/lib/tarkov/adapters/hideout"
 import { calculateConfirmedQuestItemNeeds, calculateFutureQuestItemNeeds } from "@/lib/tarkov/domain/item-needs"
 import { loadLocalTarkovProfile } from "@/lib/tarkov/storage/profile"
 import { loadQuestPresence } from "@/lib/tarkov/storage/quest-presence"
@@ -14,9 +15,39 @@ interface ItemsNeededProps {
   mode: TarkovGameMode
   quests: TarkovQuest[]
   items: Record<string, string>
+  hideoutRequirements: HideoutItemRequirement[]
 }
 
-export function ItemsNeeded({ mode, quests, items }: ItemsNeededProps) {
+interface AggregatedHideoutNeed {
+  itemId: string
+  count: number
+  stations: string[]
+  earliestLevel: number
+}
+
+function aggregateHideoutNeeds(requirements: HideoutItemRequirement[]): AggregatedHideoutNeed[] {
+  const byItem = new Map<string, AggregatedHideoutNeed>()
+
+  for (const requirement of requirements) {
+    const current = byItem.get(requirement.itemId)
+    if (current) {
+      current.count += requirement.count
+      current.earliestLevel = Math.min(current.earliestLevel, requirement.level)
+      if (!current.stations.includes(requirement.stationName)) current.stations.push(requirement.stationName)
+    } else {
+      byItem.set(requirement.itemId, {
+        itemId: requirement.itemId,
+        count: requirement.count,
+        stations: [requirement.stationName],
+        earliestLevel: requirement.level,
+      })
+    }
+  }
+
+  return [...byItem.values()].sort((a, b) => a.earliestLevel - b.earliestLevel || b.count - a.count || a.itemId.localeCompare(b.itemId))
+}
+
+export function ItemsNeeded({ mode, quests, items, hideoutRequirements }: ItemsNeededProps) {
   const [revision, setRevision] = React.useState(0)
 
   React.useEffect(() => {
@@ -37,9 +68,10 @@ export function ItemsNeeded({ mode, quests, items }: ItemsNeededProps) {
     return {
       current: calculateConfirmedQuestItemNeeds(quests, progress, presence),
       future: calculateFutureQuestItemNeeds(quests, progress, presence, profile.level, profile.faction),
+      hideout: aggregateHideoutNeeds(hideoutRequirements),
       profile,
     }
-  }, [mode, quests, revision])
+  }, [hideoutRequirements, mode, quests, revision])
 
   const soon = data.future.filter((need) => need.bucket === "soon")
   const later = data.future.filter((need) => need.bucket === "later")
@@ -153,6 +185,38 @@ export function ItemsNeeded({ mode, quests, items }: ItemsNeededProps) {
             )}
             {later.length > 24 && <p className="mt-3 text-xs text-muted-foreground">Showing the first 24 later requirements, ordered by earliest quest level.</p>}
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><Hammer className="h-5 w-5" />Hideout materials</CardTitle>
+          <CardDescription>
+            Reference totals across hideout upgrades in the current game-mode dataset. These are intentionally not labeled “needed now” until hideout station progress tracking is implemented.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {data.hideout.length === 0 ? (
+            <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">No hideout item requirements were detected in the current dataset.</div>
+          ) : (
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {data.hideout.slice(0, 36).map((need) => (
+                <div key={need.itemId} className="rounded-lg border p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-medium">{items[need.itemId] ?? need.itemId}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Used by {need.stations.length} station{need.stations.length === 1 ? "" : "s"} · earliest station level {need.earliestLevel}
+                      </p>
+                    </div>
+                    <Badge variant="outline">×{need.count}</Badge>
+                  </div>
+                  <p className="mt-3 text-xs text-muted-foreground line-clamp-2">{need.stations.join(", ")}</p>
+                </div>
+              ))}
+            </div>
+          )}
+          {data.hideout.length > 36 && <p className="mt-3 text-xs text-muted-foreground">Showing the first 36 hideout material totals.</p>}
         </CardContent>
       </Card>
     </div>
