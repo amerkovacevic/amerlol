@@ -20,6 +20,11 @@ interface PlotPoint {
   description?: string
 }
 
+interface ProjectedPoint extends PlotPoint {
+  sx: number
+  sy: number
+}
+
 const VIEWBOX_WIDTH = 1000
 const VIEWBOX_HEIGHT = 620
 const PADDING = 52
@@ -79,7 +84,7 @@ function buildPlotPoints(plan: RaidMapPlan, routingData?: MapRoutingData): PlotP
   return points
 }
 
-function project(points: PlotPoint[]): Array<PlotPoint & { sx: number; sy: number }> {
+function project(points: PlotPoint[]): ProjectedPoint[] {
   if (points.length === 0) return []
 
   const xs = points.map((entry) => entry.point.x)
@@ -96,6 +101,15 @@ function project(points: PlotPoint[]): Array<PlotPoint & { sx: number; sy: numbe
     sx: PADDING + ((entry.point.x - minX) / width) * (VIEWBOX_WIDTH - PADDING * 2),
     sy: PADDING + ((maxY - entry.point.y) / height) * (VIEWBOX_HEIGHT - PADDING * 2),
   }))
+}
+
+function worldDistance(a: PlotPoint, b: PlotPoint): number {
+  return Math.hypot(a.point.x - b.point.x, a.point.y - b.point.y)
+}
+
+function formatDistance(value: number): string {
+  if (value < 10) return value.toFixed(2)
+  return Math.round(value).toLocaleString()
 }
 
 export function RaidRouteMap({ plan, mapName, routingData }: RaidRouteMapProps) {
@@ -115,6 +129,17 @@ export function RaidRouteMap({ plan, mapName, routingData }: RaidRouteMapProps) 
 
   const active = plotted.find((entry) => entry.id === activeId)
   const polyline = plotted.map((entry) => `${entry.sx},${entry.sy}`).join(" ")
+  const legs = plotted.slice(1).map((to, index) => {
+    const from = plotted[index]
+    return {
+      id: `${from.id}->${to.id}`,
+      from,
+      to,
+      distance: worldDistance(from, to),
+      mx: (from.sx + to.sx) / 2,
+      my: (from.sy + to.sy) / 2,
+    }
+  })
 
   return (
     <Card>
@@ -123,7 +148,7 @@ export function RaidRouteMap({ plan, mapName, routingData }: RaidRouteMapProps) 
           <div>
             <CardTitle>Raid route map</CardTitle>
             <CardDescription>
-              Relative route visualization for {mapName}. This plots known route geometry only; it is not a replacement for the in-game map image.
+              Relative route visualization for {mapName}. Distance labels show only known coordinate-to-coordinate legs and do not estimate unknown travel.
             </CardDescription>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -157,6 +182,14 @@ export function RaidRouteMap({ plan, mapName, routingData }: RaidRouteMapProps) 
                 strokeLinejoin="round"
               />
             )}
+            {legs.map((leg) => (
+              <g key={leg.id} transform={`translate(${leg.mx} ${leg.my})`}>
+                <rect x={-29} y={-11} width={58} height={22} rx={7} className="fill-background/90 stroke-border" />
+                <text textAnchor="middle" dominantBaseline="central" className="fill-muted-foreground text-[11px] font-medium">
+                  {formatDistance(leg.distance)}
+                </text>
+              </g>
+            ))}
             {plotted.map((entry) => (
               <g
                 key={entry.id}
