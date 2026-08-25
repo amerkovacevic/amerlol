@@ -14,6 +14,10 @@ export interface RoutedRaidSteps {
   selectedExtractLocationId?: string
   selectedExtractName?: string
   distanceToExtract?: number
+  /** Route-plane distance across located objectives, excluding any fallback-only objectives. */
+  objectiveDistance?: number
+  /** Spawn -> located objectives -> selected extract when those points are available. */
+  totalDistance?: number
 }
 
 interface LocatedStep {
@@ -113,6 +117,8 @@ export function orderRaidStepsGeographically(
       usedSpawn: false,
       usedExtract: false,
       coordinateSource: steps[0]?.routePoint ? "upstream-world" : "none",
+      objectiveDistance: 0,
+      totalDistance: 0,
     }
   }
 
@@ -161,16 +167,30 @@ export function orderRaidStepsGeographically(
   const remaining = [...located]
   const orderedLocated: RaidPlanStep[] = []
   const safer = context.strategy === "safer-line" && coordinateSource === "override"
+  let objectiveDistance = 0
+  let totalDistance = 0
+  let firstLocated = true
 
   while (remaining.length > 0) {
     const index = nearestLocation(cursor, remaining, safer)
     const [next] = remaining.splice(index, 1)
+    const legDistance = distance(cursor, next.point)
+
+    // Without a known spawn, the first point is only an anchor; do not pretend
+    // we know the travel distance from the player's actual spawn to it.
+    if (spawn || !firstLocated) {
+      totalDistance += legDistance
+      if (!firstLocated) objectiveDistance += legDistance
+    }
+
     orderedLocated.push(next.step)
     cursor = next.point
+    firstLocated = false
   }
 
   const selectedExtract = nearestExtract(cursor, extracts, safer)
   const extractDistance = selectedExtract ? distance(cursor, selectedExtract.point) : undefined
+  if (extractDistance !== undefined) totalDistance += extractDistance
 
   const sortedFallback = [...fallback].sort((a, b) => b.priority - a.priority)
   const extractLike = sortedFallback.filter((step) => /extract|survive|exit/i.test(step.description))
@@ -187,5 +207,7 @@ export function orderRaidStepsGeographically(
     selectedExtractLocationId: selectedExtract?.id,
     selectedExtractName: selectedExtract?.name,
     distanceToExtract: extractDistance,
+    objectiveDistance,
+    totalDistance,
   }
 }
