@@ -3,7 +3,7 @@ export type TarkovUpstreamGameMode = "regular" | "pve" | "pvp-season"
 export type TarkovFaction = "USEC" | "BEAR"
 
 export type QuestProgressStatus = "active" | "completed" | "failed"
-export type QuestPresenceStatus = "available" | QuestProgressStatus | "not-present"
+export type QuestPresenceStatus = "not-present" | "available" | QuestProgressStatus
 export type QuestPresenceSource = "manual" | "import" | "sync"
 export type DerivedQuestState = "locked" | "available" | QuestProgressStatus
 export type QuestVisibilityMode = "my-quests" | "eligible" | "all"
@@ -31,6 +31,10 @@ export interface QuestObjective {
   description: string
   mapIds: string[]
   itemIds: string[]
+  /** Items the player should intentionally bring into raid for this objective. */
+  bringItemIds?: string[]
+  /** Keys that may be required to access the objective. Each ID is a candidate key. */
+  requiredKeyIds?: string[]
   count?: number
   foundInRaid?: boolean
   optional?: boolean
@@ -46,11 +50,6 @@ export interface QuestRequirement {
   description?: string
 }
 
-/**
- * Represents Tarkov's actual taskRequirements semantics. A prerequisite may
- * require another quest to be completed OR failed, which is important for
- * mutually exclusive trader branches.
- */
 export interface QuestDependencyRequirement {
   questId: string
   statuses: QuestRequirementStatus[]
@@ -101,11 +100,6 @@ export interface QuestProgress {
   updatedAt: unknown
 }
 
-/**
- * Records the player's explicit knowledge about whether a quest is actually on
- * their current character. `not-present` is a first-class negative confirmation
- * so an eligibility calculation cannot repeatedly reintroduce a false positive.
- */
 export interface QuestPresence {
   questId: string
   status: QuestPresenceStatus
