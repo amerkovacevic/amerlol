@@ -1,10 +1,11 @@
 "use client"
 
 import * as React from "react"
-import { Eye, PackageSearch } from "lucide-react"
+import { Clock3, Eye, PackageSearch } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { calculateConfirmedQuestItemNeeds } from "@/lib/tarkov/domain/item-needs"
+import { calculateConfirmedQuestItemNeeds, calculateFutureQuestItemNeeds } from "@/lib/tarkov/domain/item-needs"
+import { loadLocalTarkovProfile } from "@/lib/tarkov/storage/profile"
 import { loadQuestPresence } from "@/lib/tarkov/storage/quest-presence"
 import { loadQuestProgress } from "@/lib/tarkov/storage/quest-progress"
 import type { TarkovGameMode, TarkovQuest } from "@/lib/tarkov/types"
@@ -28,14 +29,20 @@ export function ItemsNeeded({ mode, quests, items }: ItemsNeededProps) {
     }
   }, [])
 
-  const needs = React.useMemo(() => {
+  const data = React.useMemo(() => {
     void revision
-    return calculateConfirmedQuestItemNeeds(
-      quests,
-      loadQuestProgress(mode),
-      loadQuestPresence(mode)
-    )
+    const progress = loadQuestProgress(mode)
+    const presence = loadQuestPresence(mode)
+    const profile = loadLocalTarkovProfile(mode)
+    return {
+      current: calculateConfirmedQuestItemNeeds(quests, progress, presence),
+      future: calculateFutureQuestItemNeeds(quests, progress, presence, profile.level, profile.faction),
+      profile,
+    }
   }, [mode, quests, revision])
+
+  const soon = data.future.filter((need) => need.bucket === "soon")
+  const later = data.future.filter((need) => need.bucket === "later")
 
   return (
     <div className="space-y-6">
@@ -47,13 +54,13 @@ export function ItemsNeeded({ mode, quests, items }: ItemsNeededProps) {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {needs.length === 0 ? (
+          {data.current.length === 0 ? (
             <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
               No current quest loot requirements detected.
             </div>
           ) : (
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {needs.map((need) => (
+              {data.current.map((need) => (
                 <div key={need.itemId} className="rounded-lg border p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div>
@@ -75,6 +82,77 @@ export function ItemsNeeded({ mode, quests, items }: ItemsNeededProps) {
               ))}
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><Clock3 className="h-5 w-5" />Save for later</CardTitle>
+          <CardDescription>
+            Predictive only. These items come from future faction-compatible quests and never enter `My Quests`, `Items needed now`, or raid planning until the quest is actually confirmed on your character.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div>
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div>
+                <p className="font-medium">Soon</p>
+                <p className="text-xs text-muted-foreground">Quest minimum level is at or within 5 levels of your current level {data.profile.level}.</p>
+              </div>
+              <Badge variant="outline">{soon.length}</Badge>
+            </div>
+            {soon.length === 0 ? (
+              <p className="rounded-lg border border-dashed p-5 text-sm text-muted-foreground">No near-term future item requirements detected.</p>
+            ) : (
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                {soon.map((need) => (
+                  <div key={need.itemId} className="rounded-lg border p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-medium">{items[need.itemId] ?? need.itemId}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">Earliest quest level {need.minimumLevel} · {need.questIds.length} future quest{need.questIds.length === 1 ? "" : "s"}</p>
+                      </div>
+                      <div className="flex shrink-0 flex-wrap gap-1.5">
+                        <Badge variant="outline">×{need.count}</Badge>
+                        {need.foundInRaid && <Badge variant="secondary">FIR later</Badge>}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div>
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div>
+                <p className="font-medium">Later</p>
+                <p className="text-xs text-muted-foreground">Useful long-term stash knowledge, kept separate from immediate decisions.</p>
+              </div>
+              <Badge variant="outline">{later.length}</Badge>
+            </div>
+            {later.length === 0 ? (
+              <p className="rounded-lg border border-dashed p-5 text-sm text-muted-foreground">No later item requirements detected.</p>
+            ) : (
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                {later.slice(0, 24).map((need) => (
+                  <div key={need.itemId} className="rounded-lg border p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-medium">{items[need.itemId] ?? need.itemId}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">Earliest quest level {need.minimumLevel} · {need.questIds.length} future quest{need.questIds.length === 1 ? "" : "s"}</p>
+                      </div>
+                      <div className="flex shrink-0 flex-wrap gap-1.5">
+                        <Badge variant="outline">×{need.count}</Badge>
+                        {need.foundInRaid && <Badge variant="secondary">FIR later</Badge>}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            {later.length > 24 && <p className="mt-3 text-xs text-muted-foreground">Showing the first 24 later requirements, ordered by earliest quest level.</p>}
+          </div>
         </CardContent>
       </Card>
     </div>
