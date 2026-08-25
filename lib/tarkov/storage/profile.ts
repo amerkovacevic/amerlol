@@ -32,4 +32,8 @@ export function loadLocalTarkovProfile(mode: TarkovGameMode): LocalTarkovProfile
 export function saveLocalTarkovProfile(mode: TarkovGameMode, profile: LocalTarkovProfile) {
   if (typeof window === "undefined") return
   window.localStorage.setItem(key(mode), JSON.stringify(profile))
+  window.dispatchEvent(new CustomEvent("amerlol:tarkov-progress-changed", { detail: { mode } }))
+  void import("@/lib/tarkov/storage/cloud-sync")
+    .then(({ syncTarkovProfile }) => syncTarkovProfile(mode, profile))
+    .catch(() => undefined)
 }
