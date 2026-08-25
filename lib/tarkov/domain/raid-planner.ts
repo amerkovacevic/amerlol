@@ -9,6 +9,14 @@ export interface RaidPlanStep {
   reason: string
 }
 
+export interface RaidPlanItemRequirement {
+  itemId: string
+  count: number
+  foundInRaid: boolean
+  questIds: string[]
+  objectiveIds: string[]
+}
+
 export interface RaidMapPlan {
   mapId: string
   score: number
@@ -16,6 +24,7 @@ export interface RaidMapPlan {
   objectives: RaidPlanStep[]
   bringItemIds: string[]
   requiredKeyIds: string[]
+  watchForItems: RaidPlanItemRequirement[]
   potentialExperience: number
   reasons: string[]
 }
@@ -32,13 +41,10 @@ function objectiveRoutePriority(description: string, bringCount: number, keyCoun
   const text = description.toLowerCase()
   let score = 50
 
-  // Do deterministic, location/item-sensitive objectives early so deaths waste less setup.
   if (bringCount > 0) score += 25
   if (keyCount > 0) score += 20
   if (/plant|place|stash|mark|repair|install|deliver/.test(text)) score += 18
   if (/locate|visit|find|retrieve|obtain|pick up/.test(text)) score += 12
-
-  // Passive/combat objectives can be progressed while moving between hard objectives.
   if (/kill|eliminate|shoot|headshot|scav|pmc/.test(text)) score -= 8
   if (/extract|survive|exit/.test(text)) score -= 25
 
@@ -47,8 +53,40 @@ function objectiveRoutePriority(description: string, bringCount: number, keyCoun
 
 function objectiveMapIds(quest: TarkovQuest, objectiveMapIds: string[]): string[] {
   if (objectiveMapIds.length > 0) return objectiveMapIds
-  // A single-map quest is safe to attribute when the objective lacks its own map metadata.
   return quest.mapIds.length === 1 ? quest.mapIds : []
+}
+
+function mergeWatchForItem(
+  current: RaidPlanItemRequirement[],
+  itemId: string,
+  count: number,
+  foundInRaid: boolean,
+  questId: string,
+  objectiveId: string
+): RaidPlanItemRequirement[] {
+  const existing = current.find((entry) => entry.itemId === itemId)
+  if (existing) {
+    existing.count = Math.max(existing.count, count)
+    existing.foundInRaid = existing.foundInRaid || foundInRaid
+    if (!existing.questIds.includes(questId)) existing.questIds.push(questId)
+    if (!existing.objectiveIds.includes(objectiveId)) existing.objectiveIds.push(objectiveId)
+    return current
+  }
+
+  current.push({
+    itemId,
+    count,
+    foundInRaid,
+    questIds: [questId],
+    objectiveIds: [objectiveId],
+  })
+  return current
+}
+
+function shouldWatchForObjective(description: string, foundInRaid: boolean, itemCount: number): boolean {
+  if (itemCount === 0) return false
+  if (foundInRaid) return true
+  return /find|obtain|retrieve|collect|hand over|turn in|deliver/.test(description.toLowerCase())
 }
 
 export function buildRaidPlans(
@@ -85,6 +123,7 @@ export function buildRaidPlans(
           objectives: [],
           bringItemIds: [],
           requiredKeyIds: [],
+          watchForItems: [],
           potentialExperience: 0,
           reasons: [],
         }
@@ -109,6 +148,23 @@ export function buildRaidPlans(
 
         current.bringItemIds.push(...bringItemIds)
         current.requiredKeyIds.push(...requiredKeyIds)
+
+        if (shouldWatchForObjective(objective.description, objective.foundInRaid === true, objective.itemIds.length)) {
+          const excluded = new Set([...bringItemIds, ...requiredKeyIds])
+          const count = Math.max(1, objective.count ?? 1)
+          for (const itemId of objective.itemIds) {
+            if (excluded.has(itemId)) continue
+            mergeWatchForItem(
+              current.watchForItems,
+              itemId,
+              count,
+              objective.foundInRaid === true,
+              quest.id,
+              objective.id
+            )
+          }
+        }
+
         mapPlans.set(mapId, current)
       }
     }
@@ -118,6 +174,9 @@ export function buildRaidPlans(
     plan.questIds = [...new Set(plan.questIds)]
     plan.bringItemIds = [...new Set(plan.bringItemIds)]
     plan.requiredKeyIds = [...new Set(plan.requiredKeyIds)]
+    plan.watchForItems = plan.watchForItems
+      .filter((entry) => !plan.bringItemIds.includes(entry.itemId) && !plan.requiredKeyIds.includes(entry.itemId))
+      .sort((a, b) => Number(b.foundInRaid) - Number(a.foundInRaid) || b.count - a.count)
     plan.objectives.sort((a, b) => b.priority - a.priority || a.questName.localeCompare(b.questName))
 
     const kappaCount = plan.questIds.reduce((count, id) => count + (quests.find((q) => q.id === id)?.kappaRequired ? 1 : 0), 0)
@@ -126,6 +185,7 @@ export function buildRaidPlans(
       plan.questIds.length * 35 +
       plan.bringItemIds.length * 8 +
       plan.requiredKeyIds.length * 10 +
+      plan.watchForItems.filter((item) => item.foundInRaid).length * 6 +
       kappaCount * 20 +
       Math.min(50, Math.round(plan.potentialExperience / 1000))
 
