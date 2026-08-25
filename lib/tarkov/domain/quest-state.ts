@@ -1,6 +1,7 @@
 import type {
   DerivedQuestState,
   QuestProgress,
+  QuestRequirementStatus,
   TarkovProfile,
   TarkovQuest,
 } from "@/lib/tarkov/types"
@@ -18,6 +19,18 @@ export interface QuestStateResult {
 }
 
 export type QuestProgressLookup = Readonly<Record<string, QuestProgress | undefined>>
+
+function progressMatchesRequiredStatus(
+  progress: QuestProgress | undefined,
+  statuses: readonly QuestRequirementStatus[]
+): boolean {
+  if (!progress) return false
+  return statuses.some((status) => {
+    if (status === "completed") return progress.status === "completed"
+    if (status === "failed") return progress.status === "failed"
+    return false
+  })
+}
 
 export function calculateQuestState(
   quest: TarkovQuest,
@@ -51,13 +64,30 @@ export function calculateQuestState(
     })
   }
 
-  for (const prerequisiteQuestId of quest.prerequisiteQuestIds) {
-    if (progress[prerequisiteQuestId]?.status !== "completed") {
-      blockers.push({
-        type: "quest",
-        questId: prerequisiteQuestId,
-        message: "A prerequisite quest has not been completed.",
-      })
+  if (quest.dependencyRequirements?.length) {
+    for (const requirement of quest.dependencyRequirements) {
+      if (!progressMatchesRequiredStatus(progress[requirement.questId], requirement.statuses)) {
+        const statusText = requirement.statuses.length === 1
+          ? requirement.statuses[0]
+          : requirement.statuses.join(" or ")
+        blockers.push({
+          type: "quest",
+          questId: requirement.questId,
+          message: `Prerequisite quest must be ${statusText}.`,
+        })
+      }
+    }
+  } else {
+    // Compatibility fallback for normalized records created before branch-aware
+    // dependency requirements were introduced.
+    for (const prerequisiteQuestId of quest.prerequisiteQuestIds) {
+      if (progress[prerequisiteQuestId]?.status !== "completed") {
+        blockers.push({
+          type: "quest",
+          questId: prerequisiteQuestId,
+          message: "A prerequisite quest has not been completed.",
+        })
+      }
     }
   }
 
@@ -84,7 +114,10 @@ export function calculateAvailableQuests(
 }
 
 export function getDirectUnlocks(quests: readonly TarkovQuest[], questId: string): TarkovQuest[] {
-  return quests.filter((quest) => quest.prerequisiteQuestIds.includes(questId))
+  return quests.filter((quest) =>
+    quest.dependencyRequirements?.some((requirement) => requirement.questId === questId)
+    || quest.prerequisiteQuestIds.includes(questId)
+  )
 }
 
 export function getQuestAncestors(quests: readonly TarkovQuest[], questId: string): string[] {
@@ -102,7 +135,9 @@ export function getQuestAncestors(quests: readonly TarkovQuest[], questId: strin
     if (!quest) return
 
     visiting.add(currentId)
-    for (const prerequisiteId of quest.prerequisiteQuestIds) {
+    const dependencies = quest.dependencyRequirements?.map((requirement) => requirement.questId)
+      ?? quest.prerequisiteQuestIds
+    for (const prerequisiteId of dependencies) {
       visit(prerequisiteId)
       visited.add(prerequisiteId)
     }
