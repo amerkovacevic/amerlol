@@ -16,10 +16,18 @@ function storageKey(mode: TarkovGameMode): string {
   return `${STORAGE_PREFIX}:${mode}`
 }
 
-function isQuestPresence(value: unknown): value is QuestPresence {
-  if (!value || typeof value !== "object") return false
+function validIsoDate(value: unknown): value is string {
+  return typeof value === "string" && Number.isFinite(Date.parse(value))
+}
+
+function isQuestPresence(value: unknown, expectedQuestId: string): value is QuestPresence {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false
   const record = value as Record<string, unknown>
-  return typeof record.questId === "string" && typeof record.status === "string" && typeof record.source === "string"
+  return record.questId === expectedQuestId
+    && (record.status === "not-present" || record.status === "available" || record.status === "active" || record.status === "completed" || record.status === "failed")
+    && (record.source === "manual" || record.source === "import" || record.source === "sync")
+    && validIsoDate(record.confirmedAt)
+    && validIsoDate(record.updatedAt)
 }
 
 export function loadQuestPresence(mode: TarkovGameMode): Record<string, QuestPresence> {
@@ -28,10 +36,10 @@ export function loadQuestPresence(mode: TarkovGameMode): Record<string, QuestPre
     const raw = window.localStorage.getItem(storageKey(mode))
     if (!raw) return {}
     const parsed = JSON.parse(raw) as unknown
-    if (!parsed || typeof parsed !== "object") return {}
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {}
     const envelope = parsed as Partial<StoredQuestPresenceEnvelope>
     if (envelope.version !== STORAGE_VERSION || !envelope.entries || typeof envelope.entries !== "object") return {}
-    return Object.fromEntries(Object.entries(envelope.entries).filter(([, value]) => isQuestPresence(value)))
+    return Object.fromEntries(Object.entries(envelope.entries).filter(([questId, value]) => isQuestPresence(value, questId)))
   } catch {
     return {}
   }
