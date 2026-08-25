@@ -5,6 +5,7 @@ import { ArrowRight, Backpack, CheckCircle2, Eye, KeyRound, MapPinned, Route, Sp
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { buildRaidPlans } from "@/lib/tarkov/domain/raid-planner"
+import { getMapRoutingData } from "@/lib/tarkov/routing/data"
 import { loadQuestPresence } from "@/lib/tarkov/storage/quest-presence"
 import { loadQuestProgress } from "@/lib/tarkov/storage/quest-progress"
 import type { TarkovGameMode, TarkovQuest } from "@/lib/tarkov/types"
@@ -31,7 +32,18 @@ export function WhatToDoNext({ mode, quests, maps, items }: WhatToDoNextProps) {
 
   const result = React.useMemo(() => {
     void revision
-    return buildRaidPlans(quests, loadQuestProgress(mode), loadQuestPresence(mode))
+    const routingData = Object.fromEntries(
+      [...new Set(quests.flatMap((quest) => quest.mapIds))]
+        .map((mapId) => [mapId, getMapRoutingData(mapId)] as const)
+        .filter((entry) => Boolean(entry[1]))
+    )
+
+    return buildRaidPlans(
+      quests,
+      loadQuestProgress(mode),
+      loadQuestPresence(mode),
+      { routingData }
+    )
   }, [mode, quests, revision])
 
   if (!result.best) {
@@ -50,6 +62,11 @@ export function WhatToDoNext({ mode, quests, maps, items }: WhatToDoNextProps) {
 
   const plan = result.best
   const mapName = maps[plan.mapId] ?? plan.mapId
+  const routeLabel = plan.route.mode === "geographic"
+    ? "Geographic route"
+    : plan.route.mode === "partial"
+      ? "Partial geographic route"
+      : "Priority route"
 
   return (
     <div className="space-y-6">
@@ -60,6 +77,7 @@ export function WhatToDoNext({ mode, quests, maps, items }: WhatToDoNextProps) {
               <div className="flex flex-wrap items-center gap-2">
                 <Badge>Best raid now</Badge>
                 <Badge variant="outline">Score {plan.score}</Badge>
+                <Badge variant="outline">{routeLabel}</Badge>
               </div>
               <CardTitle className="mt-3 text-2xl">Run {mapName}</CardTitle>
               <CardDescription className="mt-2">
@@ -81,7 +99,11 @@ export function WhatToDoNext({ mode, quests, maps, items }: WhatToDoNextProps) {
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><Route className="h-5 w-5" />Optimal objective line</CardTitle>
             <CardDescription>
-              Current line is a deterministic priority route: carried-item/key objectives first, general location tasks next, passive kill tasks while moving, and extract/survive objectives last. Exact geographic pathing will replace this ordering once map-coordinate data is added.
+              {plan.route.mode === "geographic"
+                ? `All ${plan.route.geographicObjectiveCount} routed objectives have verified map coordinates. The line is geographically ordered.`
+                : plan.route.mode === "partial"
+                  ? `${plan.route.geographicObjectiveCount} objectives are geographically ordered; ${plan.route.fallbackObjectiveCount} still use priority fallback until their coordinates are verified.`
+                  : "Verified objective coordinates are not available for this plan yet, so the line uses deterministic priority ordering: carried-item/key objectives first, general location tasks next, passive kill tasks while moving, and extract/survive objectives last."}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -181,7 +203,7 @@ export function WhatToDoNext({ mode, quests, maps, items }: WhatToDoNextProps) {
               <div key={alternate.mapId} className="flex items-center justify-between rounded-lg border p-3">
                 <div>
                   <p className="font-medium">{maps[alternate.mapId] ?? alternate.mapId}</p>
-                  <p className="text-xs text-muted-foreground">{alternate.objectives.length} objectives across {alternate.questIds.length} confirmed quests</p>
+                  <p className="text-xs text-muted-foreground">{alternate.objectives.length} objectives across {alternate.questIds.length} confirmed quests · {alternate.route.mode} routing</p>
                 </div>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   {alternate.score}<ArrowRight className="h-4 w-4" />
