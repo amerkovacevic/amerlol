@@ -10,6 +10,7 @@ export type QuestPresenceLookup = Readonly<Record<string, QuestPresence | undefi
 
 export type QuestVisibilityReason =
   | "confirmed-in-game"
+  | "confirmed-not-present"
   | "active-progress"
   | "completed-progress"
   | "eligible-only"
@@ -49,7 +50,7 @@ export function decideQuestVisibility(
   if (options.mode === "all") {
     return {
       visible: true,
-      reason: "all-quests",
+      reason: confirmed?.status === "not-present" ? "confirmed-not-present" : "all-quests",
       unconfirmedEligibility: state.state === "available" && !confirmed,
     }
   }
@@ -57,6 +58,14 @@ export function decideQuestVisibility(
   const factionMismatch = state.blockers.some((blocker) => blocker.type === "faction")
   if (factionMismatch) {
     return { visible: false, reason: "faction-mismatch", unconfirmedEligibility: false }
+  }
+
+  if (confirmed?.status === "not-present") {
+    return {
+      visible: false,
+      reason: "confirmed-not-present",
+      unconfirmedEligibility: false,
+    }
   }
 
   if (currentProgress?.status === "completed" || confirmed?.status === "completed") {
