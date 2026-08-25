@@ -32,6 +32,8 @@ export interface RaidRouteMetadata {
   selectedExtractLocationId?: string
   selectedExtractName?: string
   distanceToExtract?: number
+  objectiveDistance?: number
+  totalDistance?: number
 }
 
 export interface RaidMapPlan {
@@ -104,6 +106,13 @@ function shouldWatchForObjective(description: string, foundInRaid: boolean, item
   return /find|obtain|retrieve|collect|hand over|turn in|deliver/.test(description.toLowerCase())
 }
 
+function distanceEfficiencyBonus(plan: RaidMapPlan): number {
+  const distance = plan.route.objectiveDistance
+  if (distance === undefined || distance <= 0 || plan.route.geographicObjectiveCount < 2) return 0
+  const objectivesPerDistance = plan.route.geographicObjectiveCount / distance
+  return Math.min(160, Math.round(objectivesPerDistance * 120))
+}
+
 function scorePlan(
   plan: RaidMapPlan,
   quests: readonly TarkovQuest[],
@@ -127,9 +136,9 @@ function scorePlan(
     case "fast-xp":
       return base + Math.min(180, Math.round(plan.potentialExperience / 500)) + kappaCount * 10
     case "shortest-line":
-      return base + plan.route.geographicObjectiveCount * 20 - plan.route.fallbackObjectiveCount * 10 + kappaCount * 10
+      return base + plan.route.geographicObjectiveCount * 20 - plan.route.fallbackObjectiveCount * 10 + distanceEfficiencyBonus(plan) + kappaCount * 10
     case "safer-line":
-      return base + plan.route.geographicObjectiveCount * 12 + kappaCount * 10
+      return base + plan.route.geographicObjectiveCount * 12 + distanceEfficiencyBonus(plan) * 0.25 + kappaCount * 10
     case "max-progression":
     default:
       return base + kappaCount * 20 + Math.min(50, Math.round(plan.potentialExperience / 1000))
@@ -246,9 +255,11 @@ export function buildRaidPlans(
       selectedExtractLocationId: routed.selectedExtractLocationId,
       selectedExtractName: routed.selectedExtractName,
       distanceToExtract: routed.distanceToExtract,
+      objectiveDistance: routed.objectiveDistance,
+      totalDistance: routed.totalDistance,
     }
 
-    plan.score = scorePlan(plan, quests, strategy)
+    plan.score = Math.round(scorePlan(plan, quests, strategy))
     plan.reasons = [
       `${plan.objectives.length} incomplete objective${plan.objectives.length === 1 ? "" : "s"}`,
       `${plan.questIds.length} confirmed quest${plan.questIds.length === 1 ? "" : "s"}`,
