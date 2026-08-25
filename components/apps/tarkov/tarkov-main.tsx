@@ -18,6 +18,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { ItemsNeeded } from "@/components/apps/tarkov/items-needed"
 import { QuestReconciliation } from "@/components/apps/tarkov/quest-reconciliation"
 import { WhatToDoNext } from "@/components/apps/tarkov/what-to-do-next"
 import { cn } from "@/lib/utils"
@@ -157,6 +158,12 @@ export function TarkovMain() {
           ) : (
             <LoadingCard label="Loading and normalizing Tarkov quests…" />
           )
+        ) : view === "items" ? (
+          datasetStatus.state === "ready" ? (
+            <ItemsNeeded mode={mode} quests={datasetStatus.quests} items={datasetStatus.items} />
+          ) : (
+            <LoadingCard label="Calculating confirmed quest item needs…" />
+          )
         ) : (
           <FeatureFoundation view={view} />
         )}
@@ -182,22 +189,22 @@ function Overview({
         <StatusCard title="Game data" icon={Database} value={datasetStatus.state === "loading" ? "Loading" : "Connected"} detail={datasetStatus.state === "ready" ? `${questCount.toLocaleString()} quests normalized` : "Connecting to json.tarkov.dev"} healthy={datasetStatus.state === "ready"} />
         <StatusCard title="Quest engine" icon={ShieldCheck} value="Strict" detail="Eligibility never equals confirmed quest presence" healthy />
         <StatusCard title="Raid optimizer" icon={Sparkles} value="Live" detail="Ranks confirmed objectives and builds a raid line" healthy />
-        <StatusCard title="Item intelligence" icon={PackageSearch} value="Started" detail="Bring items and required keys feed the raid plan" healthy />
+        <StatusCard title="Item intelligence" icon={PackageSearch} value="Live" detail="Bring, key, FIR, and current quest loot needs are separated" healthy />
       </div>
 
       <Card>
         <CardHeader>
           <CardTitle>Min-max your next raid</CardTitle>
           <CardDescription>
-            The planner uses only quests you confirmed on your character, then ranks maps by how much real progression you can stack in one raid. It also extracts bring items and required keys and orders objectives into a deterministic raid line.
+            The planner uses only quests you confirmed on your character, then ranks maps by how much real progression you can stack in one raid. It separates what to carry from what to find so the plan is useful before and during the raid.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-3 md:grid-cols-2">
             <FoundationRow icon={CheckCircle2} title="Confirmed quests only" description="Predicted quests never pollute the recommendation engine." />
-            <FoundationRow icon={CheckCircle2} title="Best map scoring" description="Ranks maps using incomplete objectives, quest overlap, represented XP, and progression value." />
+            <FoundationRow icon={CheckCircle2} title="Best map scoring" description="Ranks maps using incomplete objectives, quest overlap, represented XP, FIR opportunities, and progression value." />
             <FoundationRow icon={CheckCircle2} title="What to bring" description="Quest markers, required equipment, and key metadata are extracted into the raid checklist." />
-            <FoundationRow icon={CheckCircle2} title="Objective line" description="Setup-sensitive objectives first, passive objectives while moving, and extraction objectives last." />
+            <FoundationRow icon={CheckCircle2} title="Watch for" description="FIR and current quest loot requirements are surfaced separately so you know what not to miss or sell." />
           </div>
           <div className="flex flex-wrap gap-2">
             <Button onClick={onOpenNext}>What should I do next?</Button>
@@ -235,10 +242,9 @@ function FoundationRow({ icon: Icon, title, description }: { icon: React.Compone
   return <div className="flex gap-3 rounded-lg border p-4"><Icon className="mt-0.5 h-5 w-5 shrink-0" /><div><p className="font-medium">{title}</p><p className="mt-1 text-sm text-muted-foreground">{description}</p></div></div>
 }
 
-function FeatureFoundation({ view }: { view: Exclude<TrackerView, "overview" | "next" | "quests"> }) {
-  const details: Record<Exclude<TrackerView, "overview" | "next" | "quests">, { icon: React.ComponentType<{ className?: string }>; title: string; description: string }> = {
+function FeatureFoundation({ view }: { view: Exclude<TrackerView, "overview" | "next" | "quests" | "items"> }) {
+  const details: Record<Exclude<TrackerView, "overview" | "next" | "quests" | "items">, { icon: React.ComponentType<{ className?: string }>; title: string; description: string }> = {
     maps: { icon: Map, title: "Map planner", description: "This will expand the raid optimizer with interactive map locations and coordinate-backed pathing." },
-    items: { icon: PackageSearch, title: "Items needed", description: "This view will aggregate current/FIR/future quest items, keys, and hideout requirements." },
     traders: { icon: Users, title: "Trader progression", description: "This view will group confirmed, completed, and predicted quests by trader." },
     progress: { icon: KeyRound, title: "Progress", description: "This view will track overall, Kappa, Lightkeeper, and wipe progression." },
   }
