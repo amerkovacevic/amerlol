@@ -1,12 +1,21 @@
 import type { RaidPlanStep } from "@/lib/tarkov/domain/raid-planner"
 import type { MapRoutingData, NormalizedPoint, RouteContext, RouteLocation } from "@/lib/tarkov/routing/types"
 
+export type RouteCoordinateSource = "override" | "upstream-world" | "none"
+
 export interface RoutedRaidSteps {
   ordered: RaidPlanStep[]
   geographicCount: number
   fallbackCount: number
   usedSpawn: boolean
   usedExtract: boolean
+  coordinateSource: RouteCoordinateSource
+}
+
+interface LocatedStep {
+  step: RaidPlanStep
+  point: NormalizedPoint
+  risk?: number
 }
 
 function distance(a: NormalizedPoint, b: NormalizedPoint): number {
@@ -21,20 +30,14 @@ function objectiveLocation(step: RaidPlanStep, data: MapRoutingData): RouteLocat
   return data.locations.find((location) => location.id === ref.locationId)
 }
 
-function nearestLocation(
-  from: NormalizedPoint,
-  candidates: Array<{ step: RaidPlanStep; location: RouteLocation }>,
-  safer: boolean
-) {
+function nearestLocation(from: NormalizedPoint, candidates: LocatedStep[], safer: boolean) {
   let bestIndex = 0
   let bestScore = Number.POSITIVE_INFINITY
 
   for (let index = 0; index < candidates.length; index += 1) {
     const candidate = candidates[index]
-    const travel = distance(from, candidate.location.point)
-    const riskPenalty = safer ? (candidate.location.risk ?? 0) * 0.08 : 0
-    // Small priority bonus keeps setup-sensitive objectives slightly favored
-    // when two geographic choices are otherwise similar.
+    const travel = distance(from, candidate.point)
+    const riskPenalty = safer ? (candidate.risk ?? 0) * 0.08 : 0
     const priorityBonus = candidate.step.priority * 0.0005
     const score = travel + riskPenalty - priorityBonus
     if (score < bestScore) {
@@ -46,28 +49,70 @@ function nearestLocation(
   return bestIndex
 }
 
+function splitByOverrideCoordinates(
+  steps: readonly RaidPlanStep[],
+  data: MapRoutingData
+): { located: LocatedStep[]; fallback: RaidPlanStep[] } {
+  const located: LocatedStep[] = []
+  const fallback: RaidPlanStep[] = []
+
+  for (const step of steps) {
+    const location = objectiveLocation(step, data)
+    if (location) located.push({ step, point: location.point, risk: location.risk })
+    else fallback.push(step)
+  }
+
+  return { located, fallback }
+}
+
+function splitByWorldCoordinates(
+  steps: readonly RaidPlanStep[]
+): { located: LocatedStep[]; fallback: RaidPlanStep[] } {
+  const located: LocatedStep[] = []
+  const fallback: RaidPlanStep[] = []
+
+  for (const step of steps) {
+    if (step.routePoint) located.push({ step, point: step.routePoint })
+    else fallback.push(step)
+  }
+
+  return { located, fallback }
+}
+
 export function orderRaidStepsGeographically(
   steps: readonly RaidPlanStep[],
   data: MapRoutingData | undefined,
   context: RouteContext = {}
 ): RoutedRaidSteps {
-  if (!data || steps.length <= 1) {
+  if (steps.length <= 1) {
     return {
       ordered: [...steps],
-      geographicCount: 0,
-      fallbackCount: steps.length,
+      geographicCount: steps[0]?.routePoint ? 1 : 0,
+      fallbackCount: steps[0]?.routePoint ? 0 : steps.length,
       usedSpawn: false,
       usedExtract: false,
+      coordinateSource: steps[0]?.routePoint ? "upstream-world" : "none",
     }
   }
 
-  const located: Array<{ step: RaidPlanStep; location: RouteLocation }> = []
-  const fallback: RaidPlanStep[] = []
+  let located: LocatedStep[] = []
+  let fallback: RaidPlanStep[] = []
+  let coordinateSource: RouteCoordinateSource = "none"
 
-  for (const step of steps) {
-    const location = objectiveLocation(step, data)
-    if (location) located.push({ step, location })
-    else fallback.push(step)
+  if (data) {
+    const overrideSplit = splitByOverrideCoordinates(steps, data)
+    if (overrideSplit.located.length >= 2) {
+      located = overrideSplit.located
+      fallback = overrideSplit.fallback
+      coordinateSource = "override"
+    }
+  }
+
+  if (coordinateSource === "none") {
+    const worldSplit = splitByWorldCoordinates(steps)
+    located = worldSplit.located
+    fallback = worldSplit.fallback
+    if (located.length > 0) coordinateSource = "upstream-world"
   }
 
   if (located.length === 0) {
@@ -77,31 +122,32 @@ export function orderRaidStepsGeographically(
       fallbackCount: steps.length,
       usedSpawn: false,
       usedExtract: false,
+      coordinateSource: "none",
     }
   }
 
-  const spawn = context.spawnLocationId
+  const spawn = coordinateSource === "override" && context.spawnLocationId && data
     ? data.locations.find((location) => location.id === context.spawnLocationId && location.kind === "spawn")
     : undefined
 
-  const extracts = (context.extractLocationIds ?? [])
-    .map((id) => data.locations.find((location) => location.id === id && location.kind === "extract"))
-    .filter((location): location is RouteLocation => Boolean(location))
+  const extracts = coordinateSource === "override" && data
+    ? (context.extractLocationIds ?? [])
+        .map((id) => data.locations.find((location) => location.id === id && location.kind === "extract"))
+        .filter((location): location is RouteLocation => Boolean(location))
+    : []
 
-  let cursor = spawn?.point ?? located[0].location.point
+  let cursor = spawn?.point ?? located[0].point
   const remaining = [...located]
   const orderedLocated: RaidPlanStep[] = []
-  const safer = context.strategy === "safer-line"
+  const safer = context.strategy === "safer-line" && coordinateSource === "override"
 
   while (remaining.length > 0) {
     const index = nearestLocation(cursor, remaining, safer)
     const [next] = remaining.splice(index, 1)
     orderedLocated.push(next.step)
-    cursor = next.location.point
+    cursor = next.point
   }
 
-  // Preserve priority ordering for objectives without coordinates. Put
-  // extract/survive fallback tasks last so they do not interrupt the route.
   const sortedFallback = [...fallback].sort((a, b) => b.priority - a.priority)
   const extractLike = sortedFallback.filter((step) => /extract|survive|exit/i.test(step.description))
   const normalFallback = sortedFallback.filter((step) => !/extract|survive|exit/i.test(step.description))
@@ -112,5 +158,6 @@ export function orderRaidStepsGeographically(
     fallbackCount: fallback.length,
     usedSpawn: Boolean(spawn),
     usedExtract: extracts.length > 0,
+    coordinateSource,
   }
 }
