@@ -26,6 +26,13 @@ export interface TarkovItem extends TarkovEntityRef {
   wikiUrl?: string
 }
 
+export interface QuestObjectiveWorldPosition {
+  mapId: string
+  x: number
+  y: number
+  z: number
+}
+
 export interface QuestObjective {
   id: string
   description: string
@@ -35,6 +42,8 @@ export interface QuestObjective {
   bringItemIds?: string[]
   /** Keys that may be required to access the objective. Each ID is a candidate key. */
   requiredKeyIds?: string[]
+  /** Verified/upstream world-space positions used for geographic route ordering. */
+  worldPositions?: QuestObjectiveWorldPosition[]
   count?: number
   foundInRaid?: boolean
   optional?: boolean
