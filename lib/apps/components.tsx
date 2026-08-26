@@ -30,6 +30,7 @@ import { StickrSettings } from "@/components/apps/stickr/stickr-settings"
 import { TarkovTaskPlannerMain } from "@/components/apps/tarkov-task-planner/tarkov-task-planner-main"
 import { TarkovTaskPlannerSettings } from "@/components/apps/tarkov-task-planner/tarkov-task-planner-settings"
 import { TarkovTaskPlannerProvider } from "@/components/apps/tarkov-task-planner/tarkov-task-planner-provider"
+import { NextWatchMain } from "@/components/apps/next-watch/next-watch-main"
 
 interface AppComponents {
   Main: React.ComponentType
@@ -42,6 +43,9 @@ interface AppComponents {
 // 2. Import the components above using React.lazy
 // 3. Add an entry here mapping appId to { Main, Settings? }
 const APP_COMPONENTS: Record<string, AppComponents> = {
+  "next-watch": {
+    Main: NextWatchMain,
+  },
   "tarkov-task-planner": {
     Main: TarkovTaskPlannerMain,
     Settings: TarkovTaskPlannerSettings,

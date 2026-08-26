@@ -12,6 +12,7 @@ import {
   Search,
   LayoutGrid,
   Crosshair,
+  Clapperboard,
   type LucideIcon
 } from "lucide-react"
 
@@ -31,6 +32,17 @@ export interface AppEntry {
 }
 
 export const APP_REGISTRY: AppEntry[] = [
+  {
+    appId: "next-watch",
+    name: "Next Watch",
+    description: "Import your Letterboxd watchlist and let the wheel pick movie night",
+    category: "Games",
+    tags: ["movies", "letterboxd", "watchlist", "picker", "random", "wheel"],
+    status: "live",
+    icon: Clapperboard,
+    accent: "from-orange-500 via-emerald-500 to-sky-500",
+    featured: true,
+  },
   {
     appId: "tarkov-task-planner",
     name: "Tarkov Raid Planner",
