@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "update:tarkov-data": "node scripts/update-tarkov-data.mjs",
+    "prebuild": "npm run update:tarkov-data",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
