@@ -31,18 +31,6 @@ export function AppCard({ app, locked = false }: AppCardProps) {
     setMousePosition({ x: 0.5, y: 0.5 })
   }
 
-  const statusVariants = {
-    live: "default",
-    beta: "secondary",
-    comingSoon: "outline",
-  } as const
-
-  const statusLabels = {
-    live: "Live",
-    beta: "Beta",
-    comingSoon: "Coming Soon",
-  }
-
   const tiltX = (mousePosition.x / (cardRef.current?.offsetWidth || 1) - 0.5) * 10
   const tiltY = (mousePosition.y / (cardRef.current?.offsetHeight || 1) - 0.5) * -10
 
@@ -64,11 +52,11 @@ export function AppCard({ app, locked = false }: AppCardProps) {
         <div className={cn("absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-10 transition-opacity", `bg-gradient-to-br ${app.accent}`)} />
         
         <CardHeader>
-          <div className="flex items-start justify-between mb-2">
-            <Badge variant={statusVariants[app.status]}>
-              {statusLabels[app.status]}
-            </Badge>
-          </div>
+          {app.status === "comingSoon" && (
+            <div className="flex items-start justify-between mb-2">
+              <Badge variant="outline">Coming Soon</Badge>
+            </div>
+          )}
           <CardTitle className="font-space-grotesk">{app.name}</CardTitle>
           <CardDescription>{app.description}</CardDescription>
         </CardHeader>

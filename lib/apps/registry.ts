@@ -154,7 +154,6 @@ export const APP_REGISTRY: AppEntry[] = [
     status: "live",
     icon: LayoutGrid,
     accent: "from-green-600 to-teal-500",
-    featured: true,
   },
 ]
 

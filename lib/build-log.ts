@@ -6,6 +6,12 @@ export interface BuildLogEntry {
 
 export const buildLog: BuildLogEntry[] = [
   {
+    date: "2026-08-25",
+    title: "Tarkov Raid Planner",
+    description:
+      "Built a raid planner for Escape from Tarkov that turns your active tasks into map-by-map raid plans. Import current task data, track objectives and completed or failed quests, filter by PMC faction and level, and keep progression synced between local storage and your account. Task snapshots are refreshed from tarkov.dev so the planner can keep pace with wipes and game updates.",
+  },
+  {
     date: "2026-04-03",
     title: "Stickr",
     description:
