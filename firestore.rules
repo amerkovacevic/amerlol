@@ -109,6 +109,12 @@ service cloud.firestore {
       match /stickrSettings/{settingsId} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
+
+      // Tarkov Raid Planner profile and progression
+      // Document structure: /users/{userId}/tarkovPlanner/{plannerId}
+      match /tarkovPlanner/{plannerId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
     }
     
     // Color Palettes collection

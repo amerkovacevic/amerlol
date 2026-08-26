@@ -11,6 +11,7 @@ import {
   Radio,
   Search,
   LayoutGrid,
+  Crosshair,
   type LucideIcon
 } from "lucide-react"
 
@@ -30,6 +31,17 @@ export interface AppEntry {
 }
 
 export const APP_REGISTRY: AppEntry[] = [
+  {
+    appId: "tarkov-task-planner",
+    name: "Tarkov Raid Planner",
+    description: "Import your Escape from Tarkov tasks and find the best map for your next raid",
+    category: "Games",
+    tags: ["tarkov", "escape from tarkov", "tasks", "quests", "raid", "planner"],
+    status: "beta",
+    icon: Crosshair,
+    accent: "from-emerald-700 to-amber-600",
+    featured: true,
+  },
   {
     appId: "encryption",
     name: "Encryption Platform",
