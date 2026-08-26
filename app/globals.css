@@ -71,3 +71,14 @@
     @apply dark:backdrop-blur-md dark:bg-card/50 dark:border-border/30;
   }
 }
+
+@keyframes nf-fall { 15% { transform: translate(-48%,-50%) rotate(3deg) } 45% { transform: translate(-42%,-20%) rotate(18deg) } 100% { transform: translate(-20%,110vh) rotate(92deg) } }
+.nf-fall { animation: nf-fall 1.35s cubic-bezier(.45,.02,.65,1) forwards; }
+@keyframes nf-snake { from { left:-8rem } to { left:calc(100% + 8rem) } }
+.nf-snake { animation:nf-snake 13s linear infinite; }
+.nf-snake i { display:block;width:10px;height:10px;border-radius:2px;background:hsl(var(--primary)); }
+.nf-snake i:first-child { transform:translateY(-3px); }
+@keyframes nf-glitch { 0%,95%,100% { filter:none } 96% { filter:hue-rotate(80deg);transform:translateX(2px) } 98% { transform:translateX(-2px) } }
+.nf-glitch { animation:nf-glitch 2.7s steps(1) infinite; }
+@media (max-width:639px) { button[aria-label="Decorative 404"] { top:78%;z-index:20;font-size:58vw;color:hsl(var(--foreground)/.05); } }
+@media (prefers-reduced-motion:reduce) { .nf-fall { animation-duration:.01ms; } .nf-snake { animation:none;left:1rem; } .nf-glitch { animation:none; } }
