@@ -164,26 +164,79 @@ service cloud.firestore {
       allow read: if true;
       
       // Only authenticated users can create exchanges
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.createdBy;
+      allow create: if request.auth != null &&
+        request.auth.uid == request.resource.data.createdBy &&
+        request.resource.data.participants is list &&
+        request.resource.data.participants.size() == 1 &&
+        request.resource.data.participants[0] == request.auth.uid &&
+        request.resource.data.drawn == false &&
+        !request.resource.data.keys().hasAny(['assignments']);
       
       // Only the exchange creator can delete
       allow delete: if request.auth != null && request.auth.uid == resource.data.createdBy;
       
-      // Allow exchange creator to update any field
-      allow update: if request.auth != null && request.auth.uid == resource.data.createdBy;
-      
-      // Allow any authenticated user to join/leave exchanges (update participants array and their own responses)
-      // This allows users to add/remove themselves from the participants array and update their own participantResponses
-      allow update: if request.auth != null && 
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['participants', 'participantResponses', 'updatedAt']) &&
+      // The organizer may only close a draw. Assignments live in private child documents.
+      allow update: if request.auth != null &&
+        request.auth.uid == resource.data.createdBy &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['drawn', 'updatedAt']) &&
+        resource.data.drawn == false &&
+        request.resource.data.drawn == true;
+
+      // One-time migration from the legacy public assignment map.
+      allow update: if request.auth != null &&
+        request.auth.uid == resource.data.createdBy &&
+        resource.data.keys().hasAny(['assignments']) &&
+        resource.data.assignments is map &&
+        resource.data.assignments.size() > 0 &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['assignments', 'updatedAt']) &&
+        request.resource.data.assignments is map &&
+        request.resource.data.assignments.size() == 0;
+
+      // A participant may atomically add or remove only themselves before the draw.
+      allow update: if request.auth != null &&
+        resource.data.drawn == false &&
+        request.resource.data.drawn == false &&
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['participants', 'participantResponses', 'participantNames', 'updatedAt']) &&
         request.resource.data.participants is list &&
         resource.data.participants is list &&
-        // If participantResponses is being updated, ensure the user is joining (will be in new participants list)
-        // and they're only adding/updating their own entry
-        (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['participantResponses']) ||
-         (request.auth.uid in request.resource.data.participants &&
-          request.resource.data.participantResponses is map &&
-          request.resource.data.participantResponses[request.auth.uid] is string));
+        request.resource.data.participantResponses is map &&
+        request.resource.data.participantNames is map &&
+        (!resource.data.keys().hasAny(['participantResponses']) ||
+         (resource.data.participantResponses is map &&
+          request.resource.data.participantResponses.diff(resource.data.participantResponses)
+            .affectedKeys().hasOnly([request.auth.uid]))) &&
+        (!resource.data.keys().hasAny(['participantNames']) ||
+         (resource.data.participantNames is map &&
+          request.resource.data.participantNames.diff(resource.data.participantNames)
+            .affectedKeys().hasOnly([request.auth.uid]))) &&
+        (
+          (!(request.auth.uid in resource.data.participants) &&
+           request.auth.uid in request.resource.data.participants &&
+           request.resource.data.participants.size() == resource.data.participants.size() + 1 &&
+           request.resource.data.participants.hasAll(resource.data.participants)) ||
+          (request.auth.uid in resource.data.participants &&
+           !(request.auth.uid in request.resource.data.participants) &&
+           resource.data.participants.size() == request.resource.data.participants.size() + 1 &&
+           resource.data.participants.hasAll(request.resource.data.participants))
+        );
+
+      match /assignments/{giverId} {
+        // Each participant can read only their own result.
+        allow read: if request.auth != null && request.auth.uid == giverId;
+
+        // Assignment documents are created as part of the organizer's atomic draw.
+        allow create: if request.auth != null &&
+          request.auth.uid == get(/databases/$(database)/documents/secretSantaExchanges/$(exchangeId)).data.createdBy &&
+          giverId in get(/databases/$(database)/documents/secretSantaExchanges/$(exchangeId)).data.participants &&
+          request.resource.data.keys().hasOnly(['receiverId']) &&
+          request.resource.data.receiverId in get(/databases/$(database)/documents/secretSantaExchanges/$(exchangeId)).data.participants &&
+          request.resource.data.receiverId != giverId;
+
+        allow update: if false;
+        allow delete: if request.auth != null &&
+          request.auth.uid == get(/databases/$(database)/documents/secretSantaExchanges/$(exchangeId)).data.createdBy;
+      }
     }
     
     // Amer Gauntlet Daily Leaderboard collection

@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test:secret-santa": "node --experimental-strip-types --test tests/secret-santa.test.mjs"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.0.5",
