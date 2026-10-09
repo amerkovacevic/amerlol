@@ -11,8 +11,8 @@ import {
   Radio,
   Search,
   LayoutGrid,
-  Crosshair,
   Clapperboard,
+  Map,
   type LucideIcon
 } from "lucide-react"
 
@@ -33,6 +33,17 @@ export interface AppEntry {
 
 export const APP_REGISTRY: AppEntry[] = [
   {
+    appId: "atlas-sprint",
+    name: "Atlas Sprint",
+    description: "Race the clock and name every country in the world—or conquer one continent at a time",
+    category: "Games",
+    tags: ["countries", "geography", "world", "continents", "quiz", "trivia"],
+    status: "live",
+    icon: Map,
+    accent: "from-sky-500 via-blue-600 to-indigo-600",
+    featured: true,
+  },
+  {
     appId: "next-watch",
     name: "Next Watch",
     description: "Import your Letterboxd watchlist and let the wheel pick movie night",
@@ -41,17 +52,6 @@ export const APP_REGISTRY: AppEntry[] = [
     status: "live",
     icon: Clapperboard,
     accent: "from-orange-500 via-emerald-500 to-sky-500",
-    featured: true,
-  },
-  {
-    appId: "tarkov-task-planner",
-    name: "Tarkov Raid Planner",
-    description: "Import your Escape from Tarkov tasks and find the best map for your next raid",
-    category: "Games",
-    tags: ["tarkov", "escape from tarkov", "tasks", "quests", "raid", "planner"],
-    status: "beta",
-    icon: Crosshair,
-    accent: "from-emerald-700 to-amber-600",
     featured: true,
   },
   {

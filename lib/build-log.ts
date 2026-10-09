@@ -6,10 +6,10 @@ export interface BuildLogEntry {
 
 export const buildLog: BuildLogEntry[] = [
   {
-    date: "2026-08-25",
-    title: "Tarkov Raid Planner",
+    date: "2026-10-08",
+    title: "Atlas Sprint",
     description:
-      "Built a raid planner for Escape from Tarkov that turns your active tasks into map-by-map raid plans. Import current task data, track objectives and completed or failed quests, filter by PMC faction and level, and keep progression synced between local storage and your account. Task snapshots are refreshed from tarkov.dev so the planner can keep pace with wipes and game updates.",
+      "Built Atlas Sprint, a fast-paced geography quiz for naming all 197 countries or practicing one continent at a time. The interactive map tracks guessed and missing countries, adds location labels as you play, briefly focuses on correct answers, supports common country aliases, and reveals anything you missed when the timer ends.",
   },
   {
     date: "2026-04-03",

@@ -27,10 +27,9 @@ import { LMGTFYSettings } from "@/components/apps/lmgtfy/lmgtfy-settings"
 import { StickrProvider } from "@/components/apps/stickr/stickr-provider"
 import { StickrMain } from "@/components/apps/stickr/stickr-main"
 import { StickrSettings } from "@/components/apps/stickr/stickr-settings"
-import { TarkovTaskPlannerMain } from "@/components/apps/tarkov-task-planner/tarkov-task-planner-main"
-import { TarkovTaskPlannerSettings } from "@/components/apps/tarkov-task-planner/tarkov-task-planner-settings"
-import { TarkovTaskPlannerProvider } from "@/components/apps/tarkov-task-planner/tarkov-task-planner-provider"
 import { NextWatchMain } from "@/components/apps/next-watch/next-watch-main"
+import { AtlasSprintMain } from "@/components/apps/atlas-sprint/atlas-sprint-main"
+import { AtlasSprintSettings } from "@/components/apps/atlas-sprint/atlas-sprint-settings"
 
 interface AppComponents {
   Main: React.ComponentType
@@ -43,12 +42,12 @@ interface AppComponents {
 // 2. Import the components above using React.lazy
 // 3. Add an entry here mapping appId to { Main, Settings? }
 const APP_COMPONENTS: Record<string, AppComponents> = {
+  "atlas-sprint": {
+    Main: AtlasSprintMain,
+    Settings: AtlasSprintSettings,
+  },
   "next-watch": {
     Main: NextWatchMain,
-  },
-  "tarkov-task-planner": {
-    Main: TarkovTaskPlannerMain,
-    Settings: TarkovTaskPlannerSettings,
   },
   encryption: {
     Main: EncryptionTools,
@@ -116,10 +115,6 @@ export function renderApp(app: AppEntry, components: AppComponents): React.React
 
   if (app.appId === "stickr") {
     return <StickrProvider>{shell}</StickrProvider>
-  }
-
-  if (app.appId === "tarkov-task-planner") {
-    return <TarkovTaskPlannerProvider>{shell}</TarkovTaskPlannerProvider>
   }
 
   return shell
