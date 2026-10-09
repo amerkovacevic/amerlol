@@ -5,7 +5,7 @@ import { AppCard } from "@/components/hub/app-card"
 import { motion } from "framer-motion"
 
 export function FeaturedApps() {
-  const featuredApps = getFeaturedApps()
+  const featuredApps = getFeaturedApps().slice(0, 3)
 
   return (
     <section className="container mx-auto px-4 py-20">

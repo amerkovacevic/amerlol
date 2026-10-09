@@ -3,6 +3,7 @@ import { Inter, Space_Grotesk } from "next/font/google"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/components/auth/auth-provider"
+import { IOSAppPromotion } from "@/components/layout/ios-app-banner"
 import { Toaster } from "sonner"
 
 const inter = Inter({
@@ -42,6 +43,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <AuthProvider>
+            <IOSAppPromotion />
             {children}
             <Toaster position="bottom-right" />
           </AuthProvider>
