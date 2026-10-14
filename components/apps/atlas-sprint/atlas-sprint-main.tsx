@@ -28,6 +28,7 @@ export function AtlasSprintMain() {
   const [feedback, setFeedback] = React.useState<string | null>(null)
   const [preferences, setPreferences] = React.useState<AtlasSprintPreferences>({ focusOnCorrectAnswer: true })
   const inputRef = React.useRef<HTMLInputElement>(null)
+  const pendingGuessRef = React.useRef<number | null>(null)
 
   const pool = React.useMemo(() => region === "World" ? COUNTRIES : COUNTRIES.filter((country) => country.continent === region), [region])
   const guessedSet = React.useMemo(() => new Set(guessed), [guessed])
@@ -41,6 +42,10 @@ export function AtlasSprintMain() {
     return () => window.removeEventListener(ATLAS_SPRINT_SETTINGS_EVENT, handleSettingsChange)
   }, [])
 
+  React.useEffect(() => () => {
+    if (pendingGuessRef.current) window.clearTimeout(pendingGuessRef.current)
+  }, [])
+
   React.useEffect(() => {
     if (status !== "playing") return
     if (guessed.length === pool.length) { finish(); return }
@@ -52,6 +57,7 @@ export function AtlasSprintMain() {
   }, [status, guessed.length, pool.length, finish])
 
   const startGame = () => {
+    if (pendingGuessRef.current) window.clearTimeout(pendingGuessRef.current)
     setGuessed([])
     setValue("")
     setFeedback(null)
@@ -60,8 +66,7 @@ export function AtlasSprintMain() {
     window.setTimeout(() => inputRef.current?.focus(), 50)
   }
 
-  const submitGuess = (raw: string) => {
-    setValue(raw)
+  const acceptGuess = (raw: string) => {
     const normalized = normalizeCountry(raw)
     if (!normalized) return
     const match = pool.find((country) => [country.name, ...(country.aliases ?? [])].some((name) => normalizeCountry(name) === normalized))
@@ -74,6 +79,32 @@ export function AtlasSprintMain() {
     setGuessed((current) => [...current, match.name])
     setFeedback(`${match.name} added`)
     setValue("")
+  }
+
+  const updateGuess = (raw: string) => {
+    setValue(raw)
+    if (pendingGuessRef.current) window.clearTimeout(pendingGuessRef.current)
+    const normalized = normalizeCountry(raw)
+    if (!normalized) return
+    const exactMatch = pool.find((country) => [country.name, ...(country.aliases ?? [])].some((name) => normalizeCountry(name) === normalized))
+    if (!exactMatch) return
+    const hasLongerMatch = pool.some((country) =>
+      country.name !== exactMatch.name &&
+      [country.name, ...(country.aliases ?? [])].some((name) => {
+        const candidate = normalizeCountry(name)
+        return candidate.length > normalized.length && candidate.startsWith(normalized)
+      })
+    )
+    if (hasLongerMatch) {
+      pendingGuessRef.current = window.setTimeout(() => acceptGuess(raw), 500)
+      return
+    }
+    acceptGuess(raw)
+  }
+
+  const submitCurrentGuess = () => {
+    if (pendingGuessRef.current) window.clearTimeout(pendingGuessRef.current)
+    acceptGuess(value)
   }
 
   if (status === "setup") return (
@@ -141,7 +172,7 @@ export function AtlasSprintMain() {
         <CardContent>
           <div className="mb-6 h-2 rounded-full bg-secondary"><motion.div className="h-2 rounded-full bg-primary" animate={{ width: `${progress}%` }} /></div>
           <Label htmlFor="country-guess">Country</Label>
-          <div className="mt-2 flex gap-4"><Input ref={inputRef} id="country-guess" value={value} onChange={(event) => submitGuess(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") submitGuess(value) }} placeholder="Start typing..." autoComplete="off" autoFocus /><Button variant="outline" onClick={finish}>Give up</Button></div>
+          <div className="mt-2 flex gap-4"><Input ref={inputRef} id="country-guess" value={value} onChange={(event) => updateGuess(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); submitCurrentGuess() } }} placeholder="Start typing..." autoComplete="off" autoFocus /><Button variant="outline" onClick={finish}>Give up</Button></div>
           <AnimatePresence mode="wait">{feedback && <motion.p key={feedback} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mt-3 text-sm text-muted-foreground" aria-live="polite"><span className="inline-flex items-center"><Check className="mr-1 h-4 w-4 text-primary" />{feedback}</span></motion.p>}</AnimatePresence>
         </CardContent>
       </Card>
