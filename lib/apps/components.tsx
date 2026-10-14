@@ -30,10 +30,13 @@ import { StickrSettings } from "@/components/apps/stickr/stickr-settings"
 import { NextWatchMain } from "@/components/apps/next-watch/next-watch-main"
 import { AtlasSprintMain } from "@/components/apps/atlas-sprint/atlas-sprint-main"
 import { AtlasSprintSettings } from "@/components/apps/atlas-sprint/atlas-sprint-settings"
+import { FootballDeepcutsMain } from "@/components/apps/football-deepcuts/football-deepcuts-main"
+import { FootballDeepcutsLeaderboard } from "@/components/apps/football-deepcuts/football-deepcuts-leaderboard"
 
 interface AppComponents {
   Main: React.ComponentType
   Settings?: React.ComponentType
+  AdditionalTabs?: Array<{ value: string; label: string; Component: React.ComponentType }>
 }
 
 // Registry mapping appId to components
@@ -42,6 +45,10 @@ interface AppComponents {
 // 2. Import the components above using React.lazy
 // 3. Add an entry here mapping appId to { Main, Settings? }
 const APP_COMPONENTS: Record<string, AppComponents> = {
+  "football-deepcuts": {
+    Main: FootballDeepcutsMain,
+    AdditionalTabs: [{ value: "leaderboard", label: "Leaderboard", Component: FootballDeepcutsLeaderboard }],
+  },
   "atlas-sprint": {
     Main: AtlasSprintMain,
     Settings: AtlasSprintSettings,
@@ -105,10 +112,10 @@ export function hasAppComponents(appId: string): boolean {
 
 // Helper to render app (no Suspense needed with direct imports)
 export function renderApp(app: AppEntry, components: AppComponents): React.ReactNode {
-  const { Main, Settings } = components
+  const { Main, Settings, AdditionalTabs = [] } = components
 
   const shell = (
-    <AppShellLayout app={app} settingsContent={Settings ? <Settings /> : undefined}>
+    <AppShellLayout app={app} settingsContent={Settings ? <Settings /> : undefined} additionalTabs={AdditionalTabs.map((tab) => ({ value: tab.value, label: tab.label, content: React.createElement(tab.Component) }))}>
       <Main />
     </AppShellLayout>
   )

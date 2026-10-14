@@ -13,9 +13,10 @@ interface AppShellLayoutProps {
   app: AppEntry
   children: React.ReactNode
   settingsContent?: React.ReactNode
+  additionalTabs?: Array<{ value: string; label: string; content: React.ReactNode }>
 }
 
-export function AppShellLayout({ app, children, settingsContent }: AppShellLayoutProps) {
+export function AppShellLayout({ app, children, settingsContent, additionalTabs = [] }: AppShellLayoutProps) {
   const { user } = useAuth()
   const [authDialogOpen, setAuthDialogOpen] = React.useState(false)
 
@@ -46,13 +47,15 @@ export function AppShellLayout({ app, children, settingsContent }: AppShellLayou
       <Tabs defaultValue="overview" className="w-full">
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
+          {additionalTabs.map((tab) => <TabsTrigger key={tab.value} value={tab.value}>{tab.label}</TabsTrigger>)}
           <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
         <TabsContent value="overview" className="mt-6">
           {children}
         </TabsContent>
+        {additionalTabs.map((tab) => <TabsContent key={tab.value} value={tab.value} className="mt-6">{tab.content}</TabsContent>)}
         <TabsContent value="settings" className="mt-6">
-          {user ? (
+          {user && !user.isAnonymous ? (
             settingsContent || (
               <div className="p-12 text-center rounded-lg border border-dashed">
                 <p className="text-muted-foreground">

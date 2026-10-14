@@ -5,6 +5,7 @@ import {
   Users,
   Gift,
   Trophy,
+  CircleDot,
   Palette,
   Shield,
   BarChart3,
@@ -32,6 +33,17 @@ export interface AppEntry {
 }
 
 export const APP_REGISTRY: AppEntry[] = [
+  {
+    appId: "football-deepcuts",
+    name: "Deepcuts",
+    description: "Daily football trivia where obscure, verified careers score the most",
+    category: "Games",
+    tags: ["football", "soccer", "trivia", "daily", "players", "clubs"],
+    status: "live",
+    icon: CircleDot,
+    accent: "from-emerald-500 via-teal-500 to-blue-600",
+    featured: true,
+  },
   {
     appId: "atlas-sprint",
     name: "Atlas Sprint",

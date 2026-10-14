@@ -1,6 +1,9 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    function isDeepcutsPoints(value) {
+      return value is int && value in [0, 10, 30, 60, 85, 100];
+    }
     // Users can only read/write their own data
     // Document structure: /users/{userId}
     // Fields: username, email, displayName, createdAt, updatedAt
@@ -110,6 +113,87 @@ service cloud.firestore {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
 
+      // Deepcuts results and statistics are written only by trusted server code.
+      // Client access stays closed until the backend exposes narrowly scoped reads.
+      match /footballDeepcutsResults/{resultId} {
+        allow read, write: if false;
+      }
+
+      match /footballDeepcutsStats/{statsId} {
+        allow read, write: if false;
+      }
+
+      // Deepcuts completed games are immutable and keyed by UTC date.
+      match /deepcutsResults/{date} {
+        allow read: if request.auth != null && request.auth.uid == userId;
+        allow create: if request.auth != null &&
+          request.auth.uid == userId &&
+          request.resource.data.keys().hasOnly(['date', 'score', 'answers', 'createdAt']) &&
+          request.resource.data.date == date &&
+          request.resource.data.score is int &&
+          request.resource.data.score >= 0 && request.resource.data.score <= 500 &&
+          request.resource.data.answers is list && request.resource.data.answers.size() == 5 &&
+          isDeepcutsPoints(request.resource.data.answers[0].points) &&
+          isDeepcutsPoints(request.resource.data.answers[1].points) &&
+          isDeepcutsPoints(request.resource.data.answers[2].points) &&
+          isDeepcutsPoints(request.resource.data.answers[3].points) &&
+          isDeepcutsPoints(request.resource.data.answers[4].points) &&
+          request.resource.data.score == request.resource.data.answers[0].points + request.resource.data.answers[1].points + request.resource.data.answers[2].points + request.resource.data.answers[3].points + request.resource.data.answers[4].points &&
+          request.resource.data.createdAt == request.time;
+        allow update, delete: if false;
+      }
+
+      // Lifetime statistics are available only to registered (non-anonymous) users.
+      match /deepcutsStats/{statsId} {
+        allow read: if request.auth != null && request.auth.uid == userId &&
+          request.auth.token.firebase.sign_in_provider != 'anonymous';
+        allow create, update: if request.auth != null &&
+          request.auth.uid == userId && statsId == 'summary' &&
+          request.auth.token.firebase.sign_in_provider != 'anonymous' &&
+          request.resource.data.keys().hasOnly(['gamesPlayed', 'currentStreak', 'longestStreak', 'averageScore', 'bestScore', 'totalPoints', 'hundredPointAnswers', 'perfectGames', 'lastPlayedDate', 'updatedAt']) &&
+          request.resource.data.gamesPlayed is int && request.resource.data.gamesPlayed > 0 &&
+          request.resource.data.currentStreak is int && request.resource.data.currentStreak > 0 &&
+          request.resource.data.longestStreak is int && request.resource.data.longestStreak >= request.resource.data.currentStreak &&
+          request.resource.data.averageScore is int && request.resource.data.averageScore >= 0 && request.resource.data.averageScore <= 500 &&
+          request.resource.data.bestScore is int && request.resource.data.bestScore >= 0 && request.resource.data.bestScore <= 500 &&
+          request.resource.data.totalPoints is int && request.resource.data.totalPoints >= 0 &&
+          request.resource.data.hundredPointAnswers is int && request.resource.data.hundredPointAnswers >= 0 &&
+          request.resource.data.perfectGames is int && request.resource.data.perfectGames >= 0 &&
+          existsAfter(/databases/$(database)/documents/users/$(userId)/deepcutsResults/$(request.resource.data.lastPlayedDate)) &&
+          request.resource.data.updatedAt == request.time;
+        allow delete: if false;
+      }
+
+    }
+
+    // Isolated Deepcuts namespace. Admin imports, private accepted answers,
+    // challenge publication, and scoring must use the Admin SDK (which bypasses rules).
+    match /footballDeepcuts/{document=**} {
+      allow read, write: if false;
+    }
+
+    // Public, opt-in Deepcuts leaderboard. One immutable entry per UID and UTC date.
+    match /deepcutsDailyLeaderboard/{entryId} {
+      allow read: if true;
+      allow create: if request.auth != null &&
+        entryId == request.resource.data.date + '_' + request.auth.uid &&
+        request.resource.data.keys().hasOnly(['userId', 'displayName', 'date', 'score', 'questionScores', 'registered', 'createdAt']) &&
+        request.resource.data.userId == request.auth.uid &&
+        request.resource.data.displayName is string &&
+        request.resource.data.displayName.size() >= 2 && request.resource.data.displayName.size() <= 24 &&
+        request.resource.data.date is string && request.resource.data.date.matches('^\\d{4}-\\d{2}-\\d{2}$') &&
+        request.resource.data.score is int && request.resource.data.score >= 0 && request.resource.data.score <= 500 &&
+        request.resource.data.questionScores is list && request.resource.data.questionScores.size() == 5 &&
+        isDeepcutsPoints(request.resource.data.questionScores[0]) &&
+        isDeepcutsPoints(request.resource.data.questionScores[1]) &&
+        isDeepcutsPoints(request.resource.data.questionScores[2]) &&
+        isDeepcutsPoints(request.resource.data.questionScores[3]) &&
+        isDeepcutsPoints(request.resource.data.questionScores[4]) &&
+        request.resource.data.score == request.resource.data.questionScores[0] + request.resource.data.questionScores[1] + request.resource.data.questionScores[2] + request.resource.data.questionScores[3] + request.resource.data.questionScores[4] &&
+        request.resource.data.registered == (request.auth.token.firebase.sign_in_provider != 'anonymous') &&
+        request.resource.data.createdAt == request.time &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)/deepcutsResults/$(request.resource.data.date));
+      allow update, delete: if false;
     }
     
     // Color Palettes collection
