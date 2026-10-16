@@ -9,12 +9,13 @@ import {
   DialogContent,
   DialogDescription,
   DialogFooter,
-  DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
 
 const APP_STORE_URL =
   "https://apps.apple.com/us/app/flickfeed-social/id6755321974"
+const DISMISSED_STORAGE_KEY = "amerlol:flickfeed-promotion-dismissed"
+let dismissedThisSession = false
 
 function isIOSDevice() {
   const userAgent = window.navigator.userAgent
@@ -26,15 +27,49 @@ function isIOSDevice() {
   return isAppleMobileDevice || isModernIPad
 }
 
-export function IOSAppPromotion() {
-  const [isOpen, setIsOpen] = React.useState(false)
+function canShowPromotion() {
+  try {
+    return isIOSDevice() && !dismissedThisSession &&
+      window.localStorage.getItem(DISMISSED_STORAGE_KEY) !== "true"
+  } catch {
+    // Avoid repeatedly advertising when the browser blocks preference storage.
+    return false
+  }
+}
 
-  React.useEffect(() => {
-    setIsOpen(isIOSDevice())
-  }, [])
+function subscribeToDismissal(onChange: () => void) {
+  const onStorage = (event: StorageEvent) => {
+    if (event.key === DISMISSED_STORAGE_KEY && event.newValue === "true") {
+      dismissedThisSession = true
+      onChange()
+    }
+  }
+  window.addEventListener("storage", onStorage)
+  return () => window.removeEventListener("storage", onStorage)
+}
+
+export function IOSAppPromotion() {
+  const [isOpen, setIsOpen] = React.useState(true)
+  const canShow = React.useSyncExternalStore(
+    subscribeToDismissal,
+    canShowPromotion,
+    () => false
+  )
+
+  function handleOpenChange(open: boolean) {
+    if (!open) {
+      dismissedThisSession = true
+      try {
+        window.localStorage.setItem(DISMISSED_STORAGE_KEY, "true")
+      } catch {
+        // The in-memory preference still covers navigation in this session.
+      }
+    }
+    setIsOpen(open)
+  }
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={canShow && isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="w-[calc(100%-2rem)] max-w-md overflow-hidden rounded-2xl border-primary/20 p-0 shadow-2xl">
         <div className="h-2 bg-primary" />
         <div className="space-y-6 p-6 pt-3 sm:p-8 sm:pt-5">

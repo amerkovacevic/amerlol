@@ -1,6 +1,6 @@
 # Deepcuts architecture
 
-This document describes the Milestone 1 foundation. The UI is intentionally non-playable until verified appearance data and trusted server execution are available.
+Deepcuts currently runs as a playable static daily game. The stricter verified-data/server architecture remains separate from this provisional mode.
 
 ## Firestore namespace
 
@@ -16,15 +16,15 @@ The initial `WikidataProvider` accepts an explicit club-QID allowlist and import
 
 ## Interim static game
 
-Until a trusted API is selected, `scripts/generate-deepcuts-database.mjs` builds `public/data/deepcuts/database.json` from an allowlist of 20 validated major European clubs. An eligible provisional relationship must belong to an association-football player and have a positive Wikidata `number of matches played` (`P1350`) qualifier on the club-membership (`P54`) statement. The static generator creates two-club, club-and-nationality, club-era, and three-club career-path questions.
+Until a trusted API is selected, `scripts/generate-deepcuts-database.mjs` builds `public/data/deepcuts/database.json` from an allowlist of 20 validated major European clubs. An eligible provisional relationship must belong to an association-football player and have a positive Wikidata `number of matches played` (`P1350`) qualifier on the club-membership (`P54`) statement. The static generator creates two-club, club-and-citizenship, and three-club career-path questions. Era questions are disabled because membership dates do not prove appearances in a decade. Citizenship questions explicitly use citizenship, not national-team representation.
 
-The browser selects the same five questions for everyone from the UTC date, searches the entire player catalog, locks one answer per question, and stores completion locally. This is an interim mode: the downloaded JSON necessarily exposes answers, users can alter local results, Wikidata match counts can represent league rather than total competitive appearances, and results are not suitable for verified leaderboards. Regenerate with `npm run generate:deepcuts-data`; do not present this dataset as fully verified production data.
+The browser selects the same five questions for everyone from the UTC date, searches the entire player catalog, allows three distinct guesses per question, and stores completion locally. This is an interim mode: the downloaded JSON necessarily exposes answers, users can alter local results, Wikidata match counts can represent league rather than total competitive appearances, and results are not suitable for verified leaderboards. Refresh current squads with `npm run refresh:deepcuts-rosters`, then run `npm run validate:deepcuts-data`. A full Wikidata rebuild uses `npm run generate:deepcuts-data` and must be followed by the roster refresh. Do not present this dataset as fully verified production data.
 
 Guest play uses Firebase Anonymous Authentication silently, so no registration screen is required. Completed games are immutable at `users/{uid}/deepcutsResults/{utcDate}`. Players may optionally publish one immutable entry at `deepcutsDailyLeaderboard/{utcDate}_{uid}` after choosing a 2–24 character display name. Registered users additionally maintain `users/{uid}/deepcutsStats/summary`. Anonymous Authentication must be enabled in the Firebase console before guest leaderboard publishing will work.
 
 Firestore rules enforce UID ownership, one create per date, immutable results and leaderboard entries, score bounds, five question scores, and total consistency. Since accepted answers live in public static JSON, client-derived scores remain tamperable; the leaderboard must be considered provisional until score validation moves to a trusted backend.
 
-Wikidata is a useful open source for stable QIDs, aliases, dates, nationalities, and club membership leads under CC0. It does not consistently establish senior competitive appearances, so membership statements alone are insufficient. A production importer needs a second source with explicit competitive totals and commercial-reuse terms, plus an admin verification queue and retained attribution. No real answer dataset is included in this milestone.
+Wikidata is a useful open source for stable QIDs, aliases, dates, nationalities, and club membership leads under CC0. It does not consistently establish senior competitive appearances, so membership statements alone are insufficient. A production importer needs a second source with explicit competitive totals and commercial-reuse terms, plus an admin verification queue and retained attribution. The static answer dataset is included in `public/data/deepcuts/database.json`.
 
 ## Scoring and generation
 
@@ -38,4 +38,12 @@ Question-bank generation discovers every club pair represented by verified appea
 
 ## Required production backend
 
-The repository currently uses Next.js static export and Firebase Hosting, with no server runtime. Before enabling play, add an approved trusted backend (for example callable HTTPS Cloud Functions or a separately hosted API) that verifies Firebase ID tokens, rate-limits search/submission, keeps answer lists private, performs atomic idempotent writes, and derives totals/statistics. Deployment and production infrastructure changes require explicit approval.
+The repository currently uses Next.js static export and Firebase Hosting, with no server runtime. For authoritative score validation, add a trusted backend (for example callable HTTPS Cloud Functions or a separately hosted API) that verifies Firebase ID tokens, rate-limits search/submission, keeps answer lists private, performs atomic idempotent writes, and derives totals/statistics. Deployment and production infrastructure changes require explicit approval.
+
+## Roster refresh and attempts
+
+The October 16, 2026 roster snapshot covers all 20 clubs using ESPN current 2026–27 league rosters, retaining source URL, retrieval date, season, player IDs and observed appearance counts. Wikidata P3681 reconciles provider identities; English aliases and citizenship labels are imported for roster players. Players with no recorded appearances remain searchable but roster registration alone never makes them accepted answers. Current-season appearance evidence fills missing club relationships, retaining its season scope rather than claiming a career total. Historical Wikidata records retain their original retrieval dates. These sources are not a complete independently audited match database, and their counts have different scopes.
+
+The shared question builder produces the answer bank. Validation checks every accepted answer against its player/club relationships, verifies citizenship criteria and scores, and detects omitted source-eligible answers. The roster refresh validates the entire result before writing and fails if any roster, provider identity, or season is invalid. It does not silently publish a partial refresh.
+
+Wrong guesses remain on the same question until the third miss, which automatically advances with zero points. A correct guess ends the question immediately and shows its source-scoped match counts before continuing. Repeated players are excluded from suggestions and rejected by the attempt helper. Draft attempts survive reloads in local storage; completed results retain guess history and remain compatible with existing result documents. Gameplay starts without waiting for Firebase identity initialization.

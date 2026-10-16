@@ -8,6 +8,45 @@ import { buildWikidataClubQuery, mapWikidataRows } from "../lib/football-deepcut
 import { selectDailyQuestions } from "../lib/football-deepcuts/daily-selector.ts"
 import { buildPlayerSearchIndex, searchPlayers } from "../lib/football-deepcuts/player-search.ts"
 import { challengeNumber, selectStaticDailyQuestions } from "../lib/football-deepcuts/static-game.ts"
+import { recordGuess } from "../lib/football-deepcuts/attempts.ts"
+import { readFile } from "node:fs/promises"
+import { validateDatabase } from "../scripts/validate-deepcuts-database.mjs"
+
+test("three-guess rule rejects repeats and stops only on success or the third miss", () => {
+  const first = recordGuess([], { playerId: "a", playerName: "A" }, false)
+  assert.equal(first.finished, false)
+  assert.throws(() => recordGuess(first.guesses, { playerId: "a", playerName: "A" }, false), /already tried/)
+  const second = recordGuess(first.guesses, { playerId: "b", playerName: "B" }, false)
+  assert.equal(second.remaining, 1)
+  assert.equal(second.finished, false)
+  const third = recordGuess(second.guesses, { playerId: "c", playerName: "C" }, false)
+  assert.equal(third.finished, true)
+  assert.equal(third.remaining, 0)
+  assert.throws(() => recordGuess(third.guesses, { playerId: "d", playerName: "D" }, true), /No guesses/)
+  assert.equal(recordGuess(first.guesses, { playerId: "b", playerName: "B" }, true).finished, true)
+})
+
+test("database validation detects unsupported answers, omitted answers, wrong scores and missing rosters", async () => {
+  const database = JSON.parse(await readFile(new URL("../public/data/deepcuts/database.json", import.meta.url), "utf8"))
+  assert.deepEqual(validateDatabase(database), [])
+  const badScore = structuredClone(database)
+  badScore.questions[0].answers[0].points = badScore.questions[0].answers[0].points === 100 ? 10 : 100
+  assert.ok(validateDatabase(badScore).some(error => error.includes("Incorrect rarity score")))
+  const unsupported = structuredClone(database)
+  unsupported.questions[0].answers[0].appearances[0] += 1
+  assert.ok(validateDatabase(unsupported).some(error => error.includes("matching appearance evidence")))
+  const omitted = structuredClone(database)
+  omitted.questions[0].answers.pop()
+  omitted.questions[0].answerCount -= 1
+  assert.ok(validateDatabase(omitted).some(error => error.includes("complete source-derived answer sets")))
+  const missingRoster = structuredClone(database)
+  missingRoster.rosters.pop()
+  assert.ok(validateDatabase(missingRoster).some(error => error.includes("Missing current club rosters")))
+  const wrongCitizenship = structuredClone(database)
+  const question = wrongCitizenship.questions.find(question => question.type === "club_nationality")
+  question.nationality = "Invalid citizenship"
+  assert.ok(validateDatabase(wrongCitizenship).some(error => error.includes("Citizenship mismatch")))
+})
 
 test("scores every configured boundary from the smaller appearance count", () => {
   for (const [count, expected] of [[1, 100], [4, 100], [5, 85], [19, 85], [20, 60], [49, 60], [50, 30], [99, 30], [100, 10], [500, 10]]) {

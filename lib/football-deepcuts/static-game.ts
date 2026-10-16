@@ -1,6 +1,6 @@
 export type StaticQuestionType = "club_pair" | "club_nationality" | "club_era" | "three_clubs"
 
-export interface StaticAnswer { playerId: string; points: number; appearances: number[] }
+export interface StaticAnswer { playerId: string; points: number; appearances: number[]; appearanceScopes?: string[] }
 export interface StaticQuestion { id: string; type: StaticQuestionType; prompt: string; clubIds: string[]; answerCount: number; answers: StaticAnswer[]; nationality?: string; decade?: number }
 
 function hash(value: string): number {

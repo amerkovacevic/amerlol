@@ -1,3 +1,5 @@
+import { buildQuestions } from "./deepcuts-questions.mjs"
+import { validateDatabase } from "./validate-deepcuts-database.mjs"
 import { mkdir, writeFile } from "node:fs/promises"
 import { dirname, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -14,21 +16,23 @@ const output = resolve(dirname(fileURLToPath(import.meta.url)), "../public/data/
 const retrievedAt = new Date().toISOString()
 
 function queryFor(qid, offset) {
-  return `SELECT ?player ?playerLabel ?club ?clubLabel ?countryLabel ?dateOfBirth ?nationalityLabel ?matches ?start ?end WHERE {
+  return `SELECT ?player ?playerLabel ?club ?clubLabel ?countryLabel ?dateOfBirth ?nationalityLabel ?alias ?statement ?matches ?start ?end WHERE {
   VALUES ?club { wd:${qid} }
   ?player wdt:P106/wdt:P279* wd:Q937857; p:P54 ?membership.
-  ?membership ps:P54 ?club; pq:P1350 ?matches.
-  FILTER(?matches > 0)
+  ?membership ps:P54 ?club.
+  BIND(?membership AS ?statement)
+  OPTIONAL { ?membership pq:P1350 ?matches. FILTER(?matches > 0) }
+  OPTIONAL { ?player skos:altLabel ?alias. FILTER(LANG(?alias) = "en") }
   OPTIONAL { ?membership pq:P580 ?start. } OPTIONAL { ?membership pq:P582 ?end. }
   OPTIONAL { ?player wdt:P569 ?dateOfBirth. } OPTIONAL { ?player wdt:P27 ?nationality. }
   OPTIONAL { ?club wdt:P17 ?country. }
   SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
-} ORDER BY ?player ?start ?end LIMIT 400 OFFSET ${offset}`
+} ORDER BY ?player ?statement ?nationality ?alias ?dateOfBirth ?start ?end ?matches LIMIT 400 OFFSET ${offset}`
 }
 
 async function fetchPage(qid, displayName, offset, attempt = 1) {
   const url = `${ENDPOINT}?query=${encodeURIComponent(queryFor(qid, offset))}&format=json`
-  const response = await fetch(url, { headers: { Accept: "application/sparql-results+json", "User-Agent": "amer.lol-deepcuts/0.1 (static database generator)" } })
+  const response = await fetch(url, { headers: { Accept: "application/sparql-results+json", "User-Agent": "Deepcuts/1.0 (https://amer.lol; roster validation)" }, signal: AbortSignal.timeout(60000) })
   if (!response.ok) {
     if (attempt < 4 && [429, 500, 502, 503, 504].includes(response.status)) {
       await new Promise((resolve) => setTimeout(resolve, attempt * 1000))
@@ -77,13 +81,15 @@ const relationshipMap = new Map()
 for (const row of rows) {
   const playerId = row.player.value.split("/").pop()
   const clubId = row.club.value.split("/").pop()
-  const count = Number(row.matches.value)
-  if (!playerId || !clubMap.has(clubId) || !Number.isInteger(count) || count < 1) continue
+  const count = Number(row.matches?.value)
+  if (!playerId || !clubMap.has(clubId)) continue
   const player = players.get(playerId) ?? { id: playerId, name: row.playerLabel.value, aliases: [], nationalities: [], birthYear: year(row.dateOfBirth?.value), sourceUrl: row.player.value }
   if (row.nationalityLabel?.value && !player.nationalities.includes(row.nationalityLabel.value)) player.nationalities.push(row.nationalityLabel.value)
+  if (row.alias?.value && !player.aliases.includes(row.alias.value)) player.aliases.push(row.alias.value)
   players.set(playerId, player)
+  if (!Number.isInteger(count) || count < 1) continue
   if (row.countryLabel?.value) clubMap.get(clubId).country = row.countryLabel.value
-  const key = `${playerId}:${clubId}`
+  const key = `${playerId}:${clubId}:${row.statement?.value ?? `${row.start?.value}:${row.end?.value}`}`
   const existing = relationshipMap.get(key)
   relationshipMap.set(key, {
     playerId, clubId,
@@ -93,58 +99,22 @@ for (const row of rows) {
     source: { provider: "wikidata", playerQid: playerId, property: "P54/P1350", retrievedAt },
   })
 }
-const appearances = [...relationshipMap.values()].map((row) => ({ ...row, startYear: row.startYear === 9999 ? undefined : row.startYear, endYear: row.endYear || undefined }))
-const byPlayer = new Map()
-const byClub = new Map()
-for (const row of appearances) {
-  const career = byPlayer.get(row.playerId) ?? []; career.push(row); byPlayer.set(row.playerId, career)
-  const squad = byClub.get(row.clubId) ?? []; squad.push(row); byClub.set(row.clubId, squad)
+const totals = new Map()
+for (const row of relationshipMap.values()) {
+  const key = row.playerId + ':' + row.clubId
+  const total = totals.get(key)
+  if (total) total.appearances += row.appearances
+  else totals.set(key, { ...row })
 }
-const questions = []
-function addQuestion(question, answers, minimum) {
-  const unique = [...new Map(answers.map((answer) => [answer.playerId, answer])).values()]
-  if (unique.length < minimum) return
-  questions.push({ ...question, answerCount: unique.length, answers: unique.sort((a, b) => a.playerId.localeCompare(b.playerId)) })
-}
-
-for (let a = 0; a < CLUBS.length; a++) for (let b = a + 1; b < CLUBS.length; b++) {
-  const [clubAId, clubA] = CLUBS[a], [clubBId, clubB] = CLUBS[b]
-  const other = new Map((byClub.get(clubBId) ?? []).map((row) => [row.playerId, row]))
-  const answers = (byClub.get(clubAId) ?? []).filter((row) => other.has(row.playerId)).map((row) => {
-    const second = other.get(row.playerId); return { playerId: row.playerId, points: points(Math.min(row.appearances, second.appearances)), appearances: [row.appearances, second.appearances] }
-  })
-  addQuestion({ id: `clubs-${clubAId}-${clubBId}`, type: "club_pair", prompt: `Name a player who made a senior appearance for both ${clubA} and ${clubB}.`, clubIds: [clubAId, clubBId] }, answers, 8)
-}
-
-for (const [clubId, clubName] of CLUBS) {
-  const nationalityGroups = new Map()
-  for (const row of byClub.get(clubId) ?? []) for (const nationality of players.get(row.playerId)?.nationalities ?? []) {
-    const group = nationalityGroups.get(nationality) ?? []; group.push({ playerId: row.playerId, points: points(row.appearances), appearances: [row.appearances] }); nationalityGroups.set(nationality, group)
-  }
-  for (const [nationality, answers] of nationalityGroups) addQuestion({ id: slug("nationality", clubId, nationality), type: "club_nationality", prompt: `Name a ${nationality} player who made a senior appearance for ${clubName}.`, clubIds: [clubId], nationality }, answers, 6)
-  for (const decade of [1980, 1990, 2000, 2010, 2020]) {
-    const answers = (byClub.get(clubId) ?? []).filter((row) => row.startYear && row.endYear && row.startYear <= decade + 9 && row.endYear >= decade).map((row) => ({ playerId: row.playerId, points: points(row.appearances), appearances: [row.appearances] }))
-    addQuestion({ id: `era-${clubId}-${decade}`, type: "club_era", prompt: `Name a player who made a senior appearance for ${clubName} during the ${decade}s.`, clubIds: [clubId], decade }, answers, 8)
-  }
-}
-
-const tripleGroups = new Map()
-for (const [playerId, career] of byPlayer) {
-  const eligible = career.filter((row) => clubMap.has(row.clubId)).sort((a, b) => a.clubId.localeCompare(b.clubId))
-  for (let a = 0; a < eligible.length; a++) for (let b = a + 1; b < eligible.length; b++) for (let c = b + 1; c < eligible.length; c++) {
-    const trio = [eligible[a], eligible[b], eligible[c]], id = trio.map((row) => row.clubId).join("-")
-    const group = tripleGroups.get(id) ?? []; group.push({ playerId, points: points(Math.min(...trio.map((row) => row.appearances))), appearances: trio.map((row) => row.appearances) }); tripleGroups.set(id, group)
-  }
-}
-for (const [id, answers] of tripleGroups) {
-  const clubIds = id.split("-"); const names = clubIds.map((clubId) => clubMap.get(clubId).name)
-  addQuestion({ id: `path-${id}`, type: "three_clubs", prompt: `Name a player who made a senior appearance for ${names[0]}, ${names[1]}, and ${names[2]}.`, clubIds }, answers, 4)
-}
+const appearances = [...totals.values()].map(({startYear, endYear, ...row}) => row)
+const questions = buildQuestions({ clubs: [...clubMap.values()], players: [...players.values()], appearances })
 
 const database = {
   meta: { version: 1, generatedAt: retrievedAt, provisional: true, license: "Wikidata structured data: CC0-1.0", source: "https://www.wikidata.org", eligibility: "Positive P1350 match-count qualifier on a P54 club-membership statement. Counts may represent league rather than all competitions." },
   clubs: [...clubMap.values()], players: [...players.values()].sort((a, b) => a.name.localeCompare(b.name)), appearances, questions,
 }
+const errors = validateDatabase(database, { requireRosters: false })
+if (errors.length) throw new Error(errors.join("\n"))
 await mkdir(dirname(output), { recursive: true })
 await writeFile(output, `${JSON.stringify(database)}\n`, "utf8")
 process.stdout.write(`Wrote ${database.players.length} players, ${appearances.length} relationships, and ${questions.length} questions to ${output}\n`)

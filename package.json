@@ -17,7 +17,8 @@
     "generate:settings-rules": "node --experimental-strip-types scripts/generate-settings-rules.mjs",
     "check:settings-rules": "node --experimental-strip-types scripts/generate-settings-rules.mjs --check",
     "check:foundation": "npm run check:settings-rules && npm run lint:foundation && npm run test:foundation && npm run test:secret-santa && npm run test:football-deepcuts && npm run validate:deepcuts-data && tsc --noEmit && npm run build",
-    "lint:foundation": "eslint components/apps/settings-provider.tsx components/apps/app-settings-panel.tsx components/apps/stickr/stickr-provider.tsx lib/apps/settings.ts lib/apps/game-membership.ts lib/apps/text-diff.ts lib/apps/timezone.ts lib/apps/watchlist.ts tests/app-settings.test.tsx tests/hub-apps.test.tsx tests/firestore.test.ts"
+    "lint:foundation": "eslint components/apps/settings-provider.tsx components/apps/app-settings-panel.tsx components/apps/stickr/stickr-provider.tsx lib/apps/settings.ts lib/apps/game-membership.ts lib/apps/text-diff.ts lib/apps/timezone.ts lib/apps/watchlist.ts tests/app-settings.test.tsx tests/hub-apps.test.tsx tests/firestore.test.ts",
+    "refresh:deepcuts-rosters": "node scripts/refresh-deepcuts-rosters.mjs"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.0.5",
