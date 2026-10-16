@@ -1,8 +1,9 @@
 "use client"
 
 import * as React from "react"
+import { SignInReminder } from "@/components/auth/sign-in-reminder"
 import { motion } from "framer-motion"
-import { getAllApps, getFeaturedApps, getAppsByCategory, searchApps, type AppCategory } from "@/lib/apps/registry"
+import { getAllApps, searchApps, type AppCategory } from "@/lib/apps/registry"
 import { AppCard } from "@/components/hub/app-card"
 import { FilterBar } from "@/components/hub/filter-bar"
 import { EmptyState } from "@/components/hub/empty-state"
@@ -22,7 +23,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 
-type SortOption = "featured" | "new" | "popular"
+type SortOption = "featured" | "name"
 
 export default function HubPage() {
   const { user, loading: authLoading, signOut } = useAuth()
@@ -33,19 +34,11 @@ export default function HubPage() {
   const [username, setUsername] = React.useState<string | null>(null)
 
   const filteredApps = React.useMemo(() => {
-    let apps = searchQuery
-      ? searchApps(searchQuery)
-      : selectedCategory === "all"
-      ? getAllApps()
-      : getAppsByCategory(selectedCategory as AppCategory)
-
-    if (sortBy === "new") {
-      apps = [...apps].sort((a, b) => {
-        const aFeatured = a.featured ? 1 : 0
-        const bFeatured = b.featured ? 1 : 0
-        return bFeatured - aFeatured
-      })
-    }
+    let apps = searchQuery.trim() ? searchApps(searchQuery.trim()) : getAllApps()
+    if (selectedCategory !== "all") apps = apps.filter((app) => app.category === selectedCategory)
+    apps = [...apps].sort((a, b) => sortBy === "name"
+      ? a.name.localeCompare(b.name)
+      : Number(Boolean(b.featured)) - Number(Boolean(a.featured)))
 
     return apps
   }, [searchQuery, selectedCategory, sortBy])
@@ -94,21 +87,10 @@ export default function HubPage() {
     }
   }
 
-  if (authLoading) {
-    return (
-      <main className="container mx-auto px-4 py-12">
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="text-center">
-            <p className="text-muted-foreground">Loading...</p>
-          </div>
-        </div>
-      </main>
-    )
-  }
 
   return (
     <main className="container mx-auto px-4 py-12">
-      <div className="flex items-center justify-between mb-12">
+      <div className="flex flex-col items-start gap-6 sm:flex-row sm:items-center sm:justify-between mb-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -127,12 +109,12 @@ export default function HubPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
         >
-          {user ? (
+          {!authLoading && user && !user.isAnonymous ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="gap-2">
+                <Button variant="outline" className="max-w-full gap-2">
                   <User className="h-4 w-4" />
-                  {displayName}
+                  <span className="max-w-[200px] truncate">{displayName}</span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
@@ -152,13 +134,14 @@ export default function HubPage() {
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <Button onClick={() => setAuthDialogOpen(true)}>
+            <Button disabled={authLoading} onClick={() => setAuthDialogOpen(true)}>
               Sign In
             </Button>
           )}
         </motion.div>
       </div>
 
+      <div className="mb-6"><SignInReminder /></div>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -175,6 +158,7 @@ export default function HubPage() {
         />
       </motion.div>
 
+      <p role="status" className="mb-4 text-sm text-muted-foreground">{filteredApps.length} {filteredApps.length === 1 ? "app" : "apps"} found</p>
       {filteredApps.length === 0 ? (
         <EmptyState />
       ) : (

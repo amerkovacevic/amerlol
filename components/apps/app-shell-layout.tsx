@@ -1,13 +1,12 @@
 "use client"
 
+import { SignInReminder } from "@/components/auth/sign-in-reminder"
 import * as React from "react"
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { AppEntry } from "@/lib/apps/registry"
-import { useAuth } from "@/components/auth/auth-provider"
-import { AuthDialog } from "@/components/auth/auth-dialog"
 
 interface AppShellLayoutProps {
   app: AppEntry
@@ -17,8 +16,6 @@ interface AppShellLayoutProps {
 }
 
 export function AppShellLayout({ app, children, settingsContent, additionalTabs = [] }: AppShellLayoutProps) {
-  const { user } = useAuth()
-  const [authDialogOpen, setAuthDialogOpen] = React.useState(false)
 
   return (
     <main className="container mx-auto px-4 py-8">
@@ -44,41 +41,28 @@ export function AppShellLayout({ app, children, settingsContent, additionalTabs 
         </div>
       </div>
 
+      <div className="mb-6"><SignInReminder /></div>
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList>
+        <TabsList aria-label={`${app.name} sections`} className="h-auto min-h-10 max-w-full flex-wrap justify-start">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           {additionalTabs.map((tab) => <TabsTrigger key={tab.value} value={tab.value}>{tab.label}</TabsTrigger>)}
           <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
-        <TabsContent value="overview" className="mt-6">
+        <TabsContent value="overview" forceMount className="mt-6 data-[state=inactive]:hidden">
           {children}
         </TabsContent>
         {additionalTabs.map((tab) => <TabsContent key={tab.value} value={tab.value} className="mt-6">{tab.content}</TabsContent>)}
         <TabsContent value="settings" className="mt-6">
-          {user && !user.isAnonymous ? (
-            settingsContent || (
+          {settingsContent || (
               <div className="p-12 text-center rounded-lg border border-dashed">
                 <p className="text-muted-foreground">
                   Settings panel coming soon
                 </p>
               </div>
-            )
-          ) : (
-            <div className="p-12 text-center rounded-lg border border-dashed">
-              <div className="space-y-4">
-                <p className="text-muted-foreground">
-                  Please sign in to access settings.
-                </p>
-                <Button onClick={() => setAuthDialogOpen(true)}>
-                  Sign In
-                </Button>
-              </div>
-            </div>
-          )}
+            )}
         </TabsContent>
       </Tabs>
 
-      <AuthDialog open={authDialogOpen} onOpenChange={setAuthDialogOpen} />
     </main>
   )
 }

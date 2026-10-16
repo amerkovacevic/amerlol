@@ -1,12 +1,14 @@
 "use client"
 
 import * as React from "react"
+import { useAppSettings } from "@/components/apps/settings-provider"
+
 import { motion, AnimatePresence } from "framer-motion"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { 
+import {
   Trophy,
   Clock,
   Target,
@@ -134,7 +136,7 @@ export function AmerGauntletMain() {
   const [authDialogOpen, setAuthDialogOpen] = React.useState(false)
   const [loading, setLoading] = React.useState(true)
   const [activeTab, setActiveTab] = React.useState<"play" | "leaderboard" | "stats">("play")
-  
+
   // Game state
   const [dailyWord, setDailyWord] = React.useState("")
   const [currentGuess, setCurrentGuess] = React.useState("")
@@ -148,60 +150,16 @@ export function AmerGauntletMain() {
   const [hintRevealed, setHintRevealed] = React.useState(false)
   const [showHint, setShowHint] = React.useState(false)
   const [todayResult, setTodayResult] = React.useState<GameResult | null>(null)
-  
+
   // Leaderboard state
   const [dailyLeaderboard, setDailyLeaderboard] = React.useState<LeaderboardEntry[]>([])
   const [allTimeLeaderboard, setAllTimeLeaderboard] = React.useState<LeaderboardEntry[]>([])
   const [userStats, setUserStats] = React.useState<UserStats | null>(null)
   const [history, setHistory] = React.useState<GameResult[]>([])
-  const [settings, setSettings] = React.useState({
-    showTimer: true,
-    showHints: true,
-    soundEffects: false,
-    animations: true,
-    difficulty: "normal" as "easy" | "normal" | "hard",
-    autoSubmit: false,
-  })
+  const settings = useAppSettings("amer-gauntlet")
 
   const today = new Date()
   const todayStr = today.toISOString().split('T')[0]
-
-  // Load settings
-  React.useEffect(() => {
-    if (!user) {
-      setSettings({
-        showTimer: true,
-        showHints: true,
-        soundEffects: false,
-        animations: true,
-        difficulty: "normal",
-        autoSubmit: false,
-      })
-      return
-    }
-
-    const loadSettings = async () => {
-      try {
-        const settingsRef = doc(db, "users", user.uid, "amerGauntletSettings", "default")
-        const settingsDoc = await getDoc(settingsRef)
-        if (settingsDoc.exists()) {
-          const data = settingsDoc.data()
-          setSettings({
-            showTimer: data.showTimer ?? true,
-            showHints: data.showHints ?? true,
-            soundEffects: data.soundEffects ?? false,
-            animations: data.animations ?? true,
-            difficulty: data.difficulty ?? "normal",
-            autoSubmit: data.autoSubmit ?? false,
-          })
-        }
-      } catch (error) {
-        console.error("Failed to load settings:", error)
-      }
-    }
-
-    loadSettings()
-  }, [user])
 
   // Initialize game
   React.useEffect(() => {
@@ -433,10 +391,10 @@ export function AmerGauntletMain() {
       // Convert to uppercase for consistency
       const guess = currentGuess.toUpperCase()
       const result = checkGuess(guess, dailyWord)
-      
+
       const newGuesses = [...guesses, guess]
       const newResults = [...results, result]
-      
+
       setGuesses(newGuesses)
       setResults(newResults)
       setCurrentGuess("")
@@ -495,7 +453,7 @@ export function AmerGauntletMain() {
       // Update daily leaderboard
       const userDoc = await getDoc(doc(db, "users", user.uid))
       const displayName = userDoc.data()?.displayName || "Anonymous"
-      
+
       const dailyLeaderboardRef = doc(db, "amerGauntletDailyLeaderboard", `${todayStr}_${user.uid}`)
       await setDoc(dailyLeaderboardRef, {
         userId: user.uid,
@@ -543,8 +501,8 @@ export function AmerGauntletMain() {
         const newBestStreak = Math.max(newStreak, stats.bestStreak || 0)
         const newTotalScore = (stats.totalScore || 0) + score
         const newAverageScore = Math.floor(newTotalScore / newTotalGames)
-        const newFastestTime = stats.fastestTime && stats.fastestTime > 0 
-          ? Math.min(stats.fastestTime, finalTime) 
+        const newFastestTime = stats.fastestTime && stats.fastestTime > 0
+          ? Math.min(stats.fastestTime, finalTime)
           : finalTime
         const newPerfectGames = attempts === 1 ? (stats.perfectGames || 0) + 1 : (stats.perfectGames || 0)
 
@@ -614,30 +572,30 @@ export function AmerGauntletMain() {
       toast.error("No completed game to share")
       return
     }
-    
+
     // Use saved results from state, or fallback to empty array
     const resultsToShare = results.length > 0 ? results : []
-    
+
     if (resultsToShare.length === 0) {
       toast.error("Unable to share: results not available")
       return
     }
-    
+
     const emojiMap: Record<'correct' | 'present' | 'absent', string> = {
       correct: '🟩',
       present: '🟨',
       absent: '⬛',
     }
-    
+
     let shareText = `Amer Gauntlet ${todayStr}\n`
     shareText += `Attempts: ${todayResult.attempts}/6\n`
     shareText += `Time: ${formatTime(todayResult.time)}\n`
     shareText += `Score: ${todayResult.score}\n\n`
-    
+
     resultsToShare.forEach((result) => {
       shareText += result.map(r => emojiMap[r]).join('') + '\n'
     })
-    
+
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(shareText).then(() => {
         toast.success("Result copied to clipboard!")
@@ -687,7 +645,7 @@ export function AmerGauntletMain() {
     >
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Amer Gauntlet</h1>
+          <h2 className="text-2xl font-bold">Today’s challenge</h2>
           <p className="text-muted-foreground">Daily puzzle challenge - {todayStr}</p>
         </div>
         {user && userStats && (
@@ -834,8 +792,6 @@ export function AmerGauntletMain() {
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
                           if (settings.autoSubmit && currentGuess.length === dailyWord.length) {
-                            submitGuess()
-                          } else if (!settings.autoSubmit) {
                             submitGuess()
                           }
                         }

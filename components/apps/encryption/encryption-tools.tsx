@@ -1,6 +1,8 @@
 "use client"
 
 import * as React from "react"
+import { useAppSettings } from "@/components/apps/settings-provider"
+
 import { motion } from "framer-motion"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -11,9 +13,6 @@ import { Input } from "@/components/ui/input"
 import { Copy } from "lucide-react"
 import { toast } from "sonner"
 import CryptoJS from "crypto-js"
-import { useAuth } from "@/components/auth/auth-provider"
-import { db } from "@/lib/firebase/config"
-import { doc, getDoc } from "firebase/firestore"
 
 // Morse Code mapping
 const MORSE_CODE: Record<string, string> = {
@@ -97,6 +96,7 @@ const CipherCard = ({
       <div className="space-y-2">
         <Label>Input</Label>
         <Textarea
+          aria-label={`${title} input`}
           placeholder={placeholder}
           value={inputValue}
           onChange={onInputChange}
@@ -118,6 +118,7 @@ const CipherCard = ({
       <div className="space-y-2">
         <Label>Output</Label>
         <Textarea
+          aria-label={`${title} output`}
           readOnly
           value={outputValue}
           className="font-mono min-h-[120px] bg-muted"
@@ -128,50 +129,10 @@ const CipherCard = ({
   </Card>
 )
 
-interface EncryptionSettings {
-  autoConvert: boolean
-  clearOnTabChange: boolean
-  defaultTab: string
-  fontSize: number
-}
-
-const DEFAULT_SETTINGS: EncryptionSettings = {
-  autoConvert: true,
-  clearOnTabChange: false,
-  defaultTab: "base64",
-  fontSize: 14,
-}
-
 export function EncryptionTools() {
-  const { user } = useAuth()
-  const [settings, setSettings] = React.useState<EncryptionSettings>(DEFAULT_SETTINGS)
-
-  // Load settings from Firestore if authenticated, otherwise use defaults
-  React.useEffect(() => {
-    if (!user || !db) {
-      setSettings(DEFAULT_SETTINGS)
-      return
-    }
-
-    const loadSettings = async () => {
-      try {
-        const settingsRef = doc(db, "users", user.uid, "encryptionSettings", "default")
-        const snapshot = await getDoc(settingsRef)
-        if (snapshot.exists()) {
-          const data = snapshot.data()
-          setSettings({ ...DEFAULT_SETTINGS, ...data })
-        } else {
-          // No settings found, use defaults
-          setSettings(DEFAULT_SETTINGS)
-        }
-      } catch (error) {
-        console.error("Error loading settings:", error)
-        setSettings(DEFAULT_SETTINGS)
-      }
-    }
-
-    loadSettings()
-  }, [user])
+  const settings = useAppSettings("encryption")
+  const [activeTool, setActiveTool] = React.useState(settings.defaultTab)
+  React.useEffect(() => setActiveTool(settings.defaultTab), [settings.defaultTab])
 
   // Base64
   const [base64Input, setBase64Input] = React.useState("")
@@ -629,6 +590,7 @@ export function EncryptionTools() {
   }
 
   const handleTabChange = (value: string) => {
+    setActiveTool(value as typeof activeTool)
     if (settings.clearOnTabChange) {
       setBase64Input("")
       setBase64Output("")
@@ -660,27 +622,20 @@ export function EncryptionTools() {
       transition={{ duration: 0.5 }}
       className="space-y-6"
     >
-      <div>
-        <h2 className="text-2xl font-bold mb-2">Encryption & Encoding Tools</h2>
-        <p className="text-muted-foreground">
-          Encode, decode, and hash text using various encryption and encoding methods
-        </p>
-      </div>
-
-      <Tabs 
-        defaultValue={settings.defaultTab} 
+<Tabs
+        value={activeTool}
         className="w-full"
         onValueChange={handleTabChange}
       >
         <div className="space-y-2">
-          <TabsList className="grid w-full grid-cols-5 max-w-full overflow-x-auto">
+          <TabsList className="grid h-auto w-full grid-cols-2 gap-1 sm:grid-cols-5">
             <TabsTrigger value="base64">Base64</TabsTrigger>
             <TabsTrigger value="url">URL</TabsTrigger>
             <TabsTrigger value="hex">Hex</TabsTrigger>
             <TabsTrigger value="binary">Binary</TabsTrigger>
             <TabsTrigger value="ascii">ASCII</TabsTrigger>
           </TabsList>
-          <TabsList className="grid w-full grid-cols-5 max-w-full overflow-x-auto">
+          <TabsList className="grid h-auto w-full grid-cols-2 gap-1 sm:grid-cols-5">
             <TabsTrigger value="caesar">Caesar</TabsTrigger>
             <TabsTrigger value="rot13">ROT13</TabsTrigger>
             <TabsTrigger value="morse">Morse</TabsTrigger>
@@ -801,6 +756,7 @@ export function EncryptionTools() {
               <div className="space-y-2">
                 <Label>Shift Value (1-25)</Label>
                 <Input
+                  aria-label="Caesar shift value (1–25)"
                   type="number"
                   min="1"
                   max="25"
@@ -811,7 +767,7 @@ export function EncryptionTools() {
               </div>
               <div className="space-y-2">
                 <Label>Input</Label>
-                <Textarea
+                <Textarea aria-label="caesar Input"
                   placeholder="Enter text to encrypt/decrypt..."
                   value={caesarInput}
                   onChange={(e) => setCaesarInput(e.target.value)}
@@ -832,7 +788,7 @@ export function EncryptionTools() {
               </div>
               <div className="space-y-2">
                 <Label>Output</Label>
-                <Textarea
+                <Textarea aria-label="caesar Output"
                   readOnly
                   value={caesarOutput}
                   className="font-mono min-h-[120px] bg-muted"
@@ -854,7 +810,7 @@ export function EncryptionTools() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label>Input</Label>
-                <Textarea
+                <Textarea aria-label="rot13 Input"
                   placeholder="Enter text to encode/decode..."
                   value={rot13Input}
                   onChange={(e) => setRot13Input(e.target.value)}
@@ -877,7 +833,7 @@ export function EncryptionTools() {
                     </Button>
                   )}
                 </div>
-                <Textarea
+                <Textarea aria-label="rot13 Output"
                   readOnly
                   value={rot13Output}
                   className="font-mono min-h-[120px] bg-muted"
@@ -915,7 +871,7 @@ export function EncryptionTools() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label>Input</Label>
-                <Textarea
+                <Textarea aria-label="md5 Input"
                   placeholder="Enter text to hash..."
                   value={md5Input}
                   onChange={(e) => setMd5Input(e.target.value)}
@@ -936,7 +892,7 @@ export function EncryptionTools() {
               </div>
               <div className="space-y-2">
                 <Label>MD5 Hash</Label>
-                <Textarea
+                <Textarea aria-label="md5 Output"
                   readOnly
                   value={md5Output}
                   className="font-mono min-h-[120px] bg-muted"
@@ -958,7 +914,7 @@ export function EncryptionTools() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label>Input</Label>
-                <Textarea
+                <Textarea aria-label="sha256 Input"
                   placeholder="Enter text to hash..."
                   value={sha256Input}
                   onChange={(e) => setSha256Input(e.target.value)}
@@ -979,7 +935,7 @@ export function EncryptionTools() {
               </div>
               <div className="space-y-2">
                 <Label>SHA-256 Hash</Label>
-                <Textarea
+                <Textarea aria-label="sha256 Output"
                   readOnly
                   value={sha256Output}
                   className="font-mono min-h-[120px] bg-muted"

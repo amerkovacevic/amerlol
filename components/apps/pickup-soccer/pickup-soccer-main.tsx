@@ -1,6 +1,8 @@
 "use client"
 
 import * as React from "react"
+import { useAppSettings } from "@/components/apps/settings-provider"
+
 import { motion } from "framer-motion"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -8,11 +10,11 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import { 
-  Plus, 
-  Calendar, 
-  MapPin, 
-  Users, 
+import {
+  Plus,
+  Calendar,
+  MapPin,
+  Users,
   Clock,
   X,
   Edit,
@@ -25,18 +27,20 @@ import {
 import { toast } from "sonner"
 import { useAuth } from "@/components/auth/auth-provider"
 import { AuthDialog } from "@/components/auth/auth-dialog"
+import { changeGameMembership } from "@/lib/apps/game-membership"
 import { db } from "@/lib/firebase/config"
-import { 
-  collection, 
-  query, 
-  where, 
-  orderBy, 
-  getDocs, 
+import {
+  runTransaction,
+  collection,
+  query,
+  where,
+  orderBy,
+  getDocs,
   getDoc,
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  doc, 
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
   serverTimestamp,
   Timestamp
 } from "firebase/firestore"
@@ -63,6 +67,7 @@ interface PlayerInfo {
 }
 
 export function PickupSoccerMain() {
+  const settings = useAppSettings("pickup-soccer")
   const { user } = useAuth()
   const [games, setGames] = React.useState<Game[]>([])
   const [loading, setLoading] = React.useState(true)
@@ -91,7 +96,7 @@ export function PickupSoccerMain() {
     try {
       setLoading(true)
       const gamesRef = collection(db, "games")
-      
+
       // Try compound query first, fallback to simple query if index doesn't exist
       let snapshot
       try {
@@ -108,7 +113,7 @@ export function PickupSoccerMain() {
           snapshot = await getDocs(gamesRef)
         }
       }
-      
+
       const gamesData: Game[] = []
       const playerUids = new Set<string>()
 
@@ -168,7 +173,7 @@ export function PickupSoccerMain() {
 
   const loadPlayerNames = async (uids: string[]) => {
     const names: Record<string, string> = {}
-    
+
     await Promise.all(
       uids.map(async (uid) => {
         try {
@@ -245,14 +250,14 @@ export function PickupSoccerMain() {
         time: formData.time,
         location: formData.location,
         maxPlayers: formData.maxPlayers,
-        players: [],
+        players: settings.autoJoin ? [user.uid] : [],
         createdBy: user.uid,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       }
 
       await addDoc(collection(db, "games"), gameData)
-      
+
       toast.success("Game created successfully!")
       setCreateDialogOpen(false)
       setFormData({
@@ -263,7 +268,7 @@ export function PickupSoccerMain() {
         location: "",
         maxPlayers: 10,
       })
-      
+
       loadGames()
     } catch (error: any) {
       console.error("Failed to create game:", error)
@@ -314,9 +319,11 @@ export function PickupSoccerMain() {
       }
 
       const gameRef = doc(db, "games", gameId)
-      await updateDoc(gameRef, {
-        players: [...game.players, user.uid],
-        updatedAt: serverTimestamp(),
+      await runTransaction(db, async (transaction) => {
+        const snapshot = await transaction.get(gameRef)
+        if (!snapshot.exists()) throw new Error("This game no longer exists")
+        const current = snapshot.data()
+        transaction.update(gameRef, { players: changeGameMembership(current.players, user.uid, current.maxPlayers, true), updatedAt: serverTimestamp() })
       })
 
       toast.success("Joined game successfully!")
@@ -326,7 +333,7 @@ export function PickupSoccerMain() {
       if (error.code === "permission-denied") {
         toast.error("Permission denied")
       } else {
-        toast.error("Failed to join game")
+        toast.error(error instanceof Error ? error.message : "Failed to join game")
       }
     }
   }
@@ -347,16 +354,18 @@ export function PickupSoccerMain() {
       }
 
       const gameRef = doc(db, "games", gameId)
-      await updateDoc(gameRef, {
-        players: game.players.filter((uid) => uid !== user.uid),
-        updatedAt: serverTimestamp(),
+      await runTransaction(db, async (transaction) => {
+        const snapshot = await transaction.get(gameRef)
+        if (!snapshot.exists()) throw new Error("This game no longer exists")
+        const current = snapshot.data()
+        transaction.update(gameRef, { players: changeGameMembership(current.players, user.uid, current.maxPlayers, false), updatedAt: serverTimestamp() })
       })
 
       toast.success("Left game successfully")
       loadGames()
     } catch (error: any) {
       console.error("Failed to leave game:", error)
-      toast.error("Failed to leave game")
+      toast.error(error instanceof Error ? error.message : "Failed to leave game")
     }
   }
 
@@ -384,7 +393,7 @@ export function PickupSoccerMain() {
   }
 
   const filteredGames = React.useMemo(() => {
-    let filtered = games
+    let filtered = games.filter((game) => !settings.showMyGamesOnly || Boolean(user && (game.createdBy === user.uid || game.players.includes(user.uid))))
 
     // Filter by search query
     if (searchQuery) {
@@ -403,7 +412,7 @@ export function PickupSoccerMain() {
     }
 
     return filtered
-  }, [games, searchQuery, filterDate])
+  }, [games, searchQuery, filterDate, settings.showMyGamesOnly, user?.uid])
 
   const isGameFull = (game: Game) => {
     return Array.isArray(game.players) && game.players.length >= game.maxPlayers
@@ -453,20 +462,13 @@ export function PickupSoccerMain() {
       transition={{ duration: 0.5 }}
       className="space-y-6"
     >
-      <div>
-        <h2 className="text-2xl font-bold mb-2">Pickup Soccer</h2>
-        <p className="text-muted-foreground">
-          Schedule, join, create, and manage pickup soccer games
-        </p>
-      </div>
-
-      {/* Actions Bar */}
+{/* Actions Bar */}
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div className="flex flex-1 gap-2 w-full sm:w-auto">
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search games..."
+              aria-label="Search games" placeholder="Search games..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"
@@ -475,6 +477,7 @@ export function PickupSoccerMain() {
           <div className="relative">
             <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none z-10" />
             <Input
+              aria-label="Filter games by date"
               type="date"
               value={filterDate}
               onChange={(e) => setFilterDate(e.target.value)}
@@ -492,7 +495,7 @@ export function PickupSoccerMain() {
           )}
         </div>
 
-        <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+        <Dialog open={createDialogOpen} onOpenChange={(open) => { if (open) setFormData((form) => ({ ...form, location: settings.defaultLocation, maxPlayers: settings.defaultMaxPlayers })); setCreateDialogOpen(open) }}>
           <DialogTrigger asChild>
             <Button onClick={() => !user && setAuthDialogOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
@@ -534,7 +537,8 @@ export function PickupSoccerMain() {
                   <Label htmlFor="date">Date *</Label>
                   <Input
                     id="date"
-                    type="date"
+                    aria-label="Filter games by date"
+              type="date"
                     value={formData.date}
                     onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                     min={new Date().toISOString().split("T")[0]}

@@ -1,5 +1,6 @@
 "use client"
 
+import { SignInReminder } from "@/components/auth/sign-in-reminder"
 import { motion } from "framer-motion"
 import { Card, CardContent } from "@/components/ui/card"
 import { Calendar } from "lucide-react"
@@ -25,11 +26,13 @@ export function AboutContent() {
           </p>
         </div>
 
+        <div className="mb-10"><SignInReminder /></div>
+
         <h2 className="font-space-grotesk text-3xl font-bold mb-8">Build Log</h2>
         <div className="space-y-4">
           {buildLog.map((entry, index) => (
             <motion.div
-              key={entry.date}
+              key={`${entry.date}-${entry.title}`}
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.5, delay: index * 0.1 }}
@@ -40,8 +43,8 @@ export function AboutContent() {
                     <div className="flex-shrink-0 mt-1">
                       <Calendar className="h-5 w-5 text-muted-foreground" />
                     </div>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between mb-2">
                         <h3 className="font-semibold text-lg">{entry.title}</h3>
                         <span className="text-sm text-muted-foreground">
                           {new Date(entry.date + "T12:00:00-06:00").toLocaleDateString("en-US", {

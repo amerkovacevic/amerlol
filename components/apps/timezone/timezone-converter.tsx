@@ -1,21 +1,24 @@
 "use client"
 
 import * as React from "react"
+import { useAppSettings } from "@/components/apps/settings-provider"
+
 import { motion } from "framer-motion"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { 
-  Plus, 
-  X, 
-  Copy, 
-  Search, 
+import {
+  Plus,
+  X,
+  Copy,
+  Search,
   Clock,
   Sun,
   Moon,
   Calendar
 } from "lucide-react"
+import { formatZoneTime, timezoneOffset } from "@/lib/apps/timezone"
 import { toast } from "sonner"
 
 interface TimeZone {
@@ -50,15 +53,15 @@ const ALL_TIMEZONES = Intl.supportedValuesOf("timeZone").map((tz) => {
   })
   const parts = formatter.formatToParts(now)
   const tzName = parts.find((p) => p.type === "timeZoneName")?.value || ""
-  
+
   // Get offset
   const utcDate = new Date(now.toLocaleString("en-US", { timeZone: "UTC" }))
   const tzDate = new Date(now.toLocaleString("en-US", { timeZone: tz }))
   const offset = (tzDate.getTime() - utcDate.getTime()) / (1000 * 60 * 60)
-  
+
   // Extract city name
   const city = tz.split("/").pop()?.replace(/_/g, " ") || tz
-  
+
   return {
     id: tz,
     name: tz,
@@ -69,6 +72,7 @@ const ALL_TIMEZONES = Intl.supportedValuesOf("timeZone").map((tz) => {
 })
 
 export function TimeZoneConverter() {
+  const settings = useAppSettings("timezone")
   const [selectedTimeZones, setSelectedTimeZones] = React.useState<TimeZone[]>([
     POPULAR_TIMEZONES[0], // New York
     POPULAR_TIMEZONES[4], // London
@@ -80,13 +84,21 @@ export function TimeZoneConverter() {
   const [searchQuery, setSearchQuery] = React.useState("")
   const [showSearch, setShowSearch] = React.useState(false)
 
+  const zoneDefaults = JSON.stringify(settings.defaultTimeZones)
+  React.useEffect(() => {
+    setSelectedTimeZones(settings.defaultTimeZones.map((id) => ALL_TIMEZONES.find((zone) => zone.id === id) ?? { id, name: id, city: id.split("/").pop()!.replaceAll("_", " "), offset: 0, abbreviation: "" }))
+  }, [zoneDefaults])
+  const displayDate = selectedDate && selectedTime ? new Date(selectedDate + "T" + selectedTime) : currentTime
+
   // Update current time every second
   React.useEffect(() => {
+    if (!settings.autoRefresh) return
+    setCurrentTime(new Date())
     const timer = setInterval(() => {
       setCurrentTime(new Date())
     }, 1000)
     return () => clearInterval(timer)
-  }, [])
+  }, [settings.autoRefresh])
 
   // Get time in a specific timezone
   const getTimeInZone = (timeZone: TimeZone, date?: Date) => {
@@ -94,7 +106,7 @@ export function TimeZoneConverter() {
     if (selectedDate && selectedTime) {
       // Create date from selected date and time in local timezone
       const [hours, minutes] = selectedTime.split(":").map(Number)
-      dateToUse = new Date(selectedDate)
+      dateToUse = new Date(selectedDate + "T" + selectedTime)
       dateToUse.setHours(hours, minutes, 0, 0)
     } else {
       dateToUse = date || currentTime
@@ -105,8 +117,8 @@ export function TimeZoneConverter() {
         timeZone: timeZone.id,
         hour: "2-digit",
         minute: "2-digit",
-        second: "2-digit",
-        hour12: true,
+        second: settings.showSeconds ? "2-digit" : undefined,
+        hour12: settings.timeFormat === "12",
         weekday: "short",
         month: "short",
         day: "numeric",
@@ -122,7 +134,7 @@ export function TimeZoneConverter() {
     let dateToUse: Date
     if (selectedDate && selectedTime) {
       const [hours, minutes] = selectedTime.split(":").map(Number)
-      dateToUse = new Date(selectedDate)
+      dateToUse = new Date(selectedDate + "T" + selectedTime)
       dateToUse.setHours(hours, minutes, 0, 0)
     } else {
       dateToUse = currentTime
@@ -196,14 +208,7 @@ export function TimeZoneConverter() {
       transition={{ duration: 0.5 }}
       className="space-y-6"
     >
-      <div>
-        <h2 className="text-2xl font-bold mb-2">Time Zone Converter</h2>
-        <p className="text-muted-foreground">
-          Compare multiple time zones and convert times across the world
-        </p>
-      </div>
-
-      {/* Date/Time Picker */}
+{/* Date/Time Picker */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -285,7 +290,7 @@ export function TimeZoneConverter() {
                         <div className="text-sm text-muted-foreground">{tz.id}</div>
                       </div>
                       <div className="text-sm text-muted-foreground">
-                        UTC{tz.offset >= 0 ? "+" : ""}{tz.offset}
+                        {timezoneOffset(tz.id, displayDate)}
                       </div>
                     </div>
                   </Button>
@@ -325,26 +330,26 @@ export function TimeZoneConverter() {
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      {isDay ? (
+                      {settings.showDayNight && (isDay ? (
                         <Sun className="h-5 w-5 text-yellow-500" />
                       ) : (
                         <Moon className="h-5 w-5 text-blue-500" />
-                      )}
+                      ))}
                       <span className="text-sm font-medium">
-                        {isDay ? "Day" : "Night"}
+                        {settings.showDayNight ? (isDay ? "Day" : "Night") : ""}
                       </span>
                     </div>
                     <div className="text-sm text-muted-foreground">
-                      UTC{tz.offset >= 0 ? "+" : ""}{tz.offset}
+                      {timezoneOffset(tz.id, displayDate)}
                     </div>
                   </div>
 
                   <div className="space-y-1">
                     <div className="text-2xl font-bold font-mono">
-                      {timeString.split(",")[0]}
+                      {formatZoneTime(tz.id, displayDate, settings.timeFormat, settings.showSeconds)}
                     </div>
                     <div className="text-sm text-muted-foreground">
-                      {timeString.split(",").slice(1).join(",")}
+                      {new Intl.DateTimeFormat("en-US", { timeZone: tz.id, dateStyle: "medium" }).format(displayDate)}
                     </div>
                   </div>
 

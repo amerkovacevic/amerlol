@@ -1,6 +1,6 @@
 import * as React from "react"
 import { AppShellLayout } from "@/components/apps/app-shell-layout"
-import type { AppEntry } from "./registry"
+import type { AppEntry, AppId } from "./registry"
 
 // Import components directly for static export compatibility
 // Using regular imports instead of lazy loading to avoid chunk loading issues
@@ -32,21 +32,25 @@ import { AtlasSprintMain } from "@/components/apps/atlas-sprint/atlas-sprint-mai
 import { AtlasSprintSettings } from "@/components/apps/atlas-sprint/atlas-sprint-settings"
 import { FootballDeepcutsMain } from "@/components/apps/football-deepcuts/football-deepcuts-main"
 import { FootballDeepcutsLeaderboard } from "@/components/apps/football-deepcuts/football-deepcuts-leaderboard"
+import { AppSettingsProvider } from "@/components/apps/settings-provider"
+import { AppSettingsPanel } from "@/components/apps/app-settings-panel"
+import type { SettingsAppId } from "./settings"
 
 interface AppComponents {
   Main: React.ComponentType
-  Settings?: React.ComponentType
+  Settings: React.ComponentType
   AdditionalTabs?: Array<{ value: string; label: string; Component: React.ComponentType }>
 }
 
 // Registry mapping appId to components
 // To add a new app:
 // 1. Add the app to APP_REGISTRY in registry.ts
-// 2. Import the components above using React.lazy
-// 3. Add an entry here mapping appId to { Main, Settings? }
-const APP_COMPONENTS: Record<string, AppComponents> = {
+// 2. Import the components above.
+// 3. Register both Main and Settings. Missing app implementations fail type checking.
+const APP_COMPONENTS: Record<AppId, AppComponents> = {
   "football-deepcuts": {
     Main: FootballDeepcutsMain,
+    Settings: AppSettingsPanel,
     AdditionalTabs: [{ value: "leaderboard", label: "Leaderboard", Component: FootballDeepcutsLeaderboard }],
   },
   "atlas-sprint": {
@@ -55,6 +59,7 @@ const APP_COMPONENTS: Record<string, AppComponents> = {
   },
   "next-watch": {
     Main: NextWatchMain,
+    Settings: AppSettingsPanel,
   },
   encryption: {
     Main: EncryptionTools,
@@ -103,11 +108,11 @@ const APP_COMPONENTS: Record<string, AppComponents> = {
 }
 
 export function getAppComponents(appId: string): AppComponents | null {
-  return APP_COMPONENTS[appId] || null
+  return Object.hasOwn(APP_COMPONENTS, appId) ? APP_COMPONENTS[appId as AppId] : null
 }
 
 export function hasAppComponents(appId: string): boolean {
-  return appId in APP_COMPONENTS
+  return Object.hasOwn(APP_COMPONENTS, appId)
 }
 
 // Helper to render app (no Suspense needed with direct imports)
@@ -124,5 +129,5 @@ export function renderApp(app: AppEntry, components: AppComponents): React.React
     return <StickrProvider>{shell}</StickrProvider>
   }
 
-  return shell
+  return <AppSettingsProvider appId={app.appId as SettingsAppId}>{shell}</AppSettingsProvider>
 }

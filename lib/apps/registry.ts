@@ -16,12 +16,15 @@ import {
   Map,
   type LucideIcon
 } from "lucide-react"
+import type { SettingsAppId } from "./settings"
+
+export type AppId = SettingsAppId | "stickr"
 
 export type AppCategory = "Utilities" | "Games" | "Experiments" | "Social" | "Visual"
 export type AppStatus = "live" | "beta" | "comingSoon"
 
 export interface AppEntry {
-  appId: string
+  appId: AppId
   name: string
   description: string
   category: AppCategory

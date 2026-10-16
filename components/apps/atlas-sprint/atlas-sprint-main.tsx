@@ -1,6 +1,8 @@
 "use client"
 
 import * as React from "react"
+import { useAppSettings } from "@/components/apps/settings-provider"
+
 import { AnimatePresence, motion } from "framer-motion"
 import { Check, Clock3, Flag, Globe2, Play, RotateCcw, Trophy } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
@@ -10,7 +12,6 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { CONTINENTS, COUNTRIES, type Continent, normalizeCountry } from "./countries"
 import { CountryMap } from "./country-map"
-import { ATLAS_SPRINT_SETTINGS_EVENT, readAtlasSprintPreferences, type AtlasSprintPreferences } from "./atlas-sprint-settings"
 
 type Region = "World" | Continent
 type Status = "setup" | "playing" | "finished"
@@ -26,7 +27,7 @@ export function AtlasSprintMain() {
   const [value, setValue] = React.useState("")
   const [remaining, setRemaining] = React.useState(15 * 60)
   const [feedback, setFeedback] = React.useState<string | null>(null)
-  const [preferences, setPreferences] = React.useState<AtlasSprintPreferences>({ focusOnCorrectAnswer: true })
+  const preferences = useAppSettings("atlas-sprint")
   const inputRef = React.useRef<HTMLInputElement>(null)
   const pendingGuessRef = React.useRef<number | null>(null)
 
@@ -35,12 +36,6 @@ export function AtlasSprintMain() {
   const progress = Math.round((guessed.length / pool.length) * 100)
   const finish = React.useCallback(() => setStatus("finished"), [])
 
-  React.useEffect(() => {
-    setPreferences(readAtlasSprintPreferences())
-    const handleSettingsChange = (event: Event) => setPreferences((event as CustomEvent<AtlasSprintPreferences>).detail)
-    window.addEventListener(ATLAS_SPRINT_SETTINGS_EVENT, handleSettingsChange)
-    return () => window.removeEventListener(ATLAS_SPRINT_SETTINGS_EVENT, handleSettingsChange)
-  }, [])
 
   React.useEffect(() => () => {
     if (pendingGuessRef.current) window.clearTimeout(pendingGuessRef.current)

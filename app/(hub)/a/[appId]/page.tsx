@@ -10,7 +10,7 @@ export async function generateStaticParams() {
     const params = APP_REGISTRY.map((app) => ({
     appId: app.appId,
   }))
-    
+
     // Return empty array if registry is empty to prevent build errors
     return params.length > 0 ? params : []
   } catch (error) {
@@ -22,16 +22,17 @@ export async function generateStaticParams() {
 
 // Generate metadata for SEO and social sharing
 export async function generateMetadata(
-  { params }: { 
-    params: { appId: string }
+  { params }: {
+    params: Promise<{ appId: string }>
   }
 ): Promise<Metadata> {
-  const app = getAppById(params.appId)
-  
+  const { appId } = await params
+  const app = getAppById(appId)
+
   // Default metadata for apps
   if (app) {
     // Special default for LMGTFY
-    if (params.appId === "lmgtfy") {
+    if (appId === "lmgtfy") {
       return {
         title: "Hmm, I wonder... | amer.lol",
         description: "Let me Google that for you!",
@@ -47,7 +48,7 @@ export async function generateMetadata(
         },
       }
     }
-    
+
     return {
       title: `${app.name} | amer.lol`,
       description: app.description,
@@ -63,7 +64,7 @@ export async function generateMetadata(
       },
     }
   }
-  
+
   // Fallback metadata
   return {
     title: "App | amer.lol",
@@ -73,14 +74,15 @@ export async function generateMetadata(
 
 // Allow dynamic params in dev mode, disable in production for static export
 // This ensures routes work in dev server while maintaining static generation for production
-export const dynamicParams = process.env.NODE_ENV === 'development'
+export const dynamicParams = false
 
-export default function AppPage({ 
+export default async function AppPage({
   params,
-  searchParams 
-}: { 
-  params: { appId: string }
-  searchParams: { q?: string }
+  searchParams
+}: {
+  params: Promise<{ appId: string }>
+  searchParams: Promise<{ q?: string }>
 }) {
-  return <AppPageClient appId={params.appId} />
+  const { appId } = await params
+  return <AppPageClient appId={appId} />
 }

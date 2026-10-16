@@ -50,6 +50,7 @@ export function MobileNavDrawer() {
                 <Link
                   key={item.href}
                   href={item.href}
+                aria-current={isActive ? "page" : undefined}
                   className={cn(
                     "text-base font-medium transition-colors",
                     isActive

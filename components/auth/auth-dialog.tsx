@@ -1,8 +1,8 @@
 "use client"
 
 import * as React from "react"
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, getAuth } from "firebase/auth"
-import { getApps, initializeApp } from "firebase/app"
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from "firebase/auth"
+import { auth } from "@/lib/firebase/config"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -11,23 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { toast } from "sonner"
 import { Loader2 } from "lucide-react"
 
-// Firebase config
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "",
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "",
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "",
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "",
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "",
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "",
-}
-
-const getAuthInstance = () => {
-  if (typeof window === "undefined") return null
-  if (!getApps().length) {
-    initializeApp(firebaseConfig)
-  }
-  return getAuth()
-}
+const getAuthInstance = () => typeof window === "undefined" ? null : auth
 
 interface AuthDialogProps {
   open: boolean

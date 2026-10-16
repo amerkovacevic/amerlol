@@ -1,13 +1,15 @@
 "use client"
 
 import * as React from "react"
+import { useAppSettings } from "@/components/apps/settings-provider"
+
 import { motion } from "framer-motion"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { 
+import {
   Dice6,
   Filter,
   X,
@@ -95,14 +97,14 @@ export function FootballManagerTeamPickerMain() {
   const [authDialogOpen, setAuthDialogOpen] = React.useState(false)
   const [data, setData] = React.useState<FootballManagerData | null>(null)
   const [loading, setLoading] = React.useState(true)
-  const [settingsLoading, setSettingsLoading] = React.useState(true)
+  const settingsLoading = false
   const [selectedCountries, setSelectedCountries] = React.useState<string[]>([])
   const [selectedLeagues, setSelectedLeagues] = React.useState<string[]>([])
   const [searchQuery, setSearchQuery] = React.useState("")
   const [pickedTeams, setPickedTeams] = React.useState<PickedTeam[]>([])
   const [favorites, setFavorites] = React.useState<string[]>([])
   const [history, setHistory] = React.useState<PickedTeam[]>([])
-  const [settings, setSettings] = React.useState<Settings | null>(null)
+  const settings = useAppSettings("football-manager-team-picker")
   const [pickMode, setPickMode] = React.useState<"single" | "multiple">("single")
   const [numPicks, setNumPicks] = React.useState(4)
   const [sameCountry, setSameCountry] = React.useState(false)
@@ -117,11 +119,10 @@ export function FootballManagerTeamPickerMain() {
   // Load settings when user is available
   React.useEffect(() => {
     if (user && !authLoading) {
-      loadSettings()
       loadFavorites()
       loadHistory()
     } else if (!authLoading && !user) {
-      setSettingsLoading(false)
+      setFavorites([]); setHistory([])
     }
   }, [user, authLoading])
 
@@ -142,55 +143,13 @@ export function FootballManagerTeamPickerMain() {
     }
   }
 
-  const loadSettings = async () => {
-    if (!user) return
-
-    try {
-      setSettingsLoading(true)
-      const settingsRef = doc(db, "users", user.uid, "footballManagerTeamPickerSettings", "default")
-      const settingsDoc = await getDoc(settingsRef)
-
-      if (settingsDoc.exists()) {
-        const data = settingsDoc.data()
-        const loadedSettings: Settings = {
-          defaultPickMode: data.defaultPickMode || "single",
-          defaultNumPicks: data.defaultNumPicks || 4,
-          defaultMinTier: data.defaultMinTier || 1,
-          defaultSameCountry: data.defaultSameCountry || false,
-          defaultSameLeague: data.defaultSameLeague || false,
-          autoAddToHistory: data.autoAddToHistory !== false, // Default true
-          showFavoritesOnly: data.showFavoritesOnly || false,
-        }
-        setSettings(loadedSettings)
-
-        // Apply settings to picker state
-        setPickMode(loadedSettings.defaultPickMode)
-        setNumPicks(loadedSettings.defaultNumPicks)
-        setMinTier(loadedSettings.defaultMinTier)
-        setSameCountry(loadedSettings.defaultSameCountry)
-        setSameLeague(loadedSettings.defaultSameLeague)
-      } else {
-        // Default settings
-        const defaultSettings: Settings = {
-          defaultPickMode: "single",
-          defaultNumPicks: 4,
-          defaultMinTier: 1,
-          defaultSameCountry: false,
-          defaultSameLeague: false,
-          autoAddToHistory: true,
-          showFavoritesOnly: false,
-        }
-        setSettings(defaultSettings)
-      }
-    } catch (error: any) {
-      console.error("Failed to load settings:", error)
-      if (error.code !== "permission-denied") {
-        toast.error("Failed to load settings")
-      }
-    } finally {
-      setSettingsLoading(false)
-    }
-  }
+  React.useEffect(() => {
+    setPickMode(settings.defaultPickMode)
+    setNumPicks(settings.defaultNumPicks)
+    setMinTier(settings.defaultMinTier)
+    setSameCountry(settings.defaultSameCountry)
+    setSameLeague(settings.defaultSameLeague)
+  }, [settings.defaultPickMode, settings.defaultNumPicks, settings.defaultMinTier, settings.defaultSameCountry, settings.defaultSameLeague])
 
   const loadFavorites = async () => {
     if (!user) {
@@ -341,7 +300,7 @@ export function FootballManagerTeamPickerMain() {
     if (!data) return []
 
     const teams: Array<Team & { countryId: string; leagueId: string; countryName: string; leagueName: string }> = []
-    
+
     data.countries.forEach((country) => {
       country.leagues.forEach((league) => {
         if (league.tier >= minTier) {
@@ -365,7 +324,7 @@ export function FootballManagerTeamPickerMain() {
     let teams = getAllTeams()
 
     // Filter by favorites only if enabled
-    if (settings?.showFavoritesOnly && favorites.length > 0) {
+    if (settings.showFavoritesOnly) {
       teams = teams.filter((team) => favorites.includes(team.id))
     }
 
@@ -401,7 +360,7 @@ export function FootballManagerTeamPickerMain() {
 
   const pickRandomTeam = async () => {
     const availableTeams = getFilteredTeams()
-    
+
     if (availableTeams.length === 0) {
       toast.error("No teams available with current filters. Try adjusting your filters.")
       return
@@ -414,10 +373,10 @@ export function FootballManagerTeamPickerMain() {
         pickedAt: new Date(),
       }
       setPickedTeams([pickedTeam])
-      
+
       // Add to history if enabled
       await saveToHistory([pickedTeam])
-      
+
       toast.success(`Picked: ${pickedTeam.name}`)
     } else {
       const num = Math.min(numPicks, availableTeams.length)
@@ -461,10 +420,10 @@ export function FootballManagerTeamPickerMain() {
       }
 
       setPickedTeams(picked)
-      
+
       // Add to history if enabled
       await saveToHistory(picked)
-      
+
       toast.success(`Picked ${picked.length} team${picked.length !== 1 ? "s" : ""}`)
     }
   }
@@ -596,14 +555,7 @@ export function FootballManagerTeamPickerMain() {
       transition={{ duration: 0.5 }}
       className="space-y-6"
     >
-      <div>
-        <h2 className="text-2xl font-bold mb-2">Football Manager Team Picker</h2>
-        <p className="text-muted-foreground">
-          Pick a random Football Manager team or multiple teams for you and your friends
-        </p>
-      </div>
-
-      <Tabs defaultValue="picker" className="space-y-4">
+<Tabs defaultValue="picker" className="space-y-4">
         <TabsList>
           <TabsTrigger value="picker">Team Picker</TabsTrigger>
           <TabsTrigger value="history">

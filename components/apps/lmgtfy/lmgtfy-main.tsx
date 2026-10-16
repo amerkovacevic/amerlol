@@ -1,6 +1,8 @@
 "use client"
 
 import * as React from "react"
+import { useSettingsContext, useAppSettings } from "@/components/apps/settings-provider"
+
 import { motion, AnimatePresence } from "framer-motion"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -8,10 +10,10 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import { 
-  Search, 
-  Copy, 
-  ExternalLink, 
+import {
+  Search,
+  Copy,
+  ExternalLink,
   Sparkles,
   ArrowRight,
   Check,
@@ -31,6 +33,12 @@ const ANIMATION_STEPS = [
 ]
 
 export function LMGTFYMain() {
+  const settings = useAppSettings("lmgtfy")
+  const { loading: settingsLoading } = useSettingsContext()
+  const settingsRef = React.useRef(settings)
+  React.useEffect(() => { settingsRef.current = settings }, [settings])
+  const timers = React.useRef<ReturnType<typeof setTimeout>[]>([])
+  React.useEffect(() => () => { timers.current.forEach(clearTimeout) }, [])
   const [query, setQuery] = React.useState("")
   const [shareableLink, setShareableLink] = React.useState("")
   const [copied, setCopied] = React.useState(false)
@@ -45,20 +53,21 @@ export function LMGTFYMain() {
   // Update meta tags for link preview when query parameter is present
   // Only update if we're on the LMGTFY app page
   React.useEffect(() => {
+    if (settingsLoading) return
     // Safety check: only update meta tags if we're on the LMGTFY route
     if (typeof window === "undefined") return
     const pathname = window.location.pathname
     if (!pathname.includes("/a/lmgtfy") && !pathname.includes("/lmgtfy")) return
-    
+
     if (searchParams?.has("q")) {
-      const sharedQuery = decodeURIComponent(searchParams.get("q") || "")
+      const sharedQuery = searchParams.get("q") || ""
       if (sharedQuery) {
         // Update document title and meta tags for social sharing
         document.title = "Hmm, I wonder..."
-        
+
         // Update or create Open Graph meta tags
         const updateMetaTag = (property: string, content: string) => {
-          let meta = document.querySelector(`meta[property="${property}"]`) || 
+          let meta = document.querySelector(`meta[property="${property}"]`) ||
                      document.querySelector(`meta[name="${property}"]`)
           if (!meta) {
             meta = document.createElement("meta")
@@ -67,14 +76,14 @@ export function LMGTFYMain() {
           }
           meta.setAttribute("content", content)
         }
-        
+
         updateMetaTag("og:title", "Hmm, I wonder...")
         updateMetaTag("og:description", sharedQuery)
         updateMetaTag("og:type", "website")
         updateMetaTag("twitter:card", "summary")
         updateMetaTag("twitter:title", "Hmm, I wonder...")
         updateMetaTag("twitter:description", sharedQuery)
-        
+
         // Update description meta tag
         let descMeta = document.querySelector('meta[name="description"]')
         if (!descMeta) {
@@ -83,14 +92,20 @@ export function LMGTFYMain() {
           document.head.appendChild(descMeta)
         }
         descMeta.setAttribute("content", sharedQuery)
-        
+
         setQuery(sharedQuery)
         startAnimation(sharedQuery)
       }
     }
-  }, [searchParams])
+    return () => { timers.current.forEach(clearTimeout); timers.current = [] }
+  }, [searchParams, settingsLoading])
 
   const startAnimation = (searchQuery: string) => {
+    timers.current.forEach(clearTimeout); timers.current = []
+    const speedParam = Number(searchParams?.get("speed"))
+    const delayParam = Number(searchParams?.get("delay"))
+    const speed = speedParam >= 0.5 && speedParam <= 2 ? speedParam : settingsRef.current.defaultAnimationSpeed
+    const delay = searchParams?.has("delay") && Number.isInteger(delayParam) && delayParam >= 0 && delayParam <= 10000 ? delayParam : settingsRef.current.redirectDelay
     setIsAnimating(true)
     setCurrentStep(0)
     setShowRedirect(false)
@@ -99,20 +114,20 @@ export function LMGTFYMain() {
     let stepIndex = 0
     const playStep = () => {
       if (stepIndex < ANIMATION_STEPS.length) {
-        const currentDelay = ANIMATION_STEPS[stepIndex].delay
+        const currentDelay = ANIMATION_STEPS[stepIndex].delay / speed
         setCurrentStep(stepIndex)
-        setTimeout(() => {
+        timers.current.push(setTimeout(() => {
           stepIndex++
           playStep()
-        }, currentDelay)
+        }, currentDelay))
       } else {
         // Show redirect message
         setShowRedirect(true)
         // Redirect to Google after a moment
-        setTimeout(() => {
+        timers.current.push(setTimeout(() => {
           const googleUrl = `https://www.google.com/search?q=${encodeURIComponent(searchQuery)}`
           window.location.href = googleUrl
-        }, 2500)
+        }, delay))
       }
     }
     playStep()
@@ -125,13 +140,14 @@ export function LMGTFYMain() {
     }
 
     // Get the current pathname, or default to /a/lmgtfy if not available
-    const pathname = typeof window !== "undefined" 
-      ? window.location.pathname 
+    const pathname = typeof window !== "undefined"
+      ? window.location.pathname
       : "/a/lmgtfy"
-    const baseUrl = typeof window !== "undefined" 
-      ? window.location.origin 
+    const baseUrl = typeof window !== "undefined"
+      ? window.location.origin
       : ""
-    const link = `${baseUrl}${pathname}?q=${encodeURIComponent(query.trim())}`
+    const params = new URLSearchParams({ q: query.trim(), speed: String(settings.defaultAnimationSpeed), delay: String(settings.redirectDelay), show: settings.showQueryInAnimation ? "1" : "0" })
+    const link = `${baseUrl}${pathname}?${params}`
     setShareableLink(link)
     toast.success("Link generated! Copy it to share.")
   }
@@ -198,11 +214,11 @@ export function LMGTFYMain() {
             >
               <div className="flex items-center justify-center gap-3 sm:gap-4 md:gap-6 px-4">
                 <motion.div
-                  animate={{ 
+                  animate={{
                     rotate: [0, 10, -10, 0],
                     scale: [1, 1.1, 1]
                   }}
-                  transition={{ 
+                  transition={{
                     duration: 1.5,
                     repeat: Infinity,
                     ease: "easeInOut"
@@ -221,11 +237,11 @@ export function LMGTFYMain() {
                   </motion.span>
                 )}
                 <motion.div
-                  animate={{ 
+                  animate={{
                     rotate: [0, -10, 10, 0],
                     scale: [1, 1.1, 1]
                   }}
-                  transition={{ 
+                  transition={{
                     duration: 1.5,
                     repeat: Infinity,
                     ease: "easeInOut",
@@ -235,7 +251,7 @@ export function LMGTFYMain() {
                   <Sparkles className="h-12 w-12 sm:h-16 sm:w-16 md:h-20 md:w-20 text-yellow-400" />
                 </motion.div>
               </div>
-              
+
               <motion.div className="space-y-4 sm:space-y-6 px-4">
                 <motion.h1
                   key={`text-${currentStep}`}
@@ -245,7 +261,7 @@ export function LMGTFYMain() {
                 >
                   {ANIMATION_STEPS[currentStep]?.text || "Let me Google that for you!"}
                 </motion.h1>
-                
+
                 {/* Typing indicator for some steps */}
                 {currentStep < ANIMATION_STEPS.length - 2 && (
                   <motion.div
@@ -289,7 +305,7 @@ export function LMGTFYMain() {
             </motion.div>
           </AnimatePresence>
 
-          {query && (
+          {query && (searchParams?.has("show") ? searchParams.get("show") !== "0" : settings.showQueryInAnimation) && (
             <motion.p
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -305,17 +321,7 @@ export function LMGTFYMain() {
 
   return (
     <div className="h-full flex flex-col">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold flex items-center gap-2 mb-2">
-          <Search className="h-8 w-8 text-blue-500" />
-          Let Me Google That For You
-        </h1>
-        <p className="text-muted-foreground">
-          Generate a shareable link that plays an animation before redirecting to Google search
-        </p>
-      </div>
-
-      <div className="flex-1 space-y-6">
+<div className="flex-1 space-y-6">
         {/* Input Section */}
         <Card>
           <CardHeader>
@@ -344,8 +350,8 @@ export function LMGTFYMain() {
               </p>
             </div>
 
-            <Button 
-              onClick={generateLink} 
+            <Button
+              onClick={generateLink}
               className="w-full"
               disabled={!query.trim()}
             >
@@ -387,7 +393,7 @@ export function LMGTFYMain() {
                     </>
                   )}
                 </Button>
-                
+
                 {typeof navigator !== "undefined" && "share" in navigator && (
                   <Button
                     onClick={shareLink}

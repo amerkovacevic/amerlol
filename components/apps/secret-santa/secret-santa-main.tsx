@@ -1,6 +1,8 @@
 "use client"
 
 import * as React from "react"
+import { useAppSettings } from "@/components/apps/settings-provider"
+
 import { motion } from "framer-motion"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -8,11 +10,11 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import { 
-  Plus, 
-  Calendar, 
-  DollarSign, 
-  Users, 
+import {
+  Plus,
+  Calendar,
+  DollarSign,
+  Users,
   Gift,
   X,
   Trash2,
@@ -27,14 +29,14 @@ import { toast } from "sonner"
 import { useAuth } from "@/components/auth/auth-provider"
 import { AuthDialog } from "@/components/auth/auth-dialog"
 import { db } from "@/lib/firebase/config"
-import { 
-  collection, 
-  query, 
-  orderBy, 
-  getDocs, 
+import {
+  collection,
+  query,
+  orderBy,
+  getDocs,
   getDoc,
-  addDoc, 
-  doc, 
+  addDoc,
+  doc,
   serverTimestamp,
   Timestamp,
   runTransaction,
@@ -71,6 +73,7 @@ interface Exchange {
 }
 
 export function SecretSantaMain() {
+  const settings = useAppSettings("secret-santa")
   const { user } = useAuth()
   const [exchanges, setExchanges] = React.useState<Exchange[]>([])
   const [loading, setLoading] = React.useState(true)
@@ -104,7 +107,7 @@ export function SecretSantaMain() {
     try {
       setLoading(true)
       const exchangesRef = collection(db, "secretSantaExchanges")
-      
+
       let snapshot
       try {
         const q = query(exchangesRef, orderBy("exchangeDate", "asc"))
@@ -117,7 +120,7 @@ export function SecretSantaMain() {
           snapshot = await getDocs(exchangesRef)
         }
       }
-      
+
       const exchangesData: Exchange[] = []
       const embeddedNames: Record<string, string> = {}
 
@@ -157,18 +160,6 @@ export function SecretSantaMain() {
       setParticipantNames(embeddedNames)
 
       if (user) {
-        // Move assignments created by older versions out of the public exchange document.
-        await Promise.all(exchangesData.map(async (exchange) => {
-          if (exchange.createdBy !== user.uid || !Object.keys(exchange.legacyAssignments || {}).length) return
-          const exchangeRef = doc(db, "secretSantaExchanges", exchange.id)
-          const migration = writeBatch(db)
-          Object.entries(exchange.legacyAssignments || {}).forEach(([giverId, receiverId]) => {
-            migration.set(doc(exchangeRef, "assignments", giverId), { receiverId })
-          })
-          migration.update(exchangeRef, { assignments: {}, updatedAt: serverTimestamp() })
-          await migration.commit()
-        }))
-
         const assignments = await Promise.all(
           exchangesData
             .filter((exchange) => exchange.drawn && exchange.participants.includes(user.uid))
@@ -261,7 +252,7 @@ export function SecretSantaMain() {
       }
 
       await addDoc(collection(db, "secretSantaExchanges"), exchangeData)
-      
+
       toast.success("Exchange created successfully! You've been added as a participant.")
       setCreateDialogOpen(false)
       setFormData({
@@ -271,7 +262,7 @@ export function SecretSantaMain() {
         exchangeDate: "",
         customFields: [],
       })
-      
+
       loadExchanges()
     } catch (error: any) {
       console.error("Failed to create exchange:", error)
@@ -518,7 +509,7 @@ export function SecretSantaMain() {
   }
 
   const filteredExchanges = React.useMemo(() => {
-    let filtered = exchanges
+    let filtered = exchanges.filter((exchange) => !settings.showMyExchangesOnly || Boolean(user && (exchange.createdBy === user.uid || exchange.participants.includes(user.uid))))
 
     // Filter by search query
     if (searchQuery) {
@@ -531,7 +522,7 @@ export function SecretSantaMain() {
     }
 
     return filtered
-  }, [exchanges, searchQuery])
+  }, [exchanges, searchQuery, settings.showMyExchangesOnly, user?.uid])
 
   const isUserInExchange = (exchange: Exchange) => {
     return user && Array.isArray(exchange.participants) && exchange.participants.includes(user.uid)
@@ -602,26 +593,19 @@ export function SecretSantaMain() {
       transition={{ duration: 0.5 }}
       className="space-y-6"
     >
-      <div>
-        <h2 className="text-2xl font-bold mb-2">Secret Santa</h2>
-        <p className="text-muted-foreground">
-          Organize and manage Secret Santa gift exchanges
-        </p>
-      </div>
-
-      {/* Actions Bar */}
+{/* Actions Bar */}
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search exchanges..."
+            aria-label="Search exchanges" placeholder="Search exchanges..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10"
           />
         </div>
 
-        <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+        <Dialog open={createDialogOpen} onOpenChange={(open) => { if (open) setFormData((form) => ({ ...form, budget: settings.defaultBudget })); setCreateDialogOpen(open) }}>
           <DialogTrigger asChild>
             <Button onClick={() => !user && setAuthDialogOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
@@ -698,7 +682,7 @@ export function SecretSantaMain() {
                 <p className="text-xs text-muted-foreground">
                   Add custom fields for participants to fill out when joining (e.g., Size for jersey swap)
                 </p>
-                
+
                 {formData.customFields.map((field, index) => (
                   <Card key={field.id} className="p-3">
                     <div className="space-y-3">
@@ -798,7 +782,7 @@ export function SecretSantaMain() {
           {filteredExchanges.map((exchange) => {
             const userAssignment = getUserAssignment(exchange)
             const isRevealed = revealedAssignments[exchange.id]
-            
+
             return (
               <Card key={exchange.id} className="relative">
                 <CardHeader>

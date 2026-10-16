@@ -59,6 +59,7 @@ export function SiteHeader() {
               <Link
                 key={item.href}
                 href={item.href}
+                aria-current={isActive ? "page" : undefined}
                 className={cn(
                   "text-sm font-medium transition-colors hover:text-primary",
                   isActive ? "text-primary" : "text-muted-foreground"

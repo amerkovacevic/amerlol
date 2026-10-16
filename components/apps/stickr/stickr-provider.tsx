@@ -1,7 +1,13 @@
 "use client"
 
 import * as React from "react"
-import { doc, onSnapshot, setDoc, serverTimestamp } from "firebase/firestore"
+import {
+  doc,
+  onSnapshot,
+  runTransaction,
+  serverTimestamp,
+} from "firebase/firestore"
+import { toast } from "sonner"
 import { useAuth } from "@/components/auth/auth-provider"
 import { db } from "@/lib/firebase/config"
 import { getPresetById } from "@/lib/stickr/album-presets"
@@ -13,208 +19,219 @@ import {
   type StickrPersistedState,
 } from "@/lib/stickr/stickr-state"
 
-const DEBOUNCE_MS = 500
-const STICKR_DOC_ID = "default"
-
-function readLocal(): StickrPersistedState {
-  if (typeof window === "undefined") return DEFAULT_STICKR_STATE
-  try {
-    const raw = localStorage.getItem(STICKR_STORAGE_KEY)
-    if (!raw) return DEFAULT_STICKR_STATE
-    const parsed = JSON.parse(raw) as Partial<StickrPersistedState>
-    return normalizeState(parsed, getPresetById(parsed.albumPresetId ?? ""))
-  } catch {
-    return DEFAULT_STICKR_STATE
-  }
-}
-
-function writeLocal(state: StickrPersistedState) {
-  try {
-    localStorage.setItem(STICKR_STORAGE_KEY, JSON.stringify(state))
-  } catch {
-    /* ignore */
-  }
-}
-
-function firestoreToState(data: Record<string, unknown>): StickrPersistedState {
-  return normalizeState(
-    {
-      albumPresetId: data.albumPresetId as string | undefined,
-      customStickerCount: data.customStickerCount as number | undefined,
-      displayName: data.displayName as string | undefined,
-      shareCardTheme: data.shareCardTheme as StickrPersistedState["shareCardTheme"] | undefined,
-      duplicates: data.duplicates as unknown as StickrPersistedState["duplicates"] | undefined,
-      needs: data.needs as unknown as StickrPersistedState["needs"] | undefined,
-    },
-    getPresetById((data.albumPresetId as string) ?? "")
-  )
-}
-
 export interface StickrContextValue {
   state: StickrPersistedState
-  setState: (next: StickrPersistedState | ((prev: StickrPersistedState) => StickrPersistedState)) => void
+  setState: (
+    next:
+      | StickrPersistedState
+      | ((previous: StickrPersistedState) => StickrPersistedState)
+  ) => void
   hydrated: boolean
   stickerCount: number
   authLoading: boolean
 }
-
 const StickrContext = React.createContext<StickrContextValue | null>(null)
+const normalize = (raw: Partial<StickrPersistedState>) =>
+  normalizeState(raw, getPresetById(raw.albumPresetId ?? ""))
 
 export function StickrProvider({ children }: { children: React.ReactNode }) {
-  const { user, loading: authLoading } = useAuth()
-  const [state, setState] = React.useState<StickrPersistedState>(DEFAULT_STICKR_STATE)
+  const { user, loading } = useAuth()
+  return (
+    <StickrSession
+      key={user?.uid ?? "guest"}
+      uid={user?.uid}
+      authLoading={loading}
+    >
+      {children}
+    </StickrSession>
+  )
+}
+
+function StickrSession({
+  uid,
+  authLoading,
+  children,
+}: {
+  uid?: string
+  authLoading: boolean
+  children: React.ReactNode
+}) {
+  const [state, setState] =
+    React.useState<StickrPersistedState>(DEFAULT_STICKR_STATE)
   const [hydrated, setHydrated] = React.useState(false)
-  const debounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
-  const stateRef = React.useRef<StickrPersistedState>(DEFAULT_STICKR_STATE)
-  const pendingClientUpdatedAtRef = React.useRef<number | null>(null)
+  const current = React.useRef(state)
+  const remote = React.useRef(state)
+  const pending = React.useRef(false)
+  const ready = React.useRef(false)
+  const queue = React.useRef<Promise<void>>(Promise.resolve())
+  const writeFailed = React.useRef(false)
+  const active = React.useRef(true)
+  const key = uid ? `${STICKR_STORAGE_KEY}:${uid}` : STICKR_STORAGE_KEY
 
   React.useEffect(() => {
-    stateRef.current = state
-  }, [state])
-
-  React.useEffect(() => {
+    active.current = true
     if (authLoading) return
-    if (!user) {
-      setState(readLocal())
+    ready.current = false
+    const apply = (next: StickrPersistedState) => {
+      current.current = next
+      remote.current = next
+      setState(next)
+      ready.current = true
       setHydrated(true)
-      return
     }
-
-    const ref = doc(db, "users", user.uid, "stickrSettings", STICKR_DOC_ID)
-    const unsub = onSnapshot(
-      ref,
-      (snap) => {
-        if (snap.exists()) {
-          const data = snap.data() as Record<string, unknown>
-          const remoteClientUpdatedAt =
-            typeof data.clientUpdatedAt === "number" ? (data.clientUpdatedAt as number) : null
-
-          // If we have a newer local write pending, ignore older remote snapshots to avoid clobbering edits.
-          if (
-            pendingClientUpdatedAtRef.current != null &&
-            remoteClientUpdatedAt != null &&
-            remoteClientUpdatedAt < pendingClientUpdatedAtRef.current
-          ) {
-            setHydrated(true)
-            return
-          }
-
-          if (
-            pendingClientUpdatedAtRef.current != null &&
-            remoteClientUpdatedAt != null &&
-            remoteClientUpdatedAt >= pendingClientUpdatedAtRef.current
-          ) {
-            pendingClientUpdatedAtRef.current = null
-          }
-
-          setState(firestoreToState(data))
-        } else {
-          // No remote doc yet: initialize from local (and create remote doc so the user can come back).
-          const local = readLocal()
-          setState(local)
-          pendingClientUpdatedAtRef.current = Date.now()
-          setDoc(
-            doc(db, "users", user.uid, "stickrSettings", STICKR_DOC_ID),
-            {
-              albumPresetId: local.albumPresetId,
-              customStickerCount: local.customStickerCount,
-              displayName: local.displayName,
-              shareCardTheme: local.shareCardTheme,
-              duplicates: local.duplicates,
-              needs: local.needs,
-              clientUpdatedAt: pendingClientUpdatedAtRef.current,
-              createdAt: serverTimestamp(),
-              updatedAt: serverTimestamp(),
-            },
-            { merge: true }
-          ).catch((e) => console.error("Stickr init save failed:", e))
+    if (!uid) {
+      const loadLocal = () => {
+        try {
+          const raw = localStorage.getItem(key)
+          apply(raw ? normalize(JSON.parse(raw)) : DEFAULT_STICKR_STATE)
+        } catch {
+          setHydrated(true)
+          toast.error(
+            "Your saved sticker lists could not be read. They have been left untouched."
+          )
         }
-        setHydrated(true)
+      }
+      loadLocal()
+      return () => {
+        active.current = false
+      }
+    }
+    const unsubscribe = onSnapshot(
+      doc(db, "users", uid, "stickrSettings", "default"),
+      (snapshot) => {
+        if (pending.current) return
+        // Reading an absent document never initializes or migrates it.
+        apply(
+          snapshot.exists() ? normalize(snapshot.data()) : DEFAULT_STICKR_STATE
+        )
       },
       () => {
-        setState(readLocal())
         setHydrated(true)
+        toast.error(
+          "Sticker sync could not be loaded. Existing lists have been left untouched; reload to retry."
+        )
       }
     )
-    return () => unsub()
-  }, [user, authLoading])
-
-  const flushSave = React.useCallback(
-    async (snapshot: StickrPersistedState) => {
-      if (!user) return
-      const clientUpdatedAt = Date.now()
-      pendingClientUpdatedAtRef.current = clientUpdatedAt
-      try {
-        await setDoc(
-          doc(db, "users", user.uid, "stickrSettings", STICKR_DOC_ID),
-          {
-            albumPresetId: snapshot.albumPresetId,
-            customStickerCount: snapshot.customStickerCount,
-            displayName: snapshot.displayName,
-            shareCardTheme: snapshot.shareCardTheme,
-            duplicates: snapshot.duplicates,
-            needs: snapshot.needs,
-            clientUpdatedAt,
-            updatedAt: serverTimestamp(),
-          },
-          { merge: true }
-        )
-      } catch (e) {
-        console.error("Stickr save failed:", e)
-      }
-    },
-    [user]
-  )
-
-  const persist = React.useCallback(
-    (next: StickrPersistedState | ((prev: StickrPersistedState) => StickrPersistedState)) => {
-      setState((prev) => {
-        const resolved =
-          typeof next === "function" ? (next as (p: StickrPersistedState) => StickrPersistedState)(prev) : next
-        writeLocal(resolved)
-
-        if (user) {
-          if (debounceRef.current) clearTimeout(debounceRef.current)
-          debounceRef.current = setTimeout(async () => {
-            await flushSave(resolved)
-          }, DEBOUNCE_MS)
-        }
-
-        return resolved
-      })
-    },
-    [user, flushSave]
-  )
-
-  // Flush any pending debounced save if the tab is closed/reloaded.
-  React.useEffect(() => {
-    if (!user) return
-    const handler = () => {
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current)
-        debounceRef.current = null
-        // Fire and forget; best effort.
-        void flushSave(stateRef.current)
-      }
+    return () => {
+      active.current = false
+      ready.current = false
+      unsubscribe()
     }
-    window.addEventListener("pagehide", handler)
-    return () => window.removeEventListener("pagehide", handler)
-  }, [user, flushSave])
+  }, [authLoading, key, uid])
 
-  const stickerCount = resolveStickerCount(state)
-
-  const value = React.useMemo(
-    () => ({ state, setState: persist, hydrated, stickerCount, authLoading }),
-    [state, persist, hydrated, stickerCount, authLoading]
+  const persist: StickrContextValue["setState"] = (update) => {
+    if (!ready.current) {
+      toast.error(
+        "Wait for your sticker lists to load successfully before editing."
+      )
+      return
+    }
+    const before = current.current
+    const next = typeof update === "function" ? update(before) : update
+    const fields = (Object.keys(next) as (keyof StickrPersistedState)[]).filter(
+      (field) => JSON.stringify(next[field]) !== JSON.stringify(before[field])
+    )
+    if (!fields.length) return
+    if (!uid) {
+      try {
+        const stored = localStorage.getItem(key)
+        const raw = stored ? JSON.parse(stored) : DEFAULT_STICKR_STATE
+        const latest = normalize(raw)
+        for (const field of fields) {
+          if (JSON.stringify(latest[field]) !== JSON.stringify(before[field]))
+            throw new Error(
+              "Your sticker lists changed in another tab. Reload before editing."
+            )
+        }
+        const changes = Object.fromEntries(
+          fields.map((field) => [field, next[field]])
+        )
+        localStorage.setItem(key, JSON.stringify({ ...raw, ...changes }))
+        const merged = { ...latest, ...changes }
+        current.current = merged
+        setState(merged)
+      } catch {
+        toast.error(
+          "Your sticker changes could not be saved. Existing lists have been left untouched."
+        )
+      }
+      return
+    }
+    current.current = next
+    setState(next)
+    pending.current = true
+    queue.current = queue.current
+      .then(async () => {
+        if (writeFailed.current) return
+        const ref = doc(db, "users", uid, "stickrSettings", "default")
+        const baseline = remote.current
+        const merged = await runTransaction(db, async (transaction) => {
+          const snapshot = await transaction.get(ref)
+          const latest = snapshot.exists()
+            ? normalize(snapshot.data())
+            : DEFAULT_STICKR_STATE
+          for (const field of fields)
+            if (
+              JSON.stringify(latest[field]) !== JSON.stringify(baseline[field])
+            )
+              throw new Error(
+                "Your sticker lists changed on another device. Reload before making more changes."
+              )
+          transaction.set(
+            ref,
+            {
+              ...Object.fromEntries(
+                fields.map((field) => [field, next[field]])
+              ),
+              updatedAt: serverTimestamp(),
+              ...(!snapshot.exists() ? { createdAt: serverTimestamp() } : {}),
+            },
+            { merge: true }
+          )
+          return {
+            ...latest,
+            ...Object.fromEntries(fields.map((field) => [field, next[field]])),
+          }
+        })
+        remote.current = merged
+        if (active.current && current.current === next) {
+          current.current = merged
+          setState(merged)
+        }
+      })
+      .catch((cause) => {
+        writeFailed.current = true
+        if (active.current) {
+          ready.current = false
+          toast.error(
+            cause instanceof Error
+              ? cause.message
+              : "Sticker changes could not sync. Reload to retry."
+          )
+        }
+      })
+      .finally(() => {
+        if (current.current === next || current.current === remote.current)
+          pending.current = false
+      })
+  }
+  return (
+    <StickrContext.Provider
+      value={{
+        state,
+        setState: persist,
+        hydrated,
+        stickerCount: resolveStickerCount(state),
+        authLoading,
+      }}
+    >
+      {children}
+    </StickrContext.Provider>
   )
-
-  return <StickrContext.Provider value={value}>{children}</StickrContext.Provider>
 }
 
 export function useStickr(): StickrContextValue {
-  const ctx = React.useContext(StickrContext)
-  if (!ctx) {
-    throw new Error("useStickr must be used within StickrProvider")
-  }
-  return ctx
+  const context = React.useContext(StickrContext)
+  if (!context) throw new Error("useStickr must be used within StickrProvider")
+  return context
 }

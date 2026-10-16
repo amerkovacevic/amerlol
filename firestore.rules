@@ -4,6 +4,15 @@ service cloud.firestore {
     function isDeepcutsPoints(value) {
       return value is int && value in [0, 10, 30, 60, 85, 100];
     }
+    function preferenceKeys() {
+      return request.method == 'create' ? request.resource.data.keys() : request.resource.data.diff(resource.data).affectedKeys();
+    }
+    function isPreferenceWrite(userId, settingsId, fields) {
+      return request.auth != null && request.auth.uid == userId && settingsId == 'default' &&
+        preferenceKeys().hasOnly(fields.concat(['createdAt', 'updatedAt'])) &&
+        request.resource.data.updatedAt == request.time &&
+        (request.method == 'create' || !preferenceKeys().hasAny(['createdAt']));
+    }
     // Users can only read/write their own data
     // Document structure: /users/{userId}
     // Fields: username, email, displayName, createdAt, updatedAt
@@ -14,37 +23,75 @@ service cloud.firestore {
       // Encryption settings subcollection
       // Document structure: /users/{userId}/encryptionSettings/{settingsId}
       match /encryptionSettings/{settingsId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read: if request.auth != null && request.auth.uid == userId;
+        allow create, update: if isPreferenceWrite(userId, settingsId, ["autoConvert","clearOnTabChange","defaultTab","fontSize"]) &&
+          (!preferenceKeys().hasAny(["autoConvert"]) || (request.resource.data.autoConvert is bool)) &&
+          (!preferenceKeys().hasAny(["clearOnTabChange"]) || (request.resource.data.clearOnTabChange is bool)) &&
+          (!preferenceKeys().hasAny(["defaultTab"]) || (request.resource.data.defaultTab is string && request.resource.data.defaultTab in ["base64","url","hex","binary","ascii","caesar","rot13","morse","md5","sha256"])) &&
+          (!preferenceKeys().hasAny(["fontSize"]) || (request.resource.data.fontSize is int && request.resource.data.fontSize >= 10 && request.resource.data.fontSize <= 24));
+        allow delete: if false;
       }
       
       // Diff Checker settings subcollection
       // Document structure: /users/{userId}/diffCheckerSettings/{settingsId}
       match /diffCheckerSettings/{settingsId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read: if request.auth != null && request.auth.uid == userId;
+        allow create, update: if isPreferenceWrite(userId, settingsId, ["fontSize","showLineNumbers","ignoreWhitespace","ignoreCase"]) &&
+          (!preferenceKeys().hasAny(["fontSize"]) || (request.resource.data.fontSize is int && request.resource.data.fontSize >= 10 && request.resource.data.fontSize <= 24)) &&
+          (!preferenceKeys().hasAny(["showLineNumbers"]) || (request.resource.data.showLineNumbers is bool)) &&
+          (!preferenceKeys().hasAny(["ignoreWhitespace"]) || (request.resource.data.ignoreWhitespace is bool)) &&
+          (!preferenceKeys().hasAny(["ignoreCase"]) || (request.resource.data.ignoreCase is bool));
+        allow delete: if false;
       }
       
       // Time Zone Converter settings subcollection
       // Document structure: /users/{userId}/timezoneSettings/{settingsId}
       match /timezoneSettings/{settingsId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read: if request.auth != null && request.auth.uid == userId;
+        allow create, update: if isPreferenceWrite(userId, settingsId, ["timeFormat","showSeconds","showDayNight","autoRefresh","defaultTimeZones"]) &&
+          (!preferenceKeys().hasAny(["timeFormat"]) || (request.resource.data.timeFormat is string && request.resource.data.timeFormat in ["12","24"])) &&
+          (!preferenceKeys().hasAny(["showSeconds"]) || (request.resource.data.showSeconds is bool)) &&
+          (!preferenceKeys().hasAny(["showDayNight"]) || (request.resource.data.showDayNight is bool)) &&
+          (!preferenceKeys().hasAny(["autoRefresh"]) || (request.resource.data.autoRefresh is bool)) &&
+          (!preferenceKeys().hasAny(["defaultTimeZones"]) || (request.resource.data.defaultTimeZones is list && request.resource.data.defaultTimeZones.size() >= 1 && request.resource.data.defaultTimeZones.size() <= 12 && (request.resource.data.defaultTimeZones.size() <= 0 || (request.resource.data.defaultTimeZones[0] is string && request.resource.data.defaultTimeZones[0].size() <= 100)) && (request.resource.data.defaultTimeZones.size() <= 1 || (request.resource.data.defaultTimeZones[1] is string && request.resource.data.defaultTimeZones[1].size() <= 100)) && (request.resource.data.defaultTimeZones.size() <= 2 || (request.resource.data.defaultTimeZones[2] is string && request.resource.data.defaultTimeZones[2].size() <= 100)) && (request.resource.data.defaultTimeZones.size() <= 3 || (request.resource.data.defaultTimeZones[3] is string && request.resource.data.defaultTimeZones[3].size() <= 100)) && (request.resource.data.defaultTimeZones.size() <= 4 || (request.resource.data.defaultTimeZones[4] is string && request.resource.data.defaultTimeZones[4].size() <= 100)) && (request.resource.data.defaultTimeZones.size() <= 5 || (request.resource.data.defaultTimeZones[5] is string && request.resource.data.defaultTimeZones[5].size() <= 100)) && (request.resource.data.defaultTimeZones.size() <= 6 || (request.resource.data.defaultTimeZones[6] is string && request.resource.data.defaultTimeZones[6].size() <= 100)) && (request.resource.data.defaultTimeZones.size() <= 7 || (request.resource.data.defaultTimeZones[7] is string && request.resource.data.defaultTimeZones[7].size() <= 100)) && (request.resource.data.defaultTimeZones.size() <= 8 || (request.resource.data.defaultTimeZones[8] is string && request.resource.data.defaultTimeZones[8].size() <= 100)) && (request.resource.data.defaultTimeZones.size() <= 9 || (request.resource.data.defaultTimeZones[9] is string && request.resource.data.defaultTimeZones[9].size() <= 100)) && (request.resource.data.defaultTimeZones.size() <= 10 || (request.resource.data.defaultTimeZones[10] is string && request.resource.data.defaultTimeZones[10].size() <= 100)) && (request.resource.data.defaultTimeZones.size() <= 11 || (request.resource.data.defaultTimeZones[11] is string && request.resource.data.defaultTimeZones[11].size() <= 100))));
+        allow delete: if false;
       }
       
       // Pickup Soccer settings subcollection
       // Document structure: /users/{userId}/pickupSoccerSettings/{settingsId}
       match /pickupSoccerSettings/{settingsId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read: if request.auth != null && request.auth.uid == userId;
+        allow create, update: if isPreferenceWrite(userId, settingsId, ["defaultMaxPlayers","defaultLocation","showMyGamesOnly","autoJoin"]) &&
+          (!preferenceKeys().hasAny(["defaultMaxPlayers"]) || (request.resource.data.defaultMaxPlayers is int && request.resource.data.defaultMaxPlayers >= 2 && request.resource.data.defaultMaxPlayers <= 100)) &&
+          (!preferenceKeys().hasAny(["defaultLocation"]) || (request.resource.data.defaultLocation is string && request.resource.data.defaultLocation.size() <= 200)) &&
+          (!preferenceKeys().hasAny(["showMyGamesOnly"]) || (request.resource.data.showMyGamesOnly is bool)) &&
+          (!preferenceKeys().hasAny(["autoJoin"]) || (request.resource.data.autoJoin is bool));
+        allow delete: if false;
       }
       
       // Secret Santa settings subcollection
       // Document structure: /users/{userId}/secretSantaSettings/{settingsId}
       match /secretSantaSettings/{settingsId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read: if request.auth != null && request.auth.uid == userId;
+        allow create, update: if isPreferenceWrite(userId, settingsId, ["defaultBudget","showMyExchangesOnly"]) &&
+          (!preferenceKeys().hasAny(["defaultBudget"]) || (request.resource.data.defaultBudget is string && request.resource.data.defaultBudget.size() <= 50)) &&
+          (!preferenceKeys().hasAny(["showMyExchangesOnly"]) || (request.resource.data.showMyExchangesOnly is bool));
+        allow delete: if false;
       }
       
       // Football Manager Team Picker settings subcollection
       // Document structure: /users/{userId}/footballManagerTeamPickerSettings/{settingsId}
       match /footballManagerTeamPickerSettings/{settingsId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read: if request.auth != null && request.auth.uid == userId;
+        allow create, update: if isPreferenceWrite(userId, settingsId, ["defaultPickMode","defaultNumPicks","defaultMinTier","defaultSameCountry","defaultSameLeague","autoAddToHistory","showFavoritesOnly"]) &&
+          (!preferenceKeys().hasAny(["defaultPickMode"]) || (request.resource.data.defaultPickMode is string && request.resource.data.defaultPickMode in ["single","multiple"])) &&
+          (!preferenceKeys().hasAny(["defaultNumPicks"]) || (request.resource.data.defaultNumPicks is int && request.resource.data.defaultNumPicks >= 2 && request.resource.data.defaultNumPicks <= 20)) &&
+          (!preferenceKeys().hasAny(["defaultMinTier"]) || (request.resource.data.defaultMinTier is int && request.resource.data.defaultMinTier >= 0 && request.resource.data.defaultMinTier <= 3)) &&
+          (!preferenceKeys().hasAny(["defaultSameCountry"]) || (request.resource.data.defaultSameCountry is bool)) &&
+          (!preferenceKeys().hasAny(["defaultSameLeague"]) || (request.resource.data.defaultSameLeague is bool)) &&
+          (!preferenceKeys().hasAny(["autoAddToHistory"]) || (request.resource.data.autoAddToHistory is bool)) &&
+          (!preferenceKeys().hasAny(["showFavoritesOnly"]) || (request.resource.data.showFavoritesOnly is bool));
+        allow delete: if false;
       }
       
       // Football Manager Team Picker favorites subcollection
@@ -62,7 +109,14 @@ service cloud.firestore {
       // Color Palette Crafter settings subcollection
       // Document structure: /users/{userId}/colorPaletteCrafterSettings/{settingsId}
       match /colorPaletteCrafterSettings/{settingsId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read: if request.auth != null && request.auth.uid == userId;
+        allow create, update: if isPreferenceWrite(userId, settingsId, ["defaultColors","showColorCodes","autoCopyOnClick","defaultExportFormat","showLikes"]) &&
+          (!preferenceKeys().hasAny(["defaultColors"]) || (request.resource.data.defaultColors is int && request.resource.data.defaultColors >= 2 && request.resource.data.defaultColors <= 8)) &&
+          (!preferenceKeys().hasAny(["showColorCodes"]) || (request.resource.data.showColorCodes is bool)) &&
+          (!preferenceKeys().hasAny(["autoCopyOnClick"]) || (request.resource.data.autoCopyOnClick is bool)) &&
+          (!preferenceKeys().hasAny(["defaultExportFormat"]) || (request.resource.data.defaultExportFormat is string && request.resource.data.defaultExportFormat in ["hex","rgb","json"])) &&
+          (!preferenceKeys().hasAny(["showLikes"]) || (request.resource.data.showLikes is bool));
+        allow delete: if false;
       }
       
       // Color Palette Crafter favorites subcollection
@@ -74,7 +128,13 @@ service cloud.firestore {
       // Amer Gauntlet settings subcollection
       // Document structure: /users/{userId}/amerGauntletSettings/{settingsId}
       match /amerGauntletSettings/{settingsId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read: if request.auth != null && request.auth.uid == userId;
+        allow create, update: if isPreferenceWrite(userId, settingsId, ["showTimer","showHints","animations","autoSubmit"]) &&
+          (!preferenceKeys().hasAny(["showTimer"]) || (request.resource.data.showTimer is bool)) &&
+          (!preferenceKeys().hasAny(["showHints"]) || (request.resource.data.showHints is bool)) &&
+          (!preferenceKeys().hasAny(["animations"]) || (request.resource.data.animations is bool)) &&
+          (!preferenceKeys().hasAny(["autoSubmit"]) || (request.resource.data.autoSubmit is bool));
+        allow delete: if false;
       }
       
       // Amer Gauntlet results subcollection
@@ -92,7 +152,15 @@ service cloud.firestore {
       // STL Monitor settings subcollection
       // Document structure: /users/{userId}/stlMonitorSettings/{settingsId}
       match /stlMonitorSettings/{settingsId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read: if request.auth != null && request.auth.uid == userId;
+        allow create, update: if isPreferenceWrite(userId, settingsId, ["defaultCategories","defaultSeverityRange","defaultTimeWindow","autoRefresh","refreshInterval","mapStyle"]) &&
+          (!preferenceKeys().hasAny(["defaultCategories"]) || (request.resource.data.defaultCategories is map && ("traffic" in request.resource.data.defaultCategories && request.resource.data.defaultCategories.traffic is bool) && ("weather" in request.resource.data.defaultCategories && request.resource.data.defaultCategories.weather is bool) && ("transit" in request.resource.data.defaultCategories && request.resource.data.defaultCategories.transit is bool) && ("news" in request.resource.data.defaultCategories && request.resource.data.defaultCategories.news is bool) && ("crime" in request.resource.data.defaultCategories && request.resource.data.defaultCategories.crime is bool))) &&
+          (!preferenceKeys().hasAny(["defaultSeverityRange"]) || (request.resource.data.defaultSeverityRange is list && request.resource.data.defaultSeverityRange.size() == 2 && (request.resource.data.defaultSeverityRange[0] is int && request.resource.data.defaultSeverityRange[0] >= 0 && request.resource.data.defaultSeverityRange[0] <= 100) && (request.resource.data.defaultSeverityRange[1] is int && request.resource.data.defaultSeverityRange[1] >= 0 && request.resource.data.defaultSeverityRange[1] <= 100) && request.resource.data.defaultSeverityRange[0] <= request.resource.data.defaultSeverityRange[1])) &&
+          (!preferenceKeys().hasAny(["defaultTimeWindow"]) || (request.resource.data.defaultTimeWindow is string && request.resource.data.defaultTimeWindow in ["15m","1h","6h","24h"])) &&
+          (!preferenceKeys().hasAny(["autoRefresh"]) || (request.resource.data.autoRefresh is bool)) &&
+          (!preferenceKeys().hasAny(["refreshInterval"]) || (request.resource.data.refreshInterval is int && request.resource.data.refreshInterval >= 15 && request.resource.data.refreshInterval <= 300)) &&
+          (!preferenceKeys().hasAny(["mapStyle"]) || (request.resource.data.mapStyle is string && request.resource.data.mapStyle in ["dark","light"]));
+        allow delete: if false;
       }
       
       // STL Monitor saved locations subcollection
@@ -104,7 +172,12 @@ service cloud.firestore {
       // LMGTFY settings subcollection
       // Document structure: /users/{userId}/lmgtfySettings/{settingsId}
       match /lmgtfySettings/{settingsId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read: if request.auth != null && request.auth.uid == userId;
+        allow create, update: if isPreferenceWrite(userId, settingsId, ["defaultAnimationSpeed","redirectDelay","showQueryInAnimation"]) &&
+          (!preferenceKeys().hasAny(["defaultAnimationSpeed"]) || (request.resource.data.defaultAnimationSpeed is number && request.resource.data.defaultAnimationSpeed >= 0.5 && request.resource.data.defaultAnimationSpeed <= 2)) &&
+          (!preferenceKeys().hasAny(["redirectDelay"]) || (request.resource.data.redirectDelay is int && request.resource.data.redirectDelay >= 0 && request.resource.data.redirectDelay <= 10000)) &&
+          (!preferenceKeys().hasAny(["showQueryInAnimation"]) || (request.resource.data.showQueryInAnimation is bool));
+        allow delete: if false;
       }
       
       // Stickr (Panini sticker tracker) settings
@@ -222,21 +295,41 @@ service cloud.firestore {
       // Anyone can read games (view available games)
       allow read: if true;
       
-      // Only authenticated users can create games
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.createdBy;
+      // New games have a bounded capacity and can initially include only their organizer.
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.createdBy &&
+        request.resource.data.maxPlayers is int && request.resource.data.maxPlayers >= 2 && request.resource.data.maxPlayers <= 100 &&
+        request.resource.data.players is list &&
+        (request.resource.data.players.size() == 0 || request.resource.data.players == [request.auth.uid]);
       
       // Only the game creator can delete
       allow delete: if request.auth != null && request.auth.uid == resource.data.createdBy;
       
       // Allow game creator to update any field
-      allow update: if request.auth != null && request.auth.uid == resource.data.createdBy;
+      allow update: if request.auth != null && request.auth.uid == resource.data.createdBy &&
+        request.resource.data.createdBy == resource.data.createdBy &&
+        request.resource.data.players == resource.data.players &&
+        request.resource.data.maxPlayers is int &&
+        request.resource.data.maxPlayers >= 2 && request.resource.data.maxPlayers <= 100 &&
+        request.resource.data.players.size() <= request.resource.data.maxPlayers;
       
       // Allow any authenticated user to join/leave games (update players array only)
       // This allows users to add/remove themselves from the players array
       allow update: if request.auth != null && 
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['players', 'updatedAt']) &&
         request.resource.data.players is list &&
-        resource.data.players is list;
+        resource.data.players is list &&
+        request.resource.data.updatedAt == request.time &&
+        (
+          (!(request.auth.uid in resource.data.players) &&
+           request.auth.uid in request.resource.data.players &&
+           request.resource.data.players.size() == resource.data.players.size() + 1 &&
+           request.resource.data.players.size() <= resource.data.maxPlayers &&
+           request.resource.data.players.hasAll(resource.data.players)) ||
+          (request.auth.uid in resource.data.players &&
+           !(request.auth.uid in request.resource.data.players) &&
+           resource.data.players.size() == request.resource.data.players.size() + 1 &&
+           resource.data.players.hasAll(request.resource.data.players))
+        );
     }
     
     // Secret Santa Exchanges collection
@@ -286,11 +379,13 @@ service cloud.firestore {
         resource.data.participants is list &&
         request.resource.data.participantResponses is map &&
         request.resource.data.participantNames is map &&
-        (!resource.data.keys().hasAny(['participantResponses']) ||
+        ((!resource.data.keys().hasAny(['participantResponses']) &&
+          request.resource.data.participantResponses.keys().hasOnly([request.auth.uid])) ||
          (resource.data.participantResponses is map &&
           request.resource.data.participantResponses.diff(resource.data.participantResponses)
             .affectedKeys().hasOnly([request.auth.uid]))) &&
-        (!resource.data.keys().hasAny(['participantNames']) ||
+        ((!resource.data.keys().hasAny(['participantNames']) &&
+          request.resource.data.participantNames.keys().hasOnly([request.auth.uid])) ||
          (resource.data.participantNames is map &&
           request.resource.data.participantNames.diff(resource.data.participantNames)
             .affectedKeys().hasOnly([request.auth.uid]))) &&

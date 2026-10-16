@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import maplibregl from "maplibre-gl"
+import * as maplibregl from "maplibre-gl"
 import "maplibre-gl/dist/maplibre-gl.css"
 import { useTheme } from "next-themes"
 import {
@@ -12,6 +12,7 @@ import {
 } from "./types"
 
 interface MapComponentProps {
+  mapStyle: "dark" | "light"
   incidents: Incident[]
   onIncidentClick: (incident: Incident) => void
   selectedIncident: Incident | null
@@ -53,6 +54,7 @@ function createMapStyle(isDark: boolean): maplibregl.StyleSpecification {
 }
 
 export default function MapComponent({
+  mapStyle,
   incidents,
   onIncidentClick,
   selectedIncident,
@@ -71,7 +73,7 @@ export default function MapComponent({
     setMounted(true)
   }, [])
 
-  const isDark = !mounted || resolvedTheme === "dark"
+  const isDark = mapStyle === "dark"
 
   // Initialize map
   React.useEffect(() => {
@@ -146,15 +148,15 @@ export default function MapComponent({
     return () => {
       // Cleanup resize listener
       window.removeEventListener("resize", handleResize)
-      
+
       // Cleanup animations
       animationFrames.current.forEach((frame) => cancelAnimationFrame(frame))
       animationFrames.current.clear()
-      
+
       // Cleanup markers
       markers.current.forEach((marker) => marker.remove())
       markers.current.clear()
-      
+
       if (map.current) {
         map.current.remove()
         map.current = null
@@ -165,7 +167,7 @@ export default function MapComponent({
   // Update map style when theme changes
   React.useEffect(() => {
     if (!map.current || !mounted) return
-    
+
     // Update the tile source when theme changes
     const source = map.current.getSource("osm-tiles") as maplibregl.RasterTileSource
     if (source) {
@@ -174,13 +176,13 @@ export default function MapComponent({
       const zoom = map.current.getZoom()
       const bearing = map.current.getBearing()
       const pitch = map.current.getPitch()
-      
+
       map.current.setStyle(createMapStyle(isDark))
-      
+
       // Restore view after style change
       map.current.once("style.load", () => {
         map.current?.jumpTo({ center, zoom, bearing, pitch })
-        
+
         // Re-add the STL boundary
         if (map.current && !map.current.getSource("stl-boundary")) {
           map.current.addSource("stl-boundary", {
@@ -249,10 +251,10 @@ export default function MapComponent({
       } else {
         // Create new marker
         const el = createMarkerElement(incident)
-        
+
         // Use anchor: "center" - this tells MapLibre to position the CENTER of the element at the coordinate
         // The marker element uses margin offsets to ensure the visual marker is centered
-        const marker = new maplibregl.Marker({ 
+        const marker = new maplibregl.Marker({
           element: el,
           anchor: "center" // Center anchor ensures stable positioning at all zoom levels
         })
@@ -289,7 +291,7 @@ export default function MapComponent({
         center: map.current.getCenter().toArray() as [number, number],
         zoom: map.current.getZoom(),
       }
-      
+
       // Fly to selected incident
       map.current.flyTo({
         center: [selectedIncident.location.lng, selectedIncident.location.lat],
@@ -315,12 +317,12 @@ export default function MapComponent({
     const icon = CATEGORY_ICONS[incident.category]
     const size = getSizeFromSeverity(incident.severity)
     const halfSize = size / 2
-    
+
     // Create wrapper div - MapLibre will position this at the coordinate point
     // When using anchor: "center", MapLibre positions the CENTER of this element at the coordinate
     const wrapper = document.createElement("div")
     wrapper.className = `marker-wrapper ${incident.category}`
-    
+
     // The wrapper needs to be positioned so its visual center (where the circle is) aligns with the coordinate
     // Since we're using anchor: "center", we offset by half the size
     wrapper.style.cssText = `
@@ -334,7 +336,7 @@ export default function MapComponent({
       transform-origin: ${halfSize}px ${halfSize}px;
       will-change: transform;
     `
-    
+
     // The visual marker circle - fills the entire wrapper
     const circle = document.createElement("div")
     circle.className = "marker-circle"
@@ -357,7 +359,7 @@ export default function MapComponent({
       z-index: 2;
     `
     circle.innerHTML = icon
-    
+
     // Ping ring for animation
     const pingRing = document.createElement("div")
     pingRing.className = "ping-ring"
@@ -374,21 +376,21 @@ export default function MapComponent({
       transform-origin: center center;
       z-index: 1;
     `
-    
+
     wrapper.appendChild(pingRing)
     wrapper.appendChild(circle)
-    
+
     // Hover effects - only transform the circle, never the wrapper
     wrapper.addEventListener("mouseenter", () => {
       circle.style.transform = "scale(1.15)"
       circle.style.boxShadow = `0 4px 16px ${color}`
     })
-    
+
     wrapper.addEventListener("mouseleave", () => {
       circle.style.transform = "scale(1)"
       circle.style.boxShadow = `0 2px 8px ${color}80`
     })
-    
+
     return wrapper
   }
 
@@ -409,24 +411,24 @@ export default function MapComponent({
       if (!startTime) startTime = timestamp
       const elapsed = timestamp - startTime
       const cycle = Math.floor(elapsed / duration)
-      
+
       if (cycle >= repeatCount) {
         pingRing.style.opacity = "0"
         pingRing.style.transform = "scale(1)"
         animationFrames.current.delete(id)
         return
       }
-      
+
       const progress = (elapsed % duration) / duration
       const scale = 1 + progress * 2 // Scale from 1 to 3
       const opacity = 1 - progress // Fade from 1 to 0
-      
+
       pingRing.style.transform = `scale(${scale})`
       pingRing.style.opacity = String(opacity * 0.6)
-      
+
       animationFrames.current.set(id, requestAnimationFrame(animate))
     }
-    
+
     animationFrames.current.set(id, requestAnimationFrame(animate))
   }
 
@@ -443,18 +445,18 @@ export default function MapComponent({
           /* Box sizing to ensure size calculations are correct */
           box-sizing: content-box !important;
         }
-        
+
         /* Ensure MapLibre's marker container uses center transform origin */
         .maplibregl-marker {
           /* MapLibre handles positioning - don't interfere */
           transform-origin: center center !important;
         }
-        
+
         .marker-wrapper.selected .marker-circle {
           transform: scale(1.2) !important;
           animation: pulse 1.5s ease-in-out infinite;
         }
-        
+
         @keyframes pulse {
           0%, 100% {
             box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4);
@@ -463,7 +465,7 @@ export default function MapComponent({
             box-shadow: 0 0 0 10px rgba(255, 255, 255, 0);
           }
         }
-        
+
         .maplibregl-popup-content {
           background: rgba(0, 0, 0, 0.85);
           color: white;
@@ -471,7 +473,7 @@ export default function MapComponent({
           border-radius: 8px;
           font-size: 12px;
         }
-        
+
         .maplibregl-popup-anchor-bottom .maplibregl-popup-tip {
           border-top-color: rgba(0, 0, 0, 0.85);
         }

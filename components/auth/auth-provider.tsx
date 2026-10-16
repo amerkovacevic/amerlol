@@ -11,35 +11,33 @@ interface AuthContextType {
   ensurePlayerIdentity: () => Promise<User>
 }
 
-const AuthContext = React.createContext<AuthContextType>({
-  user: null,
-  loading: true,
-  signOut: async () => {},
-  ensurePlayerIdentity: async () => { throw new Error("Authentication is not ready") },
-})
+const AuthContext = React.createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = React.useState<User | null>(null)
   const [loading, setLoading] = React.useState(true)
+  const identityRequest = React.useRef<Promise<User> | null>(null)
 
   React.useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user)
       setLoading(false)
-    })
+    }, () => { setUser(null); setLoading(false) })
 
     return () => unsubscribe()
   }, [])
 
-  const signOut = async () => {
+  const signOut = React.useCallback(async () => {
     await firebaseSignOut(auth)
-  }
+  }, [])
 
-  const ensurePlayerIdentity = async () => {
+  const ensurePlayerIdentity = React.useCallback(async () => {
     if (auth.currentUser) return auth.currentUser
-    const credential = await signInAnonymously(auth)
-    return credential.user
-  }
+    if (!identityRequest.current) {
+      identityRequest.current = signInAnonymously(auth).then((credential) => credential.user).finally(() => { identityRequest.current = null })
+    }
+    return identityRequest.current
+  }, [])
 
   return (
     <AuthContext.Provider value={{ user, loading, signOut, ensurePlayerIdentity }}>

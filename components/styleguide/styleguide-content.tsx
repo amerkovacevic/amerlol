@@ -26,14 +26,26 @@ export function StyleguideContent() {
           </p>
         </div>
 
+        <section aria-labelledby="interaction-patterns">
+          <h2 id="interaction-patterns" className="font-space-grotesk text-3xl font-bold mb-6">Interaction patterns</h2>
+          <Card>
+            <CardContent className="p-6 space-y-4 text-muted-foreground">
+              <p><strong className="text-foreground">One page title.</strong> The app shell owns the app name and description. Use task-specific headings inside each app, followed by the shared Overview and Settings navigation.</p>
+              <p><strong className="text-foreground">Consistent controls.</strong> Use shared buttons, fields, cards, tabs, and semantic color tokens. Keep app accents for decoration and use text or icons alongside status colors.</p>
+              <p><strong className="text-foreground">Accessible interaction.</strong> Name every field and icon button. Preserve keyboard focus, respect reduced motion, wrap controls on narrow screens, and keep long dialogs scrollable.</p>
+              <p><strong className="text-foreground">Helpful account reminders.</strong> Show a quiet, actionable reminder to guests explaining the benefit of signing in. Hide it for signed-in accounts and keep the main task available.</p>
+            </CardContent>
+          </Card>
+        </section>
+
         <section>
           <h2 className="font-space-grotesk text-3xl font-bold mb-6">Typography</h2>
           <Card>
             <CardContent className="p-6 space-y-4">
               <div>
-                <h1 className="font-space-grotesk text-4xl font-bold mb-2">
+                <p className="font-space-grotesk text-4xl font-bold mb-2">
                   Heading 1 (Space Grotesk)
-                </h1>
+                </p>
                 <h2 className="font-space-grotesk text-3xl font-bold mb-2">
                   Heading 2 (Space Grotesk)
                 </h2>

@@ -1,5 +1,6 @@
 "use client"
 
+import { SignInReminder } from "@/components/auth/sign-in-reminder"
 import * as React from "react"
 import Link from "next/link"
 import Image from "next/image"
@@ -76,10 +77,11 @@ export function Hero() {
             </Link>
           </Button>
           <Button asChild variant="outline" size="lg">
-            <Link href="/about">Explore</Link>
+            <Link href="/about">About this project</Link>
           </Button>
         </motion.div>
 
+        <div className="mx-auto mt-8 max-w-xl text-left"><SignInReminder /></div>
       </motion.div>
     </section>
   )

@@ -6,24 +6,8 @@ import { Badge } from "@/components/ui/badge"
 import { Calendar } from "lucide-react"
 import { buildLog } from "@/lib/build-log"
 
-// Get the 4 most recent entries from the build log
-// Extract a shorter description for the homepage (first sentence or first part after dash)
-const changelog = buildLog.slice(0, 4).map((entry) => {
-  // Try to get description after " - " or use first sentence
-  let shortDesc = entry.description
-  if (entry.description.includes(" - ")) {
-    shortDesc = entry.description.split(" - ")[1].split(". ")[0] + "."
-  } else {
-    shortDesc = entry.description.split(". ")[0] + "."
-  }
-  
-  return {
-    date: entry.date,
-    title: entry.title,
-    type: "New App" as const,
-    description: shortDesc,
-  }
-})
+// Keep complete descriptions: splitting on periods truncates names such as St. Louis.
+const changelog = buildLog.slice(0, 4)
 
 export function LatestDrops() {
   return (
@@ -54,8 +38,8 @@ export function LatestDrops() {
           >
             <Card className="h-full">
               <CardHeader>
-                <div className="flex items-start justify-between mb-2">
-                  <Badge variant="secondary">{item.type}</Badge>
+                <div className="flex flex-wrap items-start justify-between gap-2 mb-2">
+                  <Badge variant="secondary">Update</Badge>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Calendar className="h-4 w-4" />
                     {new Date(item.date + "T12:00:00-06:00").toLocaleDateString("en-US", {

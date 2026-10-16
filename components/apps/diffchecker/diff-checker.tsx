@@ -1,12 +1,15 @@
 "use client"
 
 import * as React from "react"
+import { useAppSettings } from "@/components/apps/settings-provider"
+
 import { motion } from "framer-motion"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Copy, Download, Upload, X, Check } from "lucide-react"
+import { calculateTextDiff } from "@/lib/apps/text-diff"
 import { toast } from "sonner"
 
 interface DiffLine {
@@ -16,89 +19,11 @@ interface DiffLine {
 }
 
 export function DiffChecker() {
+  const settings = useAppSettings("diffchecker")
   const [originalText, setOriginalText] = React.useState("")
   const [changedText, setChangedText] = React.useState("")
   const [diffResult, setDiffResult] = React.useState<DiffLine[]>([])
   const [showDiff, setShowDiff] = React.useState(false)
-
-  // Improved diff algorithm using Myers' algorithm approach
-  const calculateDiff = React.useCallback((original: string, changed: string) => {
-    const originalLines = original.split("\n")
-    const changedLines = changed.split("\n")
-    const result: DiffLine[] = []
-
-    // Build a map of line positions for faster lookup
-    const originalMap = new Map<string, number[]>()
-    originalLines.forEach((line, index) => {
-      if (!originalMap.has(line)) {
-        originalMap.set(line, [])
-      }
-      originalMap.get(line)!.push(index)
-    })
-
-    const changedMap = new Map<string, number[]>()
-    changedLines.forEach((line, index) => {
-      if (!changedMap.has(line)) {
-        changedMap.set(line, [])
-      }
-      changedMap.get(line)!.push(index)
-    })
-
-    // Find longest common subsequence using dynamic programming
-    const m = originalLines.length
-    const n = changedLines.length
-    const dp: number[][] = Array(m + 1)
-      .fill(null)
-      .map(() => Array(n + 1).fill(0))
-
-    for (let i = 1; i <= m; i++) {
-      for (let j = 1; j <= n; j++) {
-        if (originalLines[i - 1] === changedLines[j - 1]) {
-          dp[i][j] = dp[i - 1][j - 1] + 1
-        } else {
-          dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1])
-        }
-      }
-    }
-
-    // Reconstruct the diff
-    let i = m
-    let j = n
-    const diff: Array<{ type: "equal" | "insert" | "delete"; content: string; origLine?: number; changedLine?: number }> = []
-
-    while (i > 0 || j > 0) {
-      if (i > 0 && j > 0 && originalLines[i - 1] === changedLines[j - 1]) {
-        diff.unshift({
-          type: "equal",
-          content: originalLines[i - 1],
-          origLine: i,
-          changedLine: j,
-        })
-        i--
-        j--
-      } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
-        diff.unshift({
-          type: "insert",
-          content: changedLines[j - 1],
-          changedLine: j,
-        })
-        j--
-      } else if (i > 0) {
-        diff.unshift({
-          type: "delete",
-          content: originalLines[i - 1],
-          origLine: i,
-        })
-        i--
-      }
-    }
-
-    return diff.map((line) => ({
-      type: line.type,
-      content: line.content,
-      lineNumber: line.type === "equal" ? line.origLine : line.type === "insert" ? line.changedLine : line.origLine,
-    }))
-  }, [])
 
   const handleFindDifference = () => {
     if (!originalText && !changedText) {
@@ -106,7 +31,8 @@ export function DiffChecker() {
       return
     }
 
-    const diff = calculateDiff(originalText, changedText)
+    let diff: DiffLine[]
+    try { diff = calculateTextDiff(originalText, changedText, settings) } catch (error) { toast.error(error instanceof Error ? error.message : "Comparison failed"); return }
     setDiffResult(diff)
     setShowDiff(true)
     toast.success("Difference calculated")
@@ -196,14 +122,7 @@ export function DiffChecker() {
       transition={{ duration: 0.5 }}
       className="space-y-6"
     >
-      <div>
-        <h2 className="text-2xl font-bold mb-2">Text Diff Checker</h2>
-        <p className="text-muted-foreground">
-          Compare two text files and find the differences between them
-        </p>
-      </div>
-
-      {!showDiff ? (
+{!showDiff ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Original Text */}
           <Card>
@@ -214,12 +133,13 @@ export function DiffChecker() {
                   <CardDescription>Enter or paste the original text</CardDescription>
                 </div>
                 <div className="flex items-center gap-2">
-                  <label className="cursor-pointer flex items-center">
+                  <label className="relative cursor-pointer flex items-center rounded-sm p-2 focus-within:ring-2 focus-within:ring-ring">
                     <Upload className="h-4 w-4 text-muted-foreground hover:text-foreground" />
                     <input
                       type="file"
                       accept=".txt,.md,.js,.ts,.tsx,.jsx,.json,.css,.html"
-                      className="hidden"
+                      className="absolute inset-0 w-full cursor-pointer opacity-0"
+                      aria-label="Upload original text file"
                       onChange={(e) => handleFileUpload(e, "original")}
                     />
                   </label>
@@ -227,6 +147,7 @@ export function DiffChecker() {
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8"
+                    aria-label="Copy original text"
                     onClick={handleCopyOriginal}
                     disabled={!originalText}
                   >
@@ -239,8 +160,8 @@ export function DiffChecker() {
               <Textarea
                 value={originalText}
                 onChange={(e) => setOriginalText(e.target.value)}
-                placeholder="Enter original text here..."
-                className="min-h-[400px] font-mono text-sm"
+                aria-label="original text" placeholder="Enter original text here..."
+                className="min-h-[400px] font-mono text-sm" style={{ fontSize: settings.fontSize }}
               />
             </CardContent>
           </Card>
@@ -254,12 +175,13 @@ export function DiffChecker() {
                   <CardDescription>Enter or paste the modified text</CardDescription>
                 </div>
                 <div className="flex items-center gap-2">
-                  <label className="cursor-pointer flex items-center">
+                  <label className="relative cursor-pointer flex items-center rounded-sm p-2 focus-within:ring-2 focus-within:ring-ring">
                     <Upload className="h-4 w-4 text-muted-foreground hover:text-foreground" />
                     <input
                       type="file"
                       accept=".txt,.md,.js,.ts,.tsx,.jsx,.json,.css,.html"
-                      className="hidden"
+                      className="absolute inset-0 w-full cursor-pointer opacity-0"
+                      aria-label="Upload changed text file"
                       onChange={(e) => handleFileUpload(e, "changed")}
                     />
                   </label>
@@ -267,6 +189,7 @@ export function DiffChecker() {
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8"
+                    aria-label="Copy changed text"
                     onClick={handleCopyChanged}
                     disabled={!changedText}
                   >
@@ -279,8 +202,8 @@ export function DiffChecker() {
               <Textarea
                 value={changedText}
                 onChange={(e) => setChangedText(e.target.value)}
-                placeholder="Enter changed text here..."
-                className="min-h-[400px] font-mono text-sm"
+                aria-label="changed text" placeholder="Enter changed text here..."
+                className="min-h-[400px] font-mono text-sm" style={{ fontSize: settings.fontSize }}
               />
             </CardContent>
           </Card>
@@ -309,7 +232,7 @@ export function DiffChecker() {
           </CardHeader>
           <CardContent>
             <div className="rounded-lg border bg-muted/50 p-4 overflow-auto max-h-[600px]">
-              <pre className="font-mono text-sm whitespace-pre-wrap">
+              <pre className="font-mono text-sm whitespace-pre-wrap" style={{ fontSize: settings.fontSize }}>
                 {diffResult.map((line, index) => (
                   <div
                     key={index}
@@ -318,7 +241,7 @@ export function DiffChecker() {
                     <span className="text-muted-foreground mr-2 select-none">
                       {getLinePrefix(line.type)}
                     </span>
-                    <span>{line.content || " "}</span>
+                    {settings.showLineNumbers && <span className="mr-4 inline-block w-10 select-none text-muted-foreground">{line.lineNumber}</span>}<span>{line.content || " "}</span>
                   </div>
                 ))}
               </pre>

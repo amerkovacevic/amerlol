@@ -12,9 +12,8 @@ import {
 } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { AppCategory } from "@/lib/apps/registry"
-import { cn } from "@/lib/utils"
 
-type SortOption = "featured" | "new" | "popular"
+type SortOption = "featured" | "name"
 
 interface FilterBarProps {
   searchQuery: string
@@ -36,8 +35,7 @@ const categories: (AppCategory | "all")[] = [
 
 const sortOptions: { value: SortOption; label: string }[] = [
   { value: "featured", label: "Featured" },
-  { value: "new", label: "New" },
-  { value: "popular", label: "Popular" },
+  { value: "name", label: "Name (A–Z)" },
 ]
 
 export function FilterBar({
@@ -53,6 +51,8 @@ export function FilterBar({
       <div className="relative flex-1">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
+          aria-label="Search apps"
+          type="search"
           placeholder="Search apps..."
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
@@ -67,6 +67,7 @@ export function FilterBar({
             variant={selectedCategory === category ? "default" : "outline"}
             size="sm"
             onClick={() => onCategoryChange(category)}
+            aria-pressed={selectedCategory === category}
             className="capitalize"
           >
             {category === "all" ? "All" : category}
@@ -75,7 +76,7 @@ export function FilterBar({
       </div>
 
       <Select value={sortBy} onValueChange={(value) => onSortChange(value as SortOption)}>
-        <SelectTrigger className="w-full md:w-[180px]">
+        <SelectTrigger aria-label="Sort apps" className="w-full md:w-[180px]">
           <SelectValue placeholder="Sort by" />
         </SelectTrigger>
         <SelectContent>

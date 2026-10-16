@@ -1,6 +1,8 @@
 "use client"
 
 import * as React from "react"
+import { useAppSettings } from "@/components/apps/settings-provider"
+
 import { AnimatePresence, motion } from "framer-motion"
 import { Check, ChevronRight, Copy, Loader2, Search, ShieldAlert, Trophy, X } from "lucide-react"
 import { toast } from "sonner"
@@ -23,6 +25,7 @@ interface SubmittedAnswer { questionId: string; playerId: string; playerName: st
 function storageKey(date: string) { return `deepcuts-static-${date}` }
 
 export function FootballDeepcutsMain() {
+  const settings = useAppSettings("football-deepcuts")
   const { user, loading: authLoading, ensurePlayerIdentity } = useAuth()
   const date = utcDateString()
   const [database, setDatabase] = React.useState<StaticDatabase | null>(null)
@@ -155,7 +158,7 @@ export function FootballDeepcutsMain() {
       </div>
 
       <Card>
-        <CardHeader><div className="flex items-start justify-between gap-4"><div><CardTitle>{questionLabel(currentQuestion.type)}</CardTitle><CardDescription>{currentQuestion.answerCount} sourced answers in the database</CardDescription></div><Badge variant="outline">Q{currentIndex + 1}</Badge></div></CardHeader>
+        <CardHeader><div className="flex items-start justify-between gap-4"><div><CardTitle>{questionLabel(currentQuestion.type)}</CardTitle>{settings.showAnswerCount && <CardDescription>{currentQuestion.answerCount} sourced answers in the database</CardDescription>}</div><Badge variant="outline">Q{currentIndex + 1}</Badge></div></CardHeader>
         <CardContent className="space-y-6">
           <div className="flex flex-wrap items-center justify-center gap-3">{clubNames.map((name) => <div key={name} className="rounded-lg border bg-secondary px-4 py-3 text-center font-semibold">{name}</div>)}</div>
           <p className="mx-auto max-w-2xl text-center text-xl font-semibold leading-relaxed">{currentQuestion.prompt}</p>
@@ -174,7 +177,7 @@ export function FootballDeepcutsMain() {
         </CardContent>
       </Card>
 
-      <Card><CardHeader><CardTitle>Question mix</CardTitle><CardDescription>Daily challenges combine clubs, nationalities, eras, and career paths.</CardDescription></CardHeader><CardContent className="flex flex-wrap gap-2">{["Two clubs", "Club + nationality", "Club + era", "Three-club path"].map((label) => <Badge key={label} variant="outline">{label}</Badge>)}</CardContent></Card>
+      {settings.showQuestionMix && <Card><CardHeader><CardTitle>Question mix</CardTitle><CardDescription>Daily challenges combine clubs, nationalities, eras, and career paths.</CardDescription></CardHeader><CardContent className="flex flex-wrap gap-2">{["Two clubs", "Club + nationality", "Club + era", "Three-club path"].map((label) => <Badge key={label} variant="outline">{label}</Badge>)}</CardContent></Card>}
     </motion.div>
   )
 }

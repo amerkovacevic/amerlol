@@ -4,6 +4,7 @@ import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/components/auth/auth-provider"
 import { IOSAppPromotion } from "@/components/layout/ios-app-banner"
+import { MotionProvider } from "@/components/fx/motion-provider"
 import { Toaster } from "sonner"
 
 const inter = Inter({
@@ -43,9 +44,11 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <AuthProvider>
+            <MotionProvider>
             <IOSAppPromotion />
             {children}
             <Toaster position="bottom-right" />
+            </MotionProvider>
           </AuthProvider>
         </ThemeProvider>
       </body>

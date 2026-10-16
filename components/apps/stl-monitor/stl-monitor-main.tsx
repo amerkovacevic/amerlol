@@ -1,6 +1,8 @@
 "use client"
 
 import * as React from "react"
+import { useAppSettings } from "@/components/apps/settings-provider"
+
 import { motion, AnimatePresence } from "framer-motion"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -71,37 +73,43 @@ const LOADING_MESSAGES = [
 ]
 
 export function STLMonitorMain() {
+  const settings = useAppSettings("stl-monitor")
   const { user, loading: authLoading } = useAuth()
   const [authDialogOpen, setAuthDialogOpen] = React.useState(false)
   const [activeTab, setActiveTab] = React.useState<"live" | "analytics" | "insights">("live")
-  
+
   // Data state
   const [incidents, setIncidents] = React.useState<Incident[]>([])
   const [loading, setLoading] = React.useState(true)
   const [lastRefresh, setLastRefresh] = React.useState<Date | null>(null)
-  
+
   // UI state
   const [filters, setFilters] = React.useState<FilterState>(DEFAULT_FILTER_STATE)
   const [selectedIncident, setSelectedIncident] = React.useState<Incident | null>(null)
   const [showFilters, setShowFilters] = React.useState(false)
   const [isRefreshing, setIsRefreshing] = React.useState(false)
   const [currentMessageIndex, setCurrentMessageIndex] = React.useState(0)
-  
+
   // Replay state
   const [replayTime, setReplayTime] = React.useState<Date>(new Date())
   const [isPlaying, setIsPlaying] = React.useState(false)
   const replayIntervalRef = React.useRef<NodeJS.Timeout | null>(null)
 
+  React.useEffect(() => {
+    setFilters((current) => ({ ...current, categories: settings.defaultCategories, severityMin: settings.defaultSeverityRange[0], severityMax: settings.defaultSeverityRange[1], timeWindow: settings.defaultTimeWindow }))
+  }, [JSON.stringify(settings.defaultCategories), JSON.stringify(settings.defaultSeverityRange), settings.defaultTimeWindow])
+
   // Load initial data
   React.useEffect(() => {
     loadAllData()
+    if (!settings.autoRefresh) return
     const interval = setInterval(() => {
       if (!filters.replayMode) {
         loadAllData(true)
       }
-    }, 30000) // Refresh every 30 seconds
+    }, settings.refreshInterval * 1000) // Refresh every 30 seconds
     return () => clearInterval(interval)
-  }, [filters.replayMode])
+  }, [filters.replayMode, settings.autoRefresh, settings.refreshInterval])
 
   // Replay mode timer
   React.useEffect(() => {
@@ -129,7 +137,7 @@ export function STLMonitorMain() {
   const loadAllData = async (silent = false) => {
     if (!silent) setLoading(true)
     setIsRefreshing(true)
-    
+
     try {
       // Fetch all data sources in parallel
       const [
@@ -157,7 +165,7 @@ export function STLMonitorMain() {
 
       setIncidents(allIncidents)
       setLastRefresh(new Date())
-      
+
       if (!silent) {
         toast.success(`Loaded ${allIncidents.length} incidents`)
       }
@@ -175,10 +183,10 @@ export function STLMonitorMain() {
     let filtered = incidents.filter(inc => {
       // Category filter
       if (!filters.categories[inc.category]) return false
-      
+
       // Severity filter
       if (inc.severity < filters.severityMin || inc.severity > filters.severityMax) return false
-      
+
       // Time window filter
       const now = filters.replayMode ? replayTime : new Date()
       const windowMs = {
@@ -187,14 +195,14 @@ export function STLMonitorMain() {
         "6h": 6 * 60 * 60 * 1000,
         "24h": 24 * 60 * 60 * 1000,
       }[filters.timeWindow]
-      
+
       const incidentTime = inc.createdAt.getTime()
       if (incidentTime < now.getTime() - windowMs) return false
       if (filters.replayMode && incidentTime > now.getTime()) return false
-      
+
       return true
     })
-    
+
     return filtered
   }, [incidents, filters, replayTime])
 
@@ -281,12 +289,12 @@ export function STLMonitorMain() {
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
+          <h2 className="text-2xl font-bold flex items-center gap-2">
             <Radio className="h-6 w-6 text-red-500" />
-            STL Monitor
-          </h1>
+            Live incidents
+          </h2>
           <p className="text-sm text-muted-foreground">
             Greater St. Louis Area Incident Monitoring
           </p>
@@ -297,9 +305,9 @@ export function STLMonitorMain() {
               Updated {formatTime(lastRefresh)}
             </span>
           )}
-          <Button 
-            variant="outline" 
-            size="sm" 
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => loadAllData()}
             disabled={isRefreshing}
           >
@@ -344,8 +352,8 @@ export function STLMonitorMain() {
                         onClick={() => toggleCategory(category)}
                         className="text-xs"
                         style={{
-                          backgroundColor: filters.categories[category] 
-                            ? CATEGORY_COLORS[category] 
+                          backgroundColor: filters.categories[category]
+                            ? CATEGORY_COLORS[category]
                             : undefined,
                           borderColor: CATEGORY_COLORS[category],
                         }}
@@ -442,6 +450,7 @@ export function STLMonitorMain() {
               </div>
             }>
               <MapComponent
+                mapStyle={settings.mapStyle}
                 incidents={filteredIncidents}
                 onIncidentClick={setSelectedIncident}
                 selectedIncident={selectedIncident}
@@ -465,7 +474,7 @@ export function STLMonitorMain() {
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="text-lg">{CATEGORY_ICONS[selectedIncident.category]}</span>
-                          <Badge 
+                          <Badge
                             variant="outline"
                             style={{ borderColor: CATEGORY_COLORS[selectedIncident.category] }}
                           >

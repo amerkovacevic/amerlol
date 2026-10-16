@@ -1,13 +1,15 @@
 "use client"
 
 import * as React from "react"
+import { useAppSettings } from "@/components/apps/settings-provider"
+
 import { motion } from "framer-motion"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { 
+import {
   Plus,
   Heart,
   Copy,
@@ -55,6 +57,7 @@ interface ColorPalette {
 }
 
 export function ColorPaletteCrafterMain() {
+  const settings = useAppSettings("color-palette-crafter")
   const { user, loading: authLoading } = useAuth()
   const [authDialogOpen, setAuthDialogOpen] = React.useState(false)
   const [loading, setLoading] = React.useState(true)
@@ -173,7 +176,7 @@ export function ColorPaletteCrafterMain() {
 
   const generateRandomPalette = () => {
     const colors: string[] = []
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < settings.defaultColors; i++) {
       colors.push(`#${Math.floor(Math.random() * 16777215).toString(16).padStart(6, "0")}`)
     }
     setNewPalette({ ...newPalette, colors })
@@ -313,6 +316,7 @@ export function ColorPaletteCrafterMain() {
   }
 
   const copyColor = (color: string) => {
+    if (!settings.autoCopyOnClick) return
     navigator.clipboard.writeText(color)
     toast.success(`Copied ${color} to clipboard`)
   }
@@ -329,12 +333,12 @@ export function ColorPaletteCrafterMain() {
       title: palette.title || "",
       description: palette.description || "",
     }
-    const dataStr = JSON.stringify(data, null, 2)
-    const dataBlob = new Blob([dataStr], { type: "application/json" })
+    const dataStr = settings.defaultExportFormat === "json" ? JSON.stringify(data, null, 2) : palette.colors.map((color) => settings.defaultExportFormat === "rgb" ? `rgb(${[1, 3, 5].map((start) => parseInt(color.slice(start, start + 2), 16)).join(", ")})` : color).join("\n")
+    const dataBlob = new Blob([dataStr], { type: settings.defaultExportFormat === "json" ? "application/json" : "text/plain" })
     const url = URL.createObjectURL(dataBlob)
     const link = document.createElement("a")
     link.href = url
-    link.download = `palette-${palette.id || Date.now()}.json`
+    link.download = `palette-${palette.id || Date.now()}.${settings.defaultExportFormat === "json" ? "json" : "txt"}`
     link.click()
     URL.revokeObjectURL(url)
     toast.success("Palette exported")
@@ -389,9 +393,9 @@ export function ColorPaletteCrafterMain() {
               title={`Click to copy ${color}`}
             >
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-                <span className="text-white text-xs font-mono opacity-0 group-hover:opacity-100 drop-shadow-lg">
+                {settings.showColorCodes && <span className="text-white text-xs font-mono opacity-0 group-hover:opacity-100 drop-shadow-lg">
                   {color}
-                </span>
+                </span>}
               </div>
             </div>
           ))}
@@ -462,7 +466,7 @@ export function ColorPaletteCrafterMain() {
               <Download className="h-3 w-3 mr-1" />
               Export
             </Button>
-            {palette.likes > 0 && (
+            {settings.showLikes && palette.likes > 0 && (
               <Badge variant="secondary" className="text-xs">
                 {palette.likes} {palette.likes === 1 ? "like" : "likes"}
               </Badge>
@@ -480,14 +484,7 @@ export function ColorPaletteCrafterMain() {
       transition={{ duration: 0.5 }}
       className="space-y-6"
     >
-      <div>
-        <h2 className="text-2xl font-bold mb-2">Color Crafter</h2>
-        <p className="text-muted-foreground">
-          Discover, create, and share beautiful color palettes
-        </p>
-      </div>
-
-      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as any)} className="space-y-4">
+<Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as any)} className="space-y-4">
         <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
           <TabsList>
             <TabsTrigger value="browse">Browse</TabsTrigger>
@@ -513,13 +510,13 @@ export function ColorPaletteCrafterMain() {
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search palettes..."
+                aria-label="Search palettes" placeholder="Search palettes..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10"
               />
             </div>
-            <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+            <Dialog open={createDialogOpen} onOpenChange={(open) => { if (open) setNewPalette({ colors: Array.from({ length: settings.defaultColors }, () => `#${Math.floor(Math.random() * 16777215).toString(16).padStart(6, "0")}`), title: "", description: "" }); setCreateDialogOpen(open) }}>
               <DialogTrigger asChild>
                 <Button onClick={() => !user && setAuthDialogOpen(true)}>
                   <Plus className="h-4 w-4 mr-2" />

@@ -1,7 +1,13 @@
 "use client"
 
 import * as React from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import {
@@ -15,8 +21,16 @@ import { useAuth } from "@/components/auth/auth-provider"
 import { AuthDialog } from "@/components/auth/auth-dialog"
 import { Button } from "@/components/ui/button"
 import { Settings, RotateCcw } from "lucide-react"
-import { ALBUM_PRESETS, clampStickerCount, getPresetById } from "@/lib/stickr/album-presets"
-import { DEFAULT_STICKR_STATE, normalizeState, type StickrPersistedState } from "@/lib/stickr/stickr-state"
+import {
+  ALBUM_PRESETS,
+  clampStickerCount,
+  getPresetById,
+} from "@/lib/stickr/album-presets"
+import {
+  DEFAULT_STICKR_STATE,
+  normalizeState,
+  type StickrPersistedState,
+} from "@/lib/stickr/stickr-state"
 import { useStickr } from "./stickr-provider"
 
 export function StickrSettings() {
@@ -25,6 +39,7 @@ export function StickrSettings() {
   const [authDialogOpen, setAuthDialogOpen] = React.useState(false)
 
   const onPresetChange = (id: string) => {
+    if (state.duplicates.length || state.needs.length) return
     const preset = getPresetById(id)
     setState((prev) => {
       const next: StickrPersistedState = {
@@ -37,10 +52,11 @@ export function StickrSettings() {
   }
 
   const resetAll = () => {
-    if (!confirm("Reset album settings and clear your duplicates and needs lists?")) return
-    setState(() =>
-      normalizeState(DEFAULT_STICKR_STATE, getPresetById(DEFAULT_STICKR_STATE.albumPresetId))
-    )
+    setState((previous) => ({
+      ...previous,
+      displayName: DEFAULT_STICKR_STATE.displayName,
+      shareCardTheme: DEFAULT_STICKR_STATE.shareCardTheme,
+    }))
   }
 
   if (authLoading || !hydrated) {
@@ -61,7 +77,8 @@ export function StickrSettings() {
           Stickr Settings
         </h2>
         <p className="text-muted-foreground">
-          Choose your Panini FIFA World Cup™ album size and how your trade card looks when you share it.
+          Choose your Panini FIFA World Cup™ album size and how your trade card
+          looks when you share it.
         </p>
         {!user && (
           <p className="text-sm text-muted-foreground mt-2">
@@ -73,7 +90,13 @@ export function StickrSettings() {
             >
               Sign in
             </button>{" "}
-            to sync lists across devices.
+            to open your account’s synced lists. Device lists stay separate.
+          </p>
+        )}
+        {user && (
+          <p className="text-sm text-muted-foreground mt-2">
+            You’re editing your account’s lists. Unsynced device lists remain
+            available when signed out.
           </p>
         )}
       </div>
@@ -81,12 +104,19 @@ export function StickrSettings() {
       <Card>
         <CardHeader>
           <CardTitle>Album</CardTitle>
-          <CardDescription>Sticker numbers run from 1 up to your album size.</CardDescription>
+          <CardDescription>
+            Sticker numbers run from 1 up to your album size. To protect your
+            lists, album changes are locked while duplicates or needs exist.
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label>Album edition</Label>
-            <Select value={state.albumPresetId} onValueChange={onPresetChange}>
+            <Select
+              disabled={Boolean(state.duplicates.length || state.needs.length)}
+              value={state.albumPresetId}
+              onValueChange={onPresetChange}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select album" />
               </SelectTrigger>
@@ -106,13 +136,21 @@ export function StickrSettings() {
               <Label htmlFor="customCount">Sticker count</Label>
               <Input
                 id="customCount"
+                disabled={Boolean(
+                  state.duplicates.length || state.needs.length
+                )}
                 type="number"
                 min={1}
                 max={1200}
                 value={state.customStickerCount}
                 onChange={(e) => {
                   const v = clampStickerCount(parseInt(e.target.value, 10) || 1)
-                  setState((prev) => normalizeState({ ...prev, customStickerCount: v }, getPresetById("custom")))
+                  setState((prev) =>
+                    normalizeState(
+                      { ...prev, customStickerCount: v },
+                      getPresetById("custom")
+                    )
+                  )
                 }}
               />
             </div>
@@ -123,7 +161,9 @@ export function StickrSettings() {
       <Card>
         <CardHeader>
           <CardTitle>Share card</CardTitle>
-          <CardDescription>Shown on the downloadable trade image.</CardDescription>
+          <CardDescription>
+            Shown on the downloadable trade image.
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
@@ -133,14 +173,18 @@ export function StickrSettings() {
               placeholder="e.g. Alex · St. Louis"
               maxLength={80}
               value={state.displayName}
-              onChange={(e) => setState((prev) => ({ ...prev, displayName: e.target.value }))}
+              onChange={(e) =>
+                setState((prev) => ({ ...prev, displayName: e.target.value }))
+              }
             />
           </div>
           <div className="space-y-2">
             <Label>Card style</Label>
             <Select
               value={state.shareCardTheme}
-              onValueChange={(v: "light" | "dark") => setState((prev) => ({ ...prev, shareCardTheme: v }))}
+              onValueChange={(v: "light" | "dark") =>
+                setState((prev) => ({ ...prev, shareCardTheme: v }))
+              }
             >
               <SelectTrigger>
                 <SelectValue />
@@ -157,7 +201,7 @@ export function StickrSettings() {
       <div className="flex justify-end">
         <Button variant="outline" onClick={resetAll}>
           <RotateCcw className="h-4 w-4 mr-2" />
-          Reset everything
+          Reset display preferences
         </Button>
       </div>
 
