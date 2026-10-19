@@ -15,8 +15,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { toast } from "sonner"
-import { Loader2, User as UserIcon, AtSign, Lock, Save } from "lucide-react"
+import { Loader2, User as UserIcon, AtSign, Lock, Palette, Save } from "lucide-react"
+import { useAccentColor } from "@/components/accent-color-provider"
+import { THEME_COLORS, type ThemeColor } from "@/lib/theme-colors"
+import { getUsernameError, USERNAME_MAX_LENGTH } from "@/lib/account/username"
 
 interface UserProfile {
   displayName: string
@@ -27,6 +31,7 @@ interface UserProfile {
 export function AccountSettings() {
   const { user, loading: authLoading } = useAuth()
   const router = useRouter()
+  const { color, saving: savingColor, setColor } = useAccentColor()
   const [loading, setLoading] = React.useState(true)
   const [saving, setSaving] = React.useState(false)
   const [changingPassword, setChangingPassword] = React.useState(false)
@@ -98,9 +103,9 @@ export function AccountSettings() {
     if (!user) return
 
     // Validate username format
-    const usernameRegex = /^[a-zA-Z0-9_]+$/
-    if (profile.username && !usernameRegex.test(profile.username)) {
-      toast.error("Username can only contain letters, numbers, and underscores")
+    const usernameError = getUsernameError(profile.username)
+    if (usernameError) {
+      toast.error(usernameError)
       return
     }
 
@@ -199,6 +204,15 @@ export function AccountSettings() {
     }
   }
 
+  const handleColorChange = async (next: ThemeColor) => {
+    try {
+      await setColor(next)
+      toast.success("Site color updated")
+    } catch {
+      toast.error("Could not save your site color")
+    }
+  }
+
   if (authLoading || loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -218,6 +232,49 @@ export function AccountSettings() {
 
   return (
     <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Palette className="h-5 w-5" />
+            Appearance
+          </CardTitle>
+          <CardDescription>
+            Choose the color used across both light and dark mode
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="max-w-sm space-y-2">
+            <Label htmlFor="site-color">Site color</Label>
+            <Select
+              value={color}
+              onValueChange={(value) => void handleColorChange(value as ThemeColor)}
+              disabled={savingColor}
+            >
+              <SelectTrigger id="site-color" aria-label="Site color">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {THEME_COLORS.map((option) => (
+                  <SelectItem key={option.id} value={option.id}>
+                    <span className="flex items-center gap-2">
+                      <span
+                        className="h-3.5 w-3.5 rounded-full border border-black/10 shadow-sm"
+                        style={{ backgroundColor: option.hex }}
+                        aria-hidden="true"
+                      />
+                      {option.label}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Applied instantly and synced to your account.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Profile Information */}
       <Card>
         <CardHeader>
@@ -272,6 +329,8 @@ export function AccountSettings() {
                 }
                 placeholder="Enter your username"
                 pattern="[a-zA-Z0-9_]+"
+                minLength={3}
+                maxLength={USERNAME_MAX_LENGTH}
                 title="Username can only contain letters, numbers, and underscores"
               />
               <p className="text-xs text-muted-foreground">

@@ -6,6 +6,8 @@ import "maplibre-gl/dist/maplibre-gl.css"
 import { useTheme } from "next-themes"
 import type { FeatureCollection } from "geojson"
 import { COUNTRIES, normalizeCountry, type Continent } from "./countries"
+import { useAccentColor } from "@/components/accent-color-provider"
+import { THEME_COLORS } from "@/lib/theme-colors"
 
 type Region = "World" | Continent
 
@@ -53,6 +55,8 @@ export function CountryMap({ region, guessed, revealRemaining = false, focusOnGu
   const previousGuessesRef = React.useRef(guessed.length)
   const returnTimerRef = React.useRef<number | null>(null)
   const { resolvedTheme } = useTheme()
+  const { color: accentColor } = useAccentColor()
+  const palette = THEME_COLORS.find((option) => option.id === accentColor) ?? THEME_COLORS[0]
 
   React.useEffect(() => {
     if (!containerRef.current) return
@@ -62,7 +66,7 @@ export function CountryMap({ region, guessed, revealRemaining = false, focusOnGu
       style: {
         version: 8,
         sources: {},
-        layers: [{ id: "background", type: "background", paint: { "background-color": dark ? "#020817" : "#ffffff" } }],
+        layers: [{ id: "background", type: "background", paint: { "background-color": dark ? `hsl(${palette.hue} 59% 5%)` : `hsl(${palette.hue} 30% 98%)` } }],
       },
       bounds: REGION_BOUNDS[region],
       fitBoundsOptions: { padding: 16 },
@@ -86,11 +90,11 @@ export function CountryMap({ region, guessed, revealRemaining = false, focusOnGu
         type: "fill",
         source: "countries",
         paint: {
-          "fill-color": ["match", ["get", "quizStatus"], "guessed", "#0ea5e9", "remaining", dark ? "#1e293b" : "#e2e8f0", dark ? "#0f172a" : "#f8fafc"],
+          "fill-color": ["match", ["get", "quizStatus"], "guessed", palette.hex, "remaining", dark ? `hsl(${palette.hue} 38% 13%)` : `hsl(${palette.hue} 28% 90%)`, dark ? `hsl(${palette.hue} 48% 7%)` : `hsl(${palette.hue} 25% 96%)`],
           "fill-opacity": ["match", ["get", "quizStatus"], "outside", 0.35, 0.9],
         },
       })
-      map.addLayer({ id: "countries-line", type: "line", source: "countries", paint: { "line-color": dark ? "#475569" : "#94a3b8", "line-width": 0.7 } })
+      map.addLayer({ id: "countries-line", type: "line", source: "countries", paint: { "line-color": dark ? `hsl(${palette.hue} 24% 36%)` : `hsl(${palette.hue} 18% 62%)`, "line-width": 0.7 } })
       updateMapData(map, data, region, guessed, revealRemaining)
       updateMapLabels(map, data, region, guessed, revealRemaining, labelMarkersRef.current)
     })
@@ -113,7 +117,7 @@ export function CountryMap({ region, guessed, revealRemaining = false, focusOnGu
       labelMarkersRef.current = []
       popup.remove(); map.remove(); mapRef.current = null
     }
-  }, [resolvedTheme])
+  }, [accentColor, palette.hex, palette.hue, resolvedTheme])
 
   React.useEffect(() => {
     const map = mapRef.current

@@ -18,6 +18,8 @@ import {
   CheckSquare,
 } from "lucide-react"
 import { toast } from "sonner"
+import { useAccentColor } from "@/components/accent-color-provider"
+import { THEME_COLORS } from "@/lib/theme-colors"
 import { getPresetById } from "@/lib/stickr/album-presets"
 import {
   formatNumericStickerList,
@@ -46,6 +48,8 @@ import { useStickr } from "./stickr-provider"
 type EditMode = "duplicates" | "needs"
 
 export function StickrMain() {
+  const { color: accentColor } = useAccentColor()
+  const palette = THEME_COLORS.find((option) => option.id === accentColor) ?? THEME_COLORS[0]
   const { state, setState, hydrated, stickerCount } = useStickr()
   const [mode, setMode] = React.useState<EditMode>("needs")
   const [search, setSearch] = React.useState("")
@@ -251,7 +255,7 @@ export function StickrMain() {
     try {
       const canvas = await html2canvas(el, {
         scale: 2,
-        backgroundColor: state.shareCardTheme === "dark" ? "#0f172a" : "#fafafa",
+        backgroundColor: state.shareCardTheme === "dark" ? `hsl(${palette.hue} 59% 5%)` : `hsl(${palette.hue} 30% 98%)`,
         useCORS: true,
         logging: false,
       })

@@ -883,29 +883,65 @@ export function SecretSantaMain() {
                   {/* Assignment Display */}
                   {exchange.drawn && isUserInExchange(exchange) && userAssignment && (
                     <div className="pt-2 border-t">
-                      <div className="flex items-center justify-between mb-2">
-                        <p className="text-xs font-medium">Your Assignment:</p>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => toggleRevealAssignment(exchange.id)}
-                        >
-                          {isRevealed ? (
-                            <EyeOff className="h-3 w-3" />
-                          ) : (
-                            <Eye className="h-3 w-3" />
-                          )}
-                        </Button>
-                      </div>
+                      <p className="mb-2 text-xs font-medium">Your Assignment:</p>
                       {isRevealed ? (
-                        <Badge variant="default" className="text-sm p-2">
-                          <Gift className="h-3 w-3 mr-1" />
-                          {participantNames[userAssignment] || "Loading..."}
-                        </Badge>
+                        <div
+                          className="rounded-lg border border-primary/30 bg-primary/5 p-4"
+                          aria-live="polite"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex min-w-0 items-center gap-2 text-base font-semibold">
+                              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground">
+                                <Gift className="h-4 w-4" aria-hidden="true" />
+                              </span>
+                              <span className="truncate">
+                                {participantNames[userAssignment] || "Loading..."}
+                              </span>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 shrink-0 gap-1.5 px-2 text-xs text-muted-foreground"
+                              onClick={() => toggleRevealAssignment(exchange.id)}
+                              aria-label="Hide assignment"
+                            >
+                              <EyeOff className="h-3.5 w-3.5" aria-hidden="true" />
+                              Hide
+                            </Button>
+                          </div>
+
+                          {exchange.customFields && exchange.customFields.length > 0 && (
+                            <dl className="mt-4 space-y-3 border-t border-primary/15 pt-3">
+                              {exchange.customFields.map((field) => {
+                                const answer = exchange.participantResponses?.[userAssignment]?.[field.id]?.trim()
+                                return (
+                                  <div key={field.id}>
+                                    <dt className="text-xs font-medium text-muted-foreground">
+                                      {field.label}
+                                    </dt>
+                                    <dd className="mt-0.5 break-words text-sm font-medium">
+                                      {answer || "No answer provided"}
+                                    </dd>
+                                  </div>
+                                )
+                              })}
+                            </dl>
+                          )}
+                        </div>
                       ) : (
-                        <Badge variant="outline" className="text-sm p-2">
-                          Click to reveal
-                        </Badge>
+                        <button
+                          type="button"
+                          onClick={() => toggleRevealAssignment(exchange.id)}
+                          className="flex min-h-12 w-full items-center justify-between rounded-lg border border-dashed border-primary/40 bg-primary/5 px-4 py-3 text-left text-sm font-medium text-primary transition-colors hover:border-primary/70 hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                          aria-label={`Reveal your assignment for ${exchange.name}`}
+                        >
+                          <span className="flex items-center gap-2">
+                            <Gift className="h-4 w-4" aria-hidden="true" />
+                            Click to reveal
+                          </span>
+                          <Eye className="h-4 w-4" aria-hidden="true" />
+                        </button>
                       )}
                     </div>
                   )}

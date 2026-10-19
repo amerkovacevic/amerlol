@@ -443,7 +443,7 @@ export function STLMonitorMain() {
           </Card>
 
           {/* Map Container */}
-          <div className="relative rounded-lg overflow-hidden border bg-gray-100 dark:bg-gray-900" style={{ height: "calc(100vh - 380px)", minHeight: "500px" }}>
+          <div className="relative rounded-lg overflow-hidden border bg-gray-100 dark:bg-muted" style={{ height: "calc(100vh - 380px)", minHeight: "500px" }}>
             <React.Suspense fallback={
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="animate-pulse text-muted-foreground">Loading map...</div>

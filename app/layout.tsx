@@ -5,6 +5,8 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/components/auth/auth-provider"
 import { IOSAppPromotion } from "@/components/layout/ios-app-banner"
 import { MotionProvider } from "@/components/fx/motion-provider"
+import { AccentColorProvider } from "@/components/accent-color-provider"
+import { UsernameOnboarding } from "@/components/auth/username-onboarding"
 import { Toaster } from "sonner"
 
 const inter = Inter({
@@ -44,11 +46,14 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <AuthProvider>
-            <MotionProvider>
-            <IOSAppPromotion />
-            {children}
-            <Toaster position="bottom-right" />
-            </MotionProvider>
+            <AccentColorProvider>
+              <MotionProvider>
+                <IOSAppPromotion />
+                {children}
+                <UsernameOnboarding />
+                <Toaster position="bottom-right" />
+              </MotionProvider>
+            </AccentColorProvider>
           </AuthProvider>
         </ThemeProvider>
       </body>
