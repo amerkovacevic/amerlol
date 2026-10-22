@@ -800,7 +800,7 @@ export function SecretSantaMain() {
                     )}
                   </div>
                   {exchange.description && (
-                    <CardDescription className="line-clamp-2">
+                    <CardDescription className="whitespace-pre-wrap break-words">
                       {exchange.description}
                     </CardDescription>
                   )}
