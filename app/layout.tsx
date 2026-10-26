@@ -8,6 +8,7 @@ import { MotionProvider } from "@/components/fx/motion-provider"
 import { AccentColorProvider } from "@/components/accent-color-provider"
 import { UsernameOnboarding } from "@/components/auth/username-onboarding"
 import { Toaster } from "sonner"
+import { ACCENT_BOOTSTRAP_SCRIPT } from "@/lib/theme-colors"
 
 const inter = Inter({
   subsets: ["latin"],
@@ -38,6 +39,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: ACCENT_BOOTSTRAP_SCRIPT }} />
+      </head>
       <body className={`${inter.variable} ${spaceGrotesk.variable} font-sans antialiased`}>
         <ThemeProvider
           attribute="class"

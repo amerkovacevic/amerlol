@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { useAuth } from "@/components/auth/auth-provider"
 import { db } from "@/lib/firebase/config"
 import { updateProfile, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from "firebase/auth"
-import { doc, getDoc, setDoc, updateDoc, serverTimestamp, Timestamp } from "firebase/firestore"
+import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -16,6 +16,13 @@ import { Loader2, User as UserIcon, AtSign, Lock, Palette, Save } from "lucide-r
 import { useAccentColor } from "@/components/accent-color-provider"
 import { THEME_COLORS, type ThemeColor } from "@/lib/theme-colors"
 import { getUsernameError, USERNAME_MAX_LENGTH } from "@/lib/account/username"
+import {
+  getAuthErrorMessage,
+  getDataErrorMessage,
+  getErrorCode,
+  logUnexpectedError,
+} from "@/lib/firebase/user-facing-errors"
+import { useAsync } from "@/lib/hooks/use-async"
 
 interface UserProfile {
   displayName: string
@@ -23,81 +30,57 @@ interface UserProfile {
   email: string
 }
 
+const EMPTY_PASSWORDS = { currentPassword: "", newPassword: "", confirmPassword: "" }
+
+async function loadUsername(uid: string): Promise<string> {
+  return (await getDoc(doc(db, "users", uid))).data()?.username || ""
+}
+
+function passwordErrorMessage(error: unknown): string {
+  switch (getErrorCode(error)) {
+    // Current Firebase reports a wrong password as invalid-credential.
+    case "auth/invalid-credential":
+    case "auth/wrong-password":
+      return "Current password is incorrect"
+    case "auth/weak-password":
+      return "New password is too weak"
+    default:
+      return getAuthErrorMessage(error)
+  }
+}
+
 export function AccountSettings() {
-  const { user, loading: authLoading } = useAuth()
+  const { account: user, loading: authLoading } = useAuth()
   const router = useRouter()
   const { color, saving: savingColor, setColor } = useAccentColor()
-  const [loading, setLoading] = React.useState(true)
   const [saving, setSaving] = React.useState(false)
   const [changingPassword, setChangingPassword] = React.useState(false)
+  const [passwordData, setPasswordData] = React.useState(EMPTY_PASSWORDS)
+  const storedUsername = useAsync(user?.uid ?? null, () => loadUsername(user!.uid))
+  // Edits are kept separately so a late profile load never overwrites typing.
+  const [edits, setEdits] = React.useState<Partial<UserProfile>>({})
+  const profile: UserProfile = {
+    displayName: user?.displayName || "",
+    username: storedUsername.data ?? "",
+    email: user?.email || "",
+    ...edits,
+  }
+  const setProfile = (next: UserProfile) => setEdits({ displayName: next.displayName, username: next.username })
+  const loading = Boolean(user) && storedUsername.loading
 
-  const [profile, setProfile] = React.useState<UserProfile>({
-    displayName: "",
-    username: "",
-    email: "",
-  })
-
-  const [passwordData, setPasswordData] = React.useState({
-    currentPassword: "",
-    newPassword: "",
-    confirmPassword: "",
-  })
-
-  // Redirect if not authenticated
+  // Guests (including anonymous game players) have no account to manage.
   React.useEffect(() => {
-    if (!authLoading && !user) {
-      router.push("/")
-    }
+    if (!authLoading && !user) router.push("/")
   }, [user, authLoading, router])
 
-  // Load user profile data
   React.useEffect(() => {
-    const loadProfile = async () => {
-      if (!user) {
-        setLoading(false)
-        return
-      }
+    if (storedUsername.error) toast.error(getDataErrorMessage(storedUsername.error, "load your profile"))
+  }, [storedUsername.error])
 
-      try {
-        // Get display name and email from Firebase Auth
-        const displayName = user.displayName || ""
-        const email = user.email || ""
-
-        // Get username from Firestore - using user.uid matches Firestore rules
-        let username = ""
-        const userDocRef = doc(db, "users", user.uid)
-        const userDoc = await getDoc(userDocRef)
-
-        if (userDoc.exists()) {
-          const data = userDoc.data()
-          username = data.username || ""
-        }
-
-        setProfile({
-          displayName,
-          username,
-          email,
-        })
-      } catch (error: any) {
-        console.error("Failed to load profile:", error)
-        if (error.code === "permission-denied") {
-          toast.error("Permission denied. Please check your authentication.")
-        } else {
-          toast.error("Failed to load profile data")
-        }
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    loadProfile()
-  }, [user])
-
-  const handleProfileUpdate = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleProfileUpdate = async (event: React.FormEvent) => {
+    event.preventDefault()
     if (!user) return
 
-    // Validate username format
     const usernameError = getUsernameError(profile.username)
     if (usernameError) {
       toast.error(usernameError)
@@ -106,62 +89,40 @@ export function AccountSettings() {
 
     setSaving(true)
     try {
-      // Update display name in Firebase Auth
       if (profile.displayName !== user.displayName) {
-        await updateProfile(user, {
+        await updateProfile(user, { displayName: profile.displayName })
+      }
+      const userRef = doc(db, "users", user.uid)
+      const exists = (await getDoc(userRef)).exists()
+      // Merge keeps other profile fields; Firestore mirrors Auth's name and email.
+      await setDoc(
+        userRef,
+        {
+          username: profile.username,
           displayName: profile.displayName,
-        })
-      }
-
-      // Update username in Firestore
-      // Using user.uid ensures it matches Firestore rules: request.auth.uid == userId
-      // This validates against: match /users/{userId} { allow read, write: if request.auth != null && request.auth.uid == userId; }
-      const userDocRef = doc(db, "users", user.uid)
-      const userDoc = await getDoc(userDocRef)
-
-      if (userDoc.exists()) {
-        // Update existing document - preserve createdAt and other existing fields
-        await updateDoc(userDocRef, {
-          username: profile.username || "",
-          displayName: profile.displayName || "", // Keep Firestore in sync with Auth
-          email: user.email || "", // Keep email in sync
-          updatedAt: serverTimestamp(),
-        })
-      } else {
-        // Create new document with initial data
-        await setDoc(userDocRef, {
-          username: profile.username || "",
           email: user.email || "",
-          displayName: profile.displayName || "",
-          createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
-        })
-      }
-
+          ...(exists ? {} : { createdAt: serverTimestamp() }),
+        },
+        { merge: true }
+      )
       toast.success("Profile updated successfully")
-    } catch (error: any) {
-      console.error("Failed to update profile:", error)
-      if (error.code === "permission-denied") {
-        toast.error("Permission denied. You can only update your own profile.")
-      } else if (error.code === "unavailable") {
-        toast.error("Service temporarily unavailable. Please try again later.")
-      } else {
-        toast.error(error.message || "Failed to update profile")
-      }
+    } catch (error) {
+      logUnexpectedError("account:profile", error)
+      toast.error(getDataErrorMessage(error, "update your profile"))
     } finally {
       setSaving(false)
     }
   }
 
-  const handlePasswordChange = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!user || !user.email) return
+  const handlePasswordChange = async (event: React.FormEvent) => {
+    event.preventDefault()
+    if (!user?.email) return
 
     if (passwordData.newPassword !== passwordData.confirmPassword) {
       toast.error("New passwords do not match")
       return
     }
-
     if (passwordData.newPassword.length < 6) {
       toast.error("Password must be at least 6 characters")
       return
@@ -169,28 +130,16 @@ export function AccountSettings() {
 
     setChangingPassword(true)
     try {
-      // Reauthenticate user
-      const credential = EmailAuthProvider.credential(user.email, passwordData.currentPassword)
-      await reauthenticateWithCredential(user, credential)
-
-      // Update password
+      await reauthenticateWithCredential(
+        user,
+        EmailAuthProvider.credential(user.email, passwordData.currentPassword)
+      )
       await updatePassword(user, passwordData.newPassword)
-
       toast.success("Password changed successfully")
-      setPasswordData({
-        currentPassword: "",
-        newPassword: "",
-        confirmPassword: "",
-      })
-    } catch (error: any) {
-      console.error("Failed to change password:", error)
-      if (error.code === "auth/wrong-password") {
-        toast.error("Current password is incorrect")
-      } else if (error.code === "auth/weak-password") {
-        toast.error("New password is too weak")
-      } else {
-        toast.error(error.message || "Failed to change password")
-      }
+      setPasswordData(EMPTY_PASSWORDS)
+    } catch (error) {
+      logUnexpectedError("account:password", error)
+      toast.error(passwordErrorMessage(error))
     } finally {
       setChangingPassword(false)
     }

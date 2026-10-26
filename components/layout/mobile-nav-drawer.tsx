@@ -14,19 +14,15 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
+import { NAV_ITEMS } from "./nav-items"
 
-const navItems = [
-  { href: "/", label: "Home" },
-  { href: "/hub", label: "Hub" },
-  { href: "/about", label: "About" },
-]
 
 export function MobileNavDrawer() {
   const [open, setOpen] = React.useState(false)
   const [authOpen, setAuthOpen] = React.useState(false)
   const pathname = usePathname()
-  const { user, loading } = useAuth()
-  const hasAccount = Boolean(user && !user.isAnonymous)
+  const { account, loading } = useAuth()
+  const hasAccount = Boolean(account)
 
   return (
     <>
@@ -45,7 +41,7 @@ export function MobileNavDrawer() {
             <DialogTitle>Navigation</DialogTitle>
           </DialogHeader>
           <nav className="flex flex-col space-y-4 mt-4">
-            {navItems.map((item) => {
+            {NAV_ITEMS.map((item) => {
               const isActive = pathname === item.href
               return (
                 <Link

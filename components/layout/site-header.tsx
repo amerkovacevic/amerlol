@@ -4,18 +4,11 @@ import * as React from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
-import { Menu, X } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { ThemeToggle } from "./theme-toggle"
-import { MobileNavDrawer } from "./mobile-nav-drawer"
 import { motion } from "framer-motion"
 import { cn } from "@/lib/utils"
-
-const navItems = [
-  { href: "/", label: "Home" },
-  { href: "/hub", label: "Hub" },
-  { href: "/about", label: "About" },
-]
+import { MobileNavDrawer } from "./mobile-nav-drawer"
+import { NAV_ITEMS } from "./nav-items"
+import { ThemeToggle } from "./theme-toggle"
 
 export function SiteHeader() {
   const pathname = usePathname()
@@ -25,7 +18,8 @@ export function SiteHeader() {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 20)
     }
-    window.addEventListener("scroll", handleScroll)
+    handleScroll()
+    window.addEventListener("scroll", handleScroll, { passive: true })
     return () => window.removeEventListener("scroll", handleScroll)
   }, [])
 
@@ -53,7 +47,7 @@ export function SiteHeader() {
         </Link>
 
         <nav className="hidden md:flex items-center space-x-6">
-          {navItems.map((item) => {
+          {NAV_ITEMS.map((item) => {
             const isActive = pathname === item.href
             return (
               <Link
