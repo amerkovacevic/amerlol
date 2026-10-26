@@ -1,195 +1,95 @@
 "use client"
 
 import * as React from "react"
+import {
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  getDocs,
+  limit,
+  orderBy,
+  query,
+  serverTimestamp,
+  setDoc,
+} from "firebase/firestore"
+import { Dice6, Heart, History, RefreshCw, RotateCcw, Search, Trophy, X } from "lucide-react"
+import { toast } from "sonner"
 import { useAppSettings } from "@/components/apps/settings-provider"
-
-import { motion } from "framer-motion"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { AuthDialog } from "@/components/auth/auth-dialog"
+import { useAuth } from "@/components/auth/auth-provider"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Badge } from "@/components/ui/badge"
-import {
-  Dice6,
-  Filter,
-  X,
-  RotateCcw,
-  Heart,
-  History,
-  Users,
-  Search,
-  Globe,
-  Trophy,
-  Star,
-  RefreshCw
-} from "lucide-react"
-import { toast } from "sonner"
-import { useAuth } from "@/components/auth/auth-provider"
-import { AuthDialog } from "@/components/auth/auth-dialog"
-import { db } from "@/lib/firebase/config"
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  setDoc,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  query,
-  where,
-  orderBy,
-  limit,
-  serverTimestamp,
-  Timestamp,
-} from "firebase/firestore"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { flattenTeams, pickTeams, type Country, type LocatedTeam } from "@/lib/apps/team-picker"
+import { db } from "@/lib/firebase/config"
+import { getErrorCode, logUnexpectedError } from "@/lib/firebase/user-facing-errors"
+import { useAsync } from "@/lib/hooks/use-async"
+import { useResettableState } from "@/lib/hooks/use-resettable-state"
 
-interface Team {
-  id: string
-  name: string
-  city: string
-  stadium?: string
-  capacity?: number
-  established?: number
-  rivalry?: string[]
+type PickMode = "single" | "multiple"
+
+interface PickerOptions {
+  pickMode: PickMode
+  numPicks: number
+  minTier: number
+  sameCountry: boolean
+  sameLeague: boolean
 }
 
-interface League {
-  id: string
-  name: string
-  tier: number
-  teams: Team[]
+interface HistoryEntry {
+  /** Firestore document id; the same team can appear in history many times. */
+  entryId: string
+  team: LocatedTeam
 }
 
-interface Country {
-  id: string
-  name: string
-  flag: string
-  leagues: League[]
-}
+const HISTORY_LIMIT = 50
+const HISTORY_SHOWN = 12
+const ALL = "all"
 
-interface FootballManagerData {
-  countries: Country[]
-}
+const favoritesPath = (uid: string) => collection(db, "users", uid, "footballManagerTeamPickerFavorites")
+const historyPath = (uid: string) => collection(db, "users", uid, "footballManagerTeamPickerHistory")
 
-interface PickedTeam extends Team {
-  countryId: string
-  leagueId: string
-  countryName: string
-  leagueName: string
-  pickedAt: Date
-}
-
-interface Settings {
-  defaultPickMode: "single" | "multiple"
-  defaultNumPicks: number
-  defaultMinTier: number
-  defaultSameCountry: boolean
-  defaultSameLeague: boolean
-  autoAddToHistory: boolean
-  showFavoritesOnly: boolean
-}
-
-export function FootballManagerTeamPickerMain() {
-  const { user, loading: authLoading } = useAuth()
-  const [authDialogOpen, setAuthDialogOpen] = React.useState(false)
-  const [data, setData] = React.useState<FootballManagerData | null>(null)
-  const [loading, setLoading] = React.useState(true)
-  const settingsLoading = false
-  const [selectedCountries, setSelectedCountries] = React.useState<string[]>([])
-  const [selectedLeagues, setSelectedLeagues] = React.useState<string[]>([])
-  const [searchQuery, setSearchQuery] = React.useState("")
-  const [pickedTeams, setPickedTeams] = React.useState<PickedTeam[]>([])
-  const [favorites, setFavorites] = React.useState<string[]>([])
-  const [history, setHistory] = React.useState<PickedTeam[]>([])
-  const settings = useAppSettings("football-manager-team-picker")
-  const [pickMode, setPickMode] = React.useState<"single" | "multiple">("single")
-  const [numPicks, setNumPicks] = React.useState(4)
-  const [sameCountry, setSameCountry] = React.useState(false)
-  const [sameLeague, setSameLeague] = React.useState(false)
-  const [minTier, setMinTier] = React.useState(1)
-
-  // Load data from JSON file and user data
-  React.useEffect(() => {
-    loadData()
-  }, [])
-
-  // Load settings when user is available
-  React.useEffect(() => {
-    if (user && !authLoading) {
-      loadFavorites()
-      loadHistory()
-    } else if (!authLoading && !user) {
-      setFavorites([]); setHistory([])
-    }
-  }, [user, authLoading])
-
-  const loadData = async () => {
-    try {
-      setLoading(true)
-      const response = await fetch("/data/football-manager-teams.json")
-      if (!response.ok) {
-        throw new Error("Failed to load teams data")
-      }
-      const jsonData = await response.json()
-      setData(jsonData)
-    } catch (error) {
-      console.error("Failed to load teams data:", error)
-      toast.error("Failed to load teams data. Please refresh the page.")
-    } finally {
-      setLoading(false)
-    }
+// The stored shape is unchanged from earlier versions of the app.
+function teamDocument(team: LocatedTeam) {
+  return {
+    teamId: team.id,
+    name: team.name,
+    city: team.city,
+    stadium: team.stadium,
+    capacity: team.capacity,
+    established: team.established,
+    rivalry: team.rivalry || [],
+    countryId: team.countryId,
+    leagueId: team.leagueId,
+    countryName: team.countryName,
+    leagueName: team.leagueName,
   }
+}
 
-  React.useEffect(() => {
-    setPickMode(settings.defaultPickMode)
-    setNumPicks(settings.defaultNumPicks)
-    setMinTier(settings.defaultMinTier)
-    setSameCountry(settings.defaultSameCountry)
-    setSameLeague(settings.defaultSameLeague)
-  }, [settings.defaultPickMode, settings.defaultNumPicks, settings.defaultMinTier, settings.defaultSameCountry, settings.defaultSameLeague])
+async function loadTeams(): Promise<{ countries: Country[]; teams: LocatedTeam[] }> {
+  const response = await fetch("/data/football-manager-teams.json")
+  if (!response.ok) throw new Error("Failed to load teams data")
+  const { countries } = (await response.json()) as { countries: Country[] }
+  return { countries, teams: flattenTeams(countries) }
+}
 
-  const loadFavorites = async () => {
-    if (!user) {
-      setFavorites([])
-      return
-    }
-
-    try {
-      const favoritesRef = collection(db, "users", user.uid, "footballManagerTeamPickerFavorites")
-      const snapshot = await getDocs(favoritesRef)
-
-      const favoriteIds: string[] = []
-      snapshot.forEach((doc) => {
-        favoriteIds.push(doc.id)
-      })
-
-      setFavorites(favoriteIds)
-    } catch (error: any) {
-      console.error("Failed to load favorites:", error)
-      if (error.code !== "permission-denied") {
-        toast.error("Failed to load favorites")
-      }
-    }
-  }
-
-  const loadHistory = async () => {
-    if (!user) {
-      setHistory([])
-      return
-    }
-
-    try {
-      const historyRef = collection(db, "users", user.uid, "footballManagerTeamPickerHistory")
-      const historyQuery = query(historyRef, orderBy("pickedAt", "desc"), limit(50))
-      const snapshot = await getDocs(historyQuery)
-
-      const historyData: PickedTeam[] = []
-      snapshot.forEach((doc) => {
-        const data = doc.data()
-        historyData.push({
+async function loadAccountData(uid: string) {
+  const [favorites, history] = await Promise.all([
+    getDocs(favoritesPath(uid)),
+    getDocs(query(historyPath(uid), orderBy("pickedAt", "desc"), limit(HISTORY_LIMIT))),
+  ])
+  return {
+    favorites: favorites.docs.map((favorite) => favorite.id),
+    history: history.docs.map((entry): HistoryEntry => {
+      const data = entry.data()
+      return {
+        entryId: entry.id,
+        team: {
           id: data.teamId,
           name: data.name,
           city: data.city,
@@ -201,361 +101,183 @@ export function FootballManagerTeamPickerMain() {
           leagueId: data.leagueId,
           countryName: data.countryName,
           leagueName: data.leagueName,
-          pickedAt: data.pickedAt.toDate(),
-        })
-      })
-
-      setHistory(historyData)
-    } catch (error: any) {
-      console.error("Failed to load history:", error)
-      if (error.code !== "permission-denied") {
-        toast.error("Failed to load history")
+          tier: 0,
+        },
       }
-    }
+    }),
   }
+}
 
-  const toggleFavorite = async (teamId: string) => {
-    if (!user) {
-      setAuthDialogOpen(true)
-      return
-    }
+export function FootballManagerTeamPickerMain() {
+  const settings = useAppSettings("football-manager-team-picker")
+  const { account } = useAuth()
+  const [authDialogOpen, setAuthDialogOpen] = React.useState(false)
+  const catalog = useAsync("teams", loadTeams)
+  const uid = account?.uid ?? null
+  const accountData = useAsync(uid, () => loadAccountData(uid!))
+  const [favoriteOverrides, setFavoriteOverrides] = React.useState<Record<string, boolean>>({})
+  const [countryFilter, setCountryFilter] = React.useState(ALL)
+  const [leagueFilter, setLeagueFilter] = React.useState(ALL)
+  const [searchQuery, setSearchQuery] = React.useState("")
+  const [pickedTeams, setPickedTeams] = React.useState<LocatedTeam[]>([])
 
-    try {
-      const favoriteRef = doc(db, "users", user.uid, "footballManagerTeamPickerFavorites", teamId)
-      const favoriteDoc = await getDoc(favoriteRef)
-
-      if (favoriteDoc.exists()) {
-        // Remove from favorites
-        await deleteDoc(favoriteRef)
-        setFavorites((prev) => prev.filter((id) => id !== teamId))
-        toast.success("Removed from favorites")
-      } else {
-        // Add to favorites - need team data
-        const allTeams = getAllTeams()
-        const team = allTeams.find((t) => t.id === teamId)
-        if (team) {
-          await setDoc(favoriteRef, {
-            teamId: team.id,
-            name: team.name,
-            city: team.city,
-            stadium: team.stadium,
-            capacity: team.capacity,
-            established: team.established,
-            rivalry: team.rivalry || [],
-            countryId: team.countryId,
-            leagueId: team.leagueId,
-            countryName: team.countryName,
-            leagueName: team.leagueName,
-            addedAt: serverTimestamp(),
-          })
-          setFavorites((prev) => [...prev, teamId])
-          toast.success("Added to favorites")
-        }
-      }
-    } catch (error: any) {
-      console.error("Failed to toggle favorite:", error)
-      if (error.code === "permission-denied") {
-        toast.error("Permission denied. Please sign in.")
-      } else {
-        toast.error("Failed to update favorites")
-      }
-    }
+  // Controls follow the saved defaults until the user changes them.
+  const defaults: PickerOptions = {
+    pickMode: settings.defaultPickMode,
+    numPicks: settings.defaultNumPicks,
+    minTier: settings.defaultMinTier,
+    sameCountry: settings.defaultSameCountry,
+    sameLeague: settings.defaultSameLeague,
   }
+  const [options, setOptions] = useResettableState(defaults, JSON.stringify(defaults))
+  const setOption = (patch: Partial<PickerOptions>) => setOptions({ ...options, ...patch })
 
-  const saveToHistory = async (teams: PickedTeam[]) => {
-    if (!user || !settings?.autoAddToHistory) return
+  const allTeams = React.useMemo(() => catalog.data?.teams ?? [], [catalog.data])
+  const favorites = React.useMemo(() => {
+    const ids = new Set(accountData.data?.favorites)
+    for (const [id, favorite] of Object.entries(favoriteOverrides)) {
+      if (favorite) ids.add(id)
+      else ids.delete(id)
+    }
+    return ids
+  }, [accountData.data, favoriteOverrides])
+  const history = accountData.data?.history ?? []
 
+  React.useEffect(() => {
+    if (accountData.error && getErrorCode(accountData.error) !== "permission-denied") {
+      toast.error("Failed to load your favorites and history")
+    }
+  }, [accountData.error])
+
+  const availableTeams = React.useMemo(() => {
+    const needle = searchQuery.trim().toLowerCase()
+    const lastPick = options.pickMode === "single" ? pickedTeams[0]?.id : undefined
+    return allTeams.filter(
+      (team) =>
+        team.tier >= options.minTier &&
+        (!settings.showFavoritesOnly || favorites.has(team.id)) &&
+        (countryFilter === ALL || team.countryId === countryFilter) &&
+        (leagueFilter === ALL || team.leagueId === leagueFilter) &&
+        // Single picks avoid repeating the team that was just picked.
+        team.id !== lastPick &&
+        (!needle ||
+          [team.name, team.city, team.countryName, team.leagueName].some((text) => text.toLowerCase().includes(needle)))
+    )
+  }, [allTeams, countryFilter, favorites, leagueFilter, options, pickedTeams, searchQuery, settings.showFavoritesOnly])
+
+  const saveToHistory = async (picked: LocatedTeam[]) => {
+    if (!account || !settings.autoAddToHistory) return
     try {
-      const historyRef = collection(db, "users", user.uid, "footballManagerTeamPickerHistory")
-
-      // Add each team to history
       await Promise.all(
-        teams.map((team) =>
-          addDoc(historyRef, {
-            teamId: team.id,
-            name: team.name,
-            city: team.city,
-            stadium: team.stadium,
-            capacity: team.capacity,
-            established: team.established,
-            rivalry: team.rivalry || [],
-            countryId: team.countryId,
-            leagueId: team.leagueId,
-            countryName: team.countryName,
-            leagueName: team.leagueName,
-            pickedAt: serverTimestamp(),
-          })
-        )
+        picked.map((team) => addDoc(historyPath(account.uid), { ...teamDocument(team), pickedAt: serverTimestamp() }))
       )
-
-      // Reload history to get updated list
-      await loadHistory()
-    } catch (error: any) {
-      console.error("Failed to save to history:", error)
-      // Don't show error toast for history - it's not critical
+      accountData.reload()
+    } catch (error) {
+      // History is a convenience; a failed write should not interrupt picking.
+      logUnexpectedError("team-picker:history", error)
     }
   }
 
-  const getAllTeams = (): Array<Team & { countryId: string; leagueId: string; countryName: string; leagueName: string }> => {
-    if (!data) return []
-
-    const teams: Array<Team & { countryId: string; leagueId: string; countryName: string; leagueName: string }> = []
-
-    data.countries.forEach((country) => {
-      country.leagues.forEach((league) => {
-        if (league.tier >= minTier) {
-          league.teams.forEach((team) => {
-            teams.push({
-              ...team,
-              countryId: country.id,
-              leagueId: league.id,
-              countryName: country.name,
-              leagueName: league.name,
-            })
-          })
-        }
-      })
-    })
-
-    return teams
-  }
-
-  const getFilteredTeams = () => {
-    let teams = getAllTeams()
-
-    // Filter by favorites only if enabled
-    if (settings.showFavoritesOnly) {
-      teams = teams.filter((team) => favorites.includes(team.id))
-    }
-
-    // Filter by country
-    if (selectedCountries.length > 0) {
-      teams = teams.filter((team) => selectedCountries.includes(team.countryId))
-    }
-
-    // Filter by league
-    if (selectedLeagues.length > 0) {
-      teams = teams.filter((team) => selectedLeagues.includes(team.leagueId))
-    }
-
-    // Filter by search query
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase()
-      teams = teams.filter(
-        (team) =>
-          team.name.toLowerCase().includes(query) ||
-          team.city.toLowerCase().includes(query) ||
-          team.countryName.toLowerCase().includes(query) ||
-          team.leagueName.toLowerCase().includes(query)
-      )
-    }
-
-    // Exclude already picked teams in single mode
-    if (pickMode === "single" && pickedTeams.length > 0) {
-      teams = teams.filter((team) => !pickedTeams.some((picked) => picked.id === team.id))
-    }
-
-    return teams
-  }
-
-  const pickRandomTeam = async () => {
-    const availableTeams = getFilteredTeams()
-
-    if (availableTeams.length === 0) {
+  const pick = () => {
+    if (!availableTeams.length) {
       toast.error("No teams available with current filters. Try adjusting your filters.")
       return
     }
+    const single = options.pickMode === "single"
+    const { picked, relaxed } = pickTeams(availableTeams, {
+      count: single ? 1 : options.numPicks,
+      sameCountry: !single && options.sameCountry,
+      sameLeague: !single && options.sameLeague,
+    })
+    if (relaxed) toast.warning(`Not enough teams in the same ${relaxed}. Picked from all available teams.`)
+    setPickedTeams(picked)
+    toast.success(single ? `Picked: ${picked[0].name}` : `Picked ${picked.length} team${picked.length === 1 ? "" : "s"}`)
+    void saveToHistory(picked)
+  }
 
-    if (pickMode === "single") {
-      const randomIndex = Math.floor(Math.random() * availableTeams.length)
-      const pickedTeam: PickedTeam = {
-        ...availableTeams[randomIndex],
-        pickedAt: new Date(),
-      }
-      setPickedTeams([pickedTeam])
-
-      // Add to history if enabled
-      await saveToHistory([pickedTeam])
-
-      toast.success(`Picked: ${pickedTeam.name}`)
-    } else {
-      const num = Math.min(numPicks, availableTeams.length)
-      let teamsToPick = [...availableTeams]
-      const picked: PickedTeam[] = []
-
-      for (let i = 0; i < num; i++) {
-        if (teamsToPick.length === 0) break
-
-        let pool = teamsToPick
-
-        // Apply same country constraint
-        if (sameCountry && picked.length > 0) {
-          const firstCountryId = picked[0].countryId
-          pool = pool.filter((team) => team.countryId === firstCountryId)
-          if (pool.length === 0) {
-            toast.warning("Not enough teams in the same country. Picking from all available.")
-            pool = teamsToPick
-          }
-        }
-
-        // Apply same league constraint
-        if (sameLeague && picked.length > 0) {
-          const firstLeagueId = picked[0].leagueId
-          pool = pool.filter((team) => team.leagueId === firstLeagueId)
-          if (pool.length === 0) {
-            toast.warning("Not enough teams in the same league. Picking from all available.")
-            pool = teamsToPick
-          }
-        }
-
-        const randomIndex = Math.floor(Math.random() * pool.length)
-        const pickedTeam: PickedTeam = {
-          ...pool[randomIndex],
-          pickedAt: new Date(),
-        }
-        picked.push(pickedTeam)
-
-        // Remove picked team from available pool
-        teamsToPick = teamsToPick.filter((team) => team.id !== pickedTeam.id)
-      }
-
-      setPickedTeams(picked)
-
-      // Add to history if enabled
-      await saveToHistory(picked)
-
-      toast.success(`Picked ${picked.length} team${picked.length !== 1 ? "s" : ""}`)
+  const toggleFavorite = async (team: LocatedTeam) => {
+    if (!account) {
+      setAuthDialogOpen(true)
+      return
+    }
+    const favorite = !favorites.has(team.id)
+    const favoriteRef = doc(favoritesPath(account.uid), team.id)
+    try {
+      if (favorite) await setDoc(favoriteRef, { ...teamDocument(team), addedAt: serverTimestamp() })
+      else await deleteDoc(favoriteRef)
+      setFavoriteOverrides((current) => ({ ...current, [team.id]: favorite }))
+      toast.success(favorite ? "Added to favorites" : "Removed from favorites")
+    } catch (error) {
+      logUnexpectedError("team-picker:favorite", error)
+      toast.error(
+        getErrorCode(error) === "permission-denied" ? "Permission denied. Please sign in." : "Failed to update favorites"
+      )
     }
   }
 
-  const clearPicks = () => {
-    setPickedTeams([])
-    toast.info("Cleared picks")
+  const clearCollection = async (kind: "history" | "favorites") => {
+    if (!account) return
+    try {
+      const snapshot = await getDocs(kind === "history" ? historyPath(account.uid) : favoritesPath(account.uid))
+      await Promise.all(snapshot.docs.map((entry) => deleteDoc(entry.ref)))
+      setFavoriteOverrides({})
+      accountData.reload()
+      toast.success(kind === "history" ? "History cleared" : "Favorites cleared")
+    } catch (error) {
+      logUnexpectedError(`team-picker:clear-${kind}`, error)
+      toast.error(`Failed to clear ${kind}`)
+    }
   }
 
   const resetFilters = () => {
-    setSelectedCountries([])
-    setSelectedLeagues([])
+    setCountryFilter(ALL)
+    setLeagueFilter(ALL)
     setSearchQuery("")
-    setSameCountry(false)
-    setSameLeague(false)
-    setMinTier(1)
+    setOption({ sameCountry: false, sameLeague: false, minTier: 1 })
     toast.info("Filters reset")
   }
 
-  const getTeamDisplay = (team: PickedTeam) => {
+  if (catalog.loading) {
+    return <p className="py-12 text-center text-muted-foreground">Loading teams data...</p>
+  }
+
+  if (!catalog.data) {
     return (
-      <Card key={team.id} className="relative">
-        <CardHeader>
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <CardTitle className="text-lg">{team.name}</CardTitle>
-              <CardDescription>
-                {team.city}, {team.countryName}
-              </CardDescription>
-            </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => toggleFavorite(team.id)}
-            >
-              <Heart
-                className={`h-4 w-4 ${
-                  favorites.includes(team.id)
-                    ? "fill-red-500 text-red-500"
-                    : "text-muted-foreground"
-                }`}
-              />
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-2 text-sm">
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <Trophy className="h-4 w-4" />
-            <span>{team.leagueName}</span>
-          </div>
-          {team.stadium && (
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <span>🏟️</span>
-              <span>{team.stadium}</span>
-              {team.capacity && (
-                <span className="text-xs">({team.capacity.toLocaleString()} capacity)</span>
-              )}
-            </div>
-          )}
-          {team.established && (
-            <div className="text-xs text-muted-foreground">
-              Established: {team.established}
-            </div>
-          )}
-          {team.rivalry && team.rivalry.length > 0 && (
-            <div className="flex flex-wrap gap-1 pt-2">
-              <span className="text-xs text-muted-foreground">Rivalries:</span>
-              {team.rivalry.map((rival) => (
-                <Badge key={rival} variant="outline" className="text-xs">
-                  {rival}
-                </Badge>
-              ))}
-            </div>
-          )}
+      <Card>
+        <CardContent className="py-12 text-center">
+          <p className="mb-4 text-muted-foreground">Failed to load teams data. Please refresh the page.</p>
+          <Button onClick={catalog.reload}>
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Retry
+          </Button>
         </CardContent>
       </Card>
     )
   }
 
-  if (loading) {
-    return (
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="space-y-6"
-      >
-        <div className="flex items-center justify-center py-12">
-          <p className="text-muted-foreground">Loading teams data...</p>
-        </div>
-      </motion.div>
-    )
-  }
-
-  if (!data) {
-    return (
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="space-y-6"
-      >
-        <Card>
-          <CardContent className="py-12 text-center">
-            <p className="text-muted-foreground mb-4">
-              Failed to load teams data. Please refresh the page.
-            </p>
-            <Button onClick={loadData}>
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Retry
-            </Button>
-          </CardContent>
-        </Card>
-      </motion.div>
-    )
-  }
-
-  const availableTeams = getFilteredTeams()
-  const allCountries = data.countries
-  const allLeagues = data.countries.flatMap((country) =>
-    country.leagues.map((league) => ({ ...league, countryId: country.id, countryName: country.name }))
+  const countries = catalog.data.countries
+  const leagues = countries.flatMap((country) =>
+    country.leagues.map((league) => ({ id: league.id, label: `${country.name} - ${league.name}` }))
   )
+  const favoriteTeams = allTeams.filter((team) => favorites.has(team.id))
+  const teamCard = (team: LocatedTeam, key: string) => (
+    <TeamCard key={key} team={team} favorite={favorites.has(team.id)} onToggleFavorite={() => toggleFavorite(team)} />
+  )
+  const signInPrompt = (icon: React.ReactNode, message: string) => (
+    <Card>
+      <CardContent className="flex flex-col items-center gap-4 py-12 text-center">
+        {icon}
+        <p className="text-muted-foreground">{message}</p>
+        <Button onClick={() => setAuthDialogOpen(true)}>Sign In</Button>
+      </CardContent>
+    </Card>
+  )
+  const countriesPicked = new Set(pickedTeams.map((team) => team.countryId)).size
+  const leaguesPicked = new Set(pickedTeams.map((team) => team.leagueId)).size
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-      className="space-y-6"
-    >
-<Tabs defaultValue="picker" className="space-y-4">
+    <div className="space-y-6">
+      <Tabs defaultValue="picker" className="space-y-4">
         <TabsList>
           <TabsTrigger value="picker">Team Picker</TabsTrigger>
           <TabsTrigger value="history">
@@ -568,35 +290,32 @@ export function FootballManagerTeamPickerMain() {
           </TabsTrigger>
           <TabsTrigger value="favorites">
             Favorites
-            {favorites.length > 0 && (
+            {favorites.size > 0 && (
               <Badge variant="secondary" className="ml-2">
-                {favorites.length}
+                {favorites.size}
               </Badge>
             )}
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="picker" className="space-y-4">
-          {/* Controls */}
           <Card>
             <CardHeader>
               <CardTitle>Picker Controls</CardTitle>
               <CardDescription>Configure your team selection options</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label>Pick Mode</Label>
+                  <Label htmlFor="pick-mode">Pick Mode</Label>
                   <Select
-                    value={pickMode}
-                    onValueChange={(value: "single" | "multiple") => {
-                      setPickMode(value)
-                      if (value === "single") {
-                        setPickedTeams([])
-                      }
+                    value={options.pickMode}
+                    onValueChange={(value: PickMode) => {
+                      setOption({ pickMode: value })
+                      if (value === "single") setPickedTeams([])
                     }}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id="pick-mode">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -606,26 +325,29 @@ export function FootballManagerTeamPickerMain() {
                   </Select>
                 </div>
 
-                {pickMode === "multiple" && (
+                {options.pickMode === "multiple" && (
                   <div className="space-y-2">
-                    <Label>Number of Teams</Label>
+                    <Label htmlFor="pick-count">Number of Teams</Label>
                     <Input
+                      id="pick-count"
                       type="number"
-                      min="2"
-                      max="20"
-                      value={numPicks}
-                      onChange={(e) => setNumPicks(Math.max(2, Math.min(20, parseInt(e.target.value) || 4)))}
+                      min={2}
+                      max={20}
+                      value={options.numPicks}
+                      onChange={(event) =>
+                        setOption({ numPicks: Math.max(2, Math.min(20, parseInt(event.target.value, 10) || 4)) })
+                      }
                     />
                   </div>
                 )}
 
                 <div className="space-y-2">
-                  <Label>Minimum League Tier</Label>
+                  <Label htmlFor="min-tier">Minimum League Tier</Label>
                   <Select
-                    value={minTier.toString()}
-                    onValueChange={(value) => setMinTier(parseInt(value))}
+                    value={String(options.minTier)}
+                    onValueChange={(value) => setOption({ minTier: parseInt(value, 10) })}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id="min-tier">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -638,60 +360,39 @@ export function FootballManagerTeamPickerMain() {
                 </div>
               </div>
 
-              {pickMode === "multiple" && (
-                <div className="space-y-3 pt-2 border-t">
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <Label>Same Country Only</Label>
-                      <p className="text-xs text-muted-foreground">
-                        All picked teams will be from the same country
-                      </p>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={sameCountry}
-                        onChange={(e) => {
-                          setSameCountry(e.target.checked)
-                          if (e.target.checked) setSameLeague(false)
-                        }}
-                        className="sr-only peer"
-                      />
-                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-                    </label>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <Label>Same League Only</Label>
-                      <p className="text-xs text-muted-foreground">
-                        All picked teams will be from the same league
-                      </p>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={sameLeague}
-                        onChange={(e) => {
-                          setSameLeague(e.target.checked)
-                          if (e.target.checked) setSameCountry(false)
-                        }}
-                        className="sr-only peer"
-                      />
-                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-                    </label>
-                  </div>
+              {options.pickMode === "multiple" && (
+                <div className="space-y-3 border-t pt-2">
+                  <Toggle
+                    id="same-country"
+                    label="Same Country Only"
+                    description="All picked teams will be from the same country"
+                    checked={options.sameCountry}
+                    onChange={(checked) => setOption({ sameCountry: checked, sameLeague: checked ? false : options.sameLeague })}
+                  />
+                  <Toggle
+                    id="same-league"
+                    label="Same League Only"
+                    description="All picked teams will be from the same league"
+                    checked={options.sameLeague}
+                    onChange={(checked) => setOption({ sameLeague: checked, sameCountry: checked ? false : options.sameCountry })}
+                  />
                 </div>
               )}
 
-              <div className="flex gap-2 pt-4 border-t">
-                <Button onClick={pickRandomTeam} className="flex-1" size="lg">
-                  <Dice6 className="h-5 w-5 mr-2" />
-                  {pickMode === "single" ? "Pick Random Team" : `Pick ${numPicks} Teams`}
+              <div className="flex gap-2 border-t pt-4">
+                <Button onClick={pick} className="flex-1" size="lg">
+                  <Dice6 className="mr-2 h-5 w-5" />
+                  {options.pickMode === "single" ? "Pick Random Team" : `Pick ${options.numPicks} Teams`}
                 </Button>
                 {pickedTeams.length > 0 && (
-                  <Button variant="outline" onClick={clearPicks}>
-                    <X className="h-4 w-4 mr-2" />
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setPickedTeams([])
+                      toast.info("Cleared picks")
+                    }}
+                  >
+                    <X className="mr-2 h-4 w-4" />
                     Clear
                   </Button>
                 )}
@@ -699,7 +400,6 @@ export function FootballManagerTeamPickerMain() {
             </CardContent>
           </Card>
 
-          {/* Filters */}
           <Card>
             <CardHeader>
               <CardTitle>Filters</CardTitle>
@@ -707,37 +407,29 @@ export function FootballManagerTeamPickerMain() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label>Search</Label>
+                <Label htmlFor="team-search">Search</Label>
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
+                    id="team-search"
                     placeholder="Search teams, cities, countries, or leagues..."
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onChange={(event) => setSearchQuery(event.target.value)}
                     className="pl-10"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label>Countries</Label>
-                  <Select
-                    value={selectedCountries.length > 0 ? selectedCountries[0] : "all"}
-                    onValueChange={(value) => {
-                      if (value === "all") {
-                        setSelectedCountries([])
-                      } else {
-                        setSelectedCountries([value])
-                      }
-                    }}
-                  >
-                    <SelectTrigger>
+                  <Label htmlFor="country-filter">Countries</Label>
+                  <Select value={countryFilter} onValueChange={setCountryFilter}>
+                    <SelectTrigger id="country-filter">
                       <SelectValue placeholder="All Countries" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All Countries</SelectItem>
-                      {allCountries.map((country) => (
+                      <SelectItem value={ALL}>All Countries</SelectItem>
+                      {countries.map((country) => (
                         <SelectItem key={country.id} value={country.id}>
                           {country.flag} {country.name}
                         </SelectItem>
@@ -747,25 +439,16 @@ export function FootballManagerTeamPickerMain() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Leagues</Label>
-                  <Select
-                    value={selectedLeagues.length > 0 ? selectedLeagues[0] : "all"}
-                    onValueChange={(value) => {
-                      if (value === "all") {
-                        setSelectedLeagues([])
-                      } else {
-                        setSelectedLeagues([value])
-                      }
-                    }}
-                  >
-                    <SelectTrigger>
+                  <Label htmlFor="league-filter">Leagues</Label>
+                  <Select value={leagueFilter} onValueChange={setLeagueFilter}>
+                    <SelectTrigger id="league-filter">
                       <SelectValue placeholder="All Leagues" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All Leagues</SelectItem>
-                      {allLeagues.map((league) => (
+                      <SelectItem value={ALL}>All Leagues</SelectItem>
+                      {leagues.map((league) => (
                         <SelectItem key={league.id} value={league.id}>
-                          {league.countryName} - {league.name}
+                          {league.label}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -773,56 +456,44 @@ export function FootballManagerTeamPickerMain() {
                 </div>
               </div>
 
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={resetFilters} className="flex-1">
-                  <RotateCcw className="h-4 w-4 mr-2" />
-                  Reset Filters
-                </Button>
-              </div>
+              <Button variant="outline" onClick={resetFilters} className="w-full">
+                <RotateCcw className="mr-2 h-4 w-4" />
+                Reset Filters
+              </Button>
 
-              <div className="text-xs text-muted-foreground pt-2 border-t">
-                {availableTeams.length} team{availableTeams.length !== 1 ? "s" : ""} available
-              </div>
+              <p className="border-t pt-2 text-xs text-muted-foreground">
+                {availableTeams.length} team{availableTeams.length === 1 ? "" : "s"} available
+              </p>
             </CardContent>
           </Card>
 
-          {/* Picked Teams */}
           {pickedTeams.length > 0 && (
             <div>
-              <div className="flex items-center justify-between mb-4">
+              <div className="mb-4 flex items-center justify-between">
                 <h3 className="text-lg font-semibold">
-                  {pickMode === "single" ? "Picked Team" : `Picked Teams (${pickedTeams.length})`}
+                  {options.pickMode === "single" ? "Picked Team" : `Picked Teams (${pickedTeams.length})`}
                 </h3>
-                {pickMode === "multiple" && pickedTeams.length > 1 && (
+                {options.pickMode === "multiple" && pickedTeams.length > 1 && (
                   <Badge variant="secondary">
-                    {new Set(pickedTeams.map((t) => t.countryId)).size} countr
-                    {new Set(pickedTeams.map((t) => t.countryId)).size !== 1 ? "ies" : "y"}
-                    {" • "}
-                    {new Set(pickedTeams.map((t) => t.leagueId)).size} league
-                    {new Set(pickedTeams.map((t) => t.leagueId)).size !== 1 ? "s" : ""}
+                    {countriesPicked} {countriesPicked === 1 ? "country" : "countries"} • {leaguesPicked}{" "}
+                    {leaguesPicked === 1 ? "league" : "leagues"}
                   </Badge>
                 )}
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {pickedTeams.map((team) => getTeamDisplay(team))}
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {pickedTeams.map((team) => teamCard(team, team.id))}
               </div>
             </div>
           )}
         </TabsContent>
 
         <TabsContent value="history" className="space-y-4">
-          {!user ? (
-            <Card>
-              <CardContent className="py-12 text-center space-y-4">
-                <History className="h-12 w-12 mx-auto text-muted-foreground" />
-                <p className="text-muted-foreground">Please sign in to view your pick history</p>
-                <Button onClick={() => setAuthDialogOpen(true)}>Sign In</Button>
-              </CardContent>
-            </Card>
+          {!account ? (
+            signInPrompt(<History className="h-12 w-12 text-muted-foreground" />, "Please sign in to view your pick history")
           ) : history.length === 0 ? (
             <Card>
               <CardContent className="py-12 text-center">
-                <History className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                <History className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
                 <p className="text-muted-foreground">No pick history yet</p>
               </CardContent>
             </Card>
@@ -830,54 +501,26 @@ export function FootballManagerTeamPickerMain() {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold">Pick History</h3>
-                {user && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={async () => {
-                      if (!user) {
-                        setAuthDialogOpen(true)
-                        return
-                      }
-
-                      try {
-                        const historyRef = collection(db, "users", user.uid, "footballManagerTeamPickerHistory")
-                        const snapshot = await getDocs(historyRef)
-                        await Promise.all(snapshot.docs.map((doc) => deleteDoc(doc.ref)))
-                        setHistory([])
-                        toast.success("History cleared")
-                      } catch (error: any) {
-                        console.error("Failed to clear history:", error)
-                        toast.error("Failed to clear history")
-                      }
-                    }}
-                  >
-                    Clear History
-                  </Button>
-                )}
+                <Button variant="outline" size="sm" onClick={() => clearCollection("history")}>
+                  Clear History
+                </Button>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {history.slice(0, 12).map((team) => getTeamDisplay(team))}
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {history.slice(0, HISTORY_SHOWN).map(({ entryId, team }) => teamCard(team, entryId))}
               </div>
             </div>
           )}
         </TabsContent>
 
         <TabsContent value="favorites" className="space-y-4">
-          {!user ? (
-            <Card>
-              <CardContent className="py-12 text-center space-y-4">
-                <Heart className="h-12 w-12 mx-auto text-muted-foreground" />
-                <p className="text-muted-foreground">Please sign in to use favorites</p>
-                <Button onClick={() => setAuthDialogOpen(true)}>Sign In</Button>
-              </CardContent>
-            </Card>
-          ) : favorites.length === 0 ? (
+          {!account ? (
+            signInPrompt(<Heart className="h-12 w-12 text-muted-foreground" />, "Please sign in to use favorites")
+          ) : favorites.size === 0 ? (
             <Card>
               <CardContent className="py-12 text-center">
-                <Heart className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                <Heart className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
                 <p className="text-muted-foreground">No favorites yet</p>
-                <p className="text-xs text-muted-foreground mt-2">
+                <p className="mt-2 text-xs text-muted-foreground">
                   Click the heart icon on any team to add it to favorites
                 </p>
               </CardContent>
@@ -886,44 +529,12 @@ export function FootballManagerTeamPickerMain() {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold">Favorite Teams</h3>
-                {user && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={async () => {
-                      if (!user) {
-                        setAuthDialogOpen(true)
-                        return
-                      }
-
-                      try {
-                        const favoritesRef = collection(db, "users", user.uid, "footballManagerTeamPickerFavorites")
-                        const snapshot = await getDocs(favoritesRef)
-                        await Promise.all(snapshot.docs.map((doc) => deleteDoc(doc.ref)))
-                        setFavorites([])
-                        toast.success("Favorites cleared")
-                      } catch (error: any) {
-                        console.error("Failed to clear favorites:", error)
-                        toast.error("Failed to clear favorites")
-                      }
-                    }}
-                  >
-                    Clear Favorites
-                  </Button>
-                )}
+                <Button variant="outline" size="sm" onClick={() => clearCollection("favorites")}>
+                  Clear Favorites
+                </Button>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {favorites
-                  .map((teamId) => {
-                    const team = getAllTeams().find((t) => t.id === teamId)
-                    if (!team) return null
-                    return {
-                      ...team,
-                      pickedAt: new Date(),
-                    } as PickedTeam
-                  })
-                  .filter((team): team is PickedTeam => team !== null)
-                  .map((team) => getTeamDisplay(team))}
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {favoriteTeams.map((team) => teamCard(team, team.id))}
               </div>
             </div>
           )}
@@ -931,6 +542,99 @@ export function FootballManagerTeamPickerMain() {
       </Tabs>
 
       <AuthDialog open={authDialogOpen} onOpenChange={setAuthDialogOpen} />
-    </motion.div>
+    </div>
+  )
+}
+
+function Toggle({
+  id,
+  label,
+  description,
+  checked,
+  onChange,
+}: {
+  id: string
+  label: string
+  description: string
+  checked: boolean
+  onChange: (checked: boolean) => void
+}) {
+  return (
+    <div className="flex items-center justify-between">
+      <div className="space-y-0.5">
+        <Label htmlFor={id}>{label}</Label>
+        <p className="text-xs text-muted-foreground">{description}</p>
+      </div>
+      <label className="relative inline-flex cursor-pointer items-center">
+        <input
+          id={id}
+          type="checkbox"
+          role="switch"
+          checked={checked}
+          onChange={(event) => onChange(event.target.checked)}
+          className="peer sr-only"
+        />
+        <span className="h-6 w-11 rounded-full bg-input after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-border after:bg-background after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full peer-focus-visible:ring-4 peer-focus-visible:ring-primary/20" />
+      </label>
+    </div>
+  )
+}
+
+function TeamCard({
+  team,
+  favorite,
+  onToggleFavorite,
+}: {
+  team: LocatedTeam
+  favorite: boolean
+  onToggleFavorite: () => void
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            <CardTitle className="text-lg">{team.name}</CardTitle>
+            <CardDescription>
+              {team.city}, {team.countryName}
+            </CardDescription>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={onToggleFavorite}
+            aria-pressed={favorite}
+            aria-label={favorite ? `Remove ${team.name} from favorites` : `Add ${team.name} to favorites`}
+          >
+            <Heart className={`h-4 w-4 ${favorite ? "fill-red-500 text-red-500" : "text-muted-foreground"}`} />
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-2 text-sm">
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Trophy className="h-4 w-4" />
+          <span>{team.leagueName}</span>
+        </div>
+        {team.stadium && (
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <span aria-hidden="true">🏟️</span>
+            <span>{team.stadium}</span>
+            {team.capacity && <span className="text-xs">({team.capacity.toLocaleString()} capacity)</span>}
+          </div>
+        )}
+        {team.established && <div className="text-xs text-muted-foreground">Established: {team.established}</div>}
+        {team.rivalry && team.rivalry.length > 0 && (
+          <div className="flex flex-wrap gap-1 pt-2">
+            <span className="text-xs text-muted-foreground">Rivalries:</span>
+            {team.rivalry.map((rival) => (
+              <Badge key={rival} variant="outline" className="text-xs">
+                {rival}
+              </Badge>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   )
 }

@@ -22,7 +22,7 @@ import {
   Search,
   Filter,
   UserPlus,
-  UserMinus
+  UserMinus,
 } from "lucide-react"
 import { toast } from "sonner"
 import { useAuth } from "@/components/auth/auth-provider"
@@ -42,9 +42,16 @@ import {
   deleteDoc,
   doc,
   serverTimestamp,
-  Timestamp
+  Timestamp,
 } from "firebase/firestore"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 
 interface Game {
   id: string
@@ -323,7 +330,10 @@ export function PickupSoccerMain() {
         const snapshot = await transaction.get(gameRef)
         if (!snapshot.exists()) throw new Error("This game no longer exists")
         const current = snapshot.data()
-        transaction.update(gameRef, { players: changeGameMembership(current.players, user.uid, current.maxPlayers, true), updatedAt: serverTimestamp() })
+        transaction.update(gameRef, {
+          players: changeGameMembership(current.players, user.uid, current.maxPlayers, true),
+          updatedAt: serverTimestamp(),
+        })
       })
 
       toast.success("Joined game successfully!")
@@ -358,7 +368,10 @@ export function PickupSoccerMain() {
         const snapshot = await transaction.get(gameRef)
         if (!snapshot.exists()) throw new Error("This game no longer exists")
         const current = snapshot.data()
-        transaction.update(gameRef, { players: changeGameMembership(current.players, user.uid, current.maxPlayers, false), updatedAt: serverTimestamp() })
+        transaction.update(gameRef, {
+          players: changeGameMembership(current.players, user.uid, current.maxPlayers, false),
+          updatedAt: serverTimestamp(),
+        })
       })
 
       toast.success("Left game successfully")
@@ -393,7 +406,11 @@ export function PickupSoccerMain() {
   }
 
   const filteredGames = React.useMemo(() => {
-    let filtered = games.filter((game) => !settings.showMyGamesOnly || Boolean(user && (game.createdBy === user.uid || game.players.includes(user.uid))))
+    let filtered = games.filter(
+      (game) =>
+        !settings.showMyGamesOnly ||
+        Boolean(user && (game.createdBy === user.uid || game.players.includes(user.uid)))
+    )
 
     // Filter by search query
     if (searchQuery) {
@@ -462,13 +479,14 @@ export function PickupSoccerMain() {
       transition={{ duration: 0.5 }}
       className="space-y-6"
     >
-{/* Actions Bar */}
+      {/* Actions Bar */}
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div className="flex flex-1 gap-2 w-full sm:w-auto">
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              aria-label="Search games" placeholder="Search games..."
+              aria-label="Search games"
+              placeholder="Search games..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"
@@ -485,17 +503,24 @@ export function PickupSoccerMain() {
             />
           </div>
           {filterDate && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setFilterDate("")}
-            >
+            <Button variant="ghost" size="icon" onClick={() => setFilterDate("")}>
               <X className="h-4 w-4" />
             </Button>
           )}
         </div>
 
-        <Dialog open={createDialogOpen} onOpenChange={(open) => { if (open) setFormData((form) => ({ ...form, location: settings.defaultLocation, maxPlayers: settings.defaultMaxPlayers })); setCreateDialogOpen(open) }}>
+        <Dialog
+          open={createDialogOpen}
+          onOpenChange={(open) => {
+            if (open)
+              setFormData((form) => ({
+                ...form,
+                location: settings.defaultLocation,
+                maxPlayers: settings.defaultMaxPlayers,
+              }))
+            setCreateDialogOpen(open)
+          }}
+        >
           <DialogTrigger asChild>
             <Button onClick={() => !user && setAuthDialogOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
@@ -505,9 +530,7 @@ export function PickupSoccerMain() {
           <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
               <DialogTitle>Create New Game</DialogTitle>
-              <DialogDescription>
-                Fill in the details to create a new pickup soccer game
-              </DialogDescription>
+              <DialogDescription>Fill in the details to create a new pickup soccer game</DialogDescription>
             </DialogHeader>
             <form onSubmit={handleCreateGame} className="space-y-4">
               <div className="space-y-2">
@@ -538,7 +561,7 @@ export function PickupSoccerMain() {
                   <Input
                     id="date"
                     aria-label="Filter games by date"
-              type="date"
+                    type="date"
                     value={formData.date}
                     onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                     min={new Date().toISOString().split("T")[0]}
@@ -582,11 +605,7 @@ export function PickupSoccerMain() {
               </div>
 
               <div className="flex justify-end gap-3 pt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setCreateDialogOpen(false)}
-                >
+                <Button type="button" variant="outline" onClick={() => setCreateDialogOpen(false)}>
                   Cancel
                 </Button>
                 <Button type="submit">Create Game</Button>
@@ -609,11 +628,7 @@ export function PickupSoccerMain() {
                 ? "No games match your filters"
                 : "No games scheduled yet. Create the first one!"}
             </p>
-            {!user && (
-              <Button onClick={() => setAuthDialogOpen(true)}>
-                Sign In to Create Game
-              </Button>
-            )}
+            {!user && <Button onClick={() => setAuthDialogOpen(true)}>Sign In to Create Game</Button>}
           </CardContent>
         </Card>
       ) : (
@@ -635,9 +650,7 @@ export function PickupSoccerMain() {
                   )}
                 </div>
                 {game.description && (
-                  <CardDescription className="line-clamp-2">
-                    {game.description}
-                  </CardDescription>
+                  <CardDescription className="line-clamp-2">{game.description}</CardDescription>
                 )}
               </CardHeader>
               <CardContent className="space-y-4">

@@ -4,12 +4,7 @@ import * as React from "react"
 import * as maplibregl from "maplibre-gl"
 import "maplibre-gl/dist/maplibre-gl.css"
 import { useTheme } from "next-themes"
-import {
-  Incident,
-  STL_BOUNDS,
-  CATEGORY_COLORS,
-  CATEGORY_ICONS,
-} from "./types"
+import { Incident, STL_BOUNDS, CATEGORY_COLORS, CATEGORY_ICONS } from "./types"
 
 interface MapComponentProps {
   mapStyle: "dark" | "light"
@@ -38,7 +33,8 @@ function createMapStyle(isDark: boolean): maplibregl.StyleSpecification {
         type: "raster",
         tiles: getTileUrls(isDark),
         tileSize: 256,
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        attribution:
+          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
       },
     },
     layers: [
@@ -121,13 +117,15 @@ export default function MapComponent({
           properties: {},
           geometry: {
             type: "Polygon",
-            coordinates: [[
-              [STL_BOUNDS.bounds.west, STL_BOUNDS.bounds.south],
-              [STL_BOUNDS.bounds.east, STL_BOUNDS.bounds.south],
-              [STL_BOUNDS.bounds.east, STL_BOUNDS.bounds.north],
-              [STL_BOUNDS.bounds.west, STL_BOUNDS.bounds.north],
-              [STL_BOUNDS.bounds.west, STL_BOUNDS.bounds.south],
-            ]],
+            coordinates: [
+              [
+                [STL_BOUNDS.bounds.west, STL_BOUNDS.bounds.south],
+                [STL_BOUNDS.bounds.east, STL_BOUNDS.bounds.south],
+                [STL_BOUNDS.bounds.east, STL_BOUNDS.bounds.north],
+                [STL_BOUNDS.bounds.west, STL_BOUNDS.bounds.north],
+                [STL_BOUNDS.bounds.west, STL_BOUNDS.bounds.south],
+              ],
+            ],
           },
         },
       })
@@ -192,13 +190,15 @@ export default function MapComponent({
               properties: {},
               geometry: {
                 type: "Polygon",
-                coordinates: [[
-                  [STL_BOUNDS.bounds.west, STL_BOUNDS.bounds.south],
-                  [STL_BOUNDS.bounds.east, STL_BOUNDS.bounds.south],
-                  [STL_BOUNDS.bounds.east, STL_BOUNDS.bounds.north],
-                  [STL_BOUNDS.bounds.west, STL_BOUNDS.bounds.north],
-                  [STL_BOUNDS.bounds.west, STL_BOUNDS.bounds.south],
-                ]],
+                coordinates: [
+                  [
+                    [STL_BOUNDS.bounds.west, STL_BOUNDS.bounds.south],
+                    [STL_BOUNDS.bounds.east, STL_BOUNDS.bounds.south],
+                    [STL_BOUNDS.bounds.east, STL_BOUNDS.bounds.north],
+                    [STL_BOUNDS.bounds.west, STL_BOUNDS.bounds.north],
+                    [STL_BOUNDS.bounds.west, STL_BOUNDS.bounds.south],
+                  ],
+                ],
               },
             },
           })
@@ -256,7 +256,7 @@ export default function MapComponent({
         // The marker element uses margin offsets to ensure the visual marker is centered
         const marker = new maplibregl.Marker({
           element: el,
-          anchor: "center" // Center anchor ensures stable positioning at all zoom levels
+          anchor: "center", // Center anchor ensures stable positioning at all zoom levels
         })
           .setLngLat([incident.location.lng, incident.location.lat])
           .addTo(map.current!)
@@ -458,7 +458,8 @@ export default function MapComponent({
         }
 
         @keyframes pulse {
-          0%, 100% {
+          0%,
+          100% {
             box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4);
           }
           50% {

@@ -4,12 +4,7 @@ import * as React from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/components/auth/auth-provider"
 import { db } from "@/lib/firebase/config"
-import { 
-  updateProfile, 
-  updatePassword, 
-  reauthenticateWithCredential,
-  EmailAuthProvider
-} from "firebase/auth"
+import { updateProfile, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from "firebase/auth"
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp, Timestamp } from "firebase/firestore"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -35,13 +30,13 @@ export function AccountSettings() {
   const [loading, setLoading] = React.useState(true)
   const [saving, setSaving] = React.useState(false)
   const [changingPassword, setChangingPassword] = React.useState(false)
-  
+
   const [profile, setProfile] = React.useState<UserProfile>({
     displayName: "",
     username: "",
     email: "",
   })
-  
+
   const [passwordData, setPasswordData] = React.useState({
     currentPassword: "",
     newPassword: "",
@@ -72,7 +67,7 @@ export function AccountSettings() {
         let username = ""
         const userDocRef = doc(db, "users", user.uid)
         const userDoc = await getDoc(userDocRef)
-        
+
         if (userDoc.exists()) {
           const data = userDoc.data()
           username = data.username || ""
@@ -123,7 +118,7 @@ export function AccountSettings() {
       // This validates against: match /users/{userId} { allow read, write: if request.auth != null && request.auth.uid == userId; }
       const userDocRef = doc(db, "users", user.uid)
       const userDoc = await getDoc(userDocRef)
-      
+
       if (userDoc.exists()) {
         // Update existing document - preserve createdAt and other existing fields
         await updateDoc(userDocRef, {
@@ -175,10 +170,7 @@ export function AccountSettings() {
     setChangingPassword(true)
     try {
       // Reauthenticate user
-      const credential = EmailAuthProvider.credential(
-        user.email,
-        passwordData.currentPassword
-      )
+      const credential = EmailAuthProvider.credential(user.email, passwordData.currentPassword)
       await reauthenticateWithCredential(user, credential)
 
       // Update password
@@ -226,9 +218,7 @@ export function AccountSettings() {
   }
 
   // Check if user signed in with Google (can't change password)
-  const isGoogleUser = user.providerData.some(
-    (provider) => provider.providerId === "google.com"
-  )
+  const isGoogleUser = user.providerData.some((provider) => provider.providerId === "google.com")
 
   return (
     <div className="space-y-6">
@@ -238,9 +228,7 @@ export function AccountSettings() {
             <Palette className="h-5 w-5" />
             Appearance
           </CardTitle>
-          <CardDescription>
-            Choose the color used across both light and dark mode
-          </CardDescription>
+          <CardDescription>Choose the color used across both light and dark mode</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="max-w-sm space-y-2">
@@ -268,9 +256,7 @@ export function AccountSettings() {
                 ))}
               </SelectContent>
             </Select>
-            <p className="text-xs text-muted-foreground">
-              Applied instantly and synced to your account.
-            </p>
+            <p className="text-xs text-muted-foreground">Applied instantly and synced to your account.</p>
           </div>
         </CardContent>
       </Card>
@@ -282,24 +268,14 @@ export function AccountSettings() {
             <UserIcon className="h-5 w-5" />
             Profile Information
           </CardTitle>
-          <CardDescription>
-            Update your display name and username
-          </CardDescription>
+          <CardDescription>Update your display name and username</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleProfileUpdate} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={profile.email}
-                disabled
-                className="bg-muted"
-              />
-              <p className="text-xs text-muted-foreground">
-                Email cannot be changed
-              </p>
+              <Input id="email" type="email" value={profile.email} disabled className="bg-muted" />
+              <p className="text-xs text-muted-foreground">Email cannot be changed</p>
             </div>
 
             <div className="space-y-2">
@@ -308,9 +284,7 @@ export function AccountSettings() {
                 id="displayName"
                 type="text"
                 value={profile.displayName}
-                onChange={(e) =>
-                  setProfile({ ...profile, displayName: e.target.value })
-                }
+                onChange={(e) => setProfile({ ...profile, displayName: e.target.value })}
                 placeholder="Enter your display name"
               />
             </div>
@@ -324,9 +298,7 @@ export function AccountSettings() {
                 id="username"
                 type="text"
                 value={profile.username}
-                onChange={(e) =>
-                  setProfile({ ...profile, username: e.target.value })
-                }
+                onChange={(e) => setProfile({ ...profile, username: e.target.value })}
                 placeholder="Enter your username"
                 pattern="[a-zA-Z0-9_]+"
                 minLength={3}
@@ -363,9 +335,7 @@ export function AccountSettings() {
               <Lock className="h-5 w-5" />
               Change Password
             </CardTitle>
-            <CardDescription>
-              Update your password to keep your account secure
-            </CardDescription>
+            <CardDescription>Update your password to keep your account secure</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handlePasswordChange} className="space-y-4">
@@ -402,9 +372,7 @@ export function AccountSettings() {
                   minLength={6}
                   required
                 />
-                <p className="text-xs text-muted-foreground">
-                  Password must be at least 6 characters
-                </p>
+                <p className="text-xs text-muted-foreground">Password must be at least 6 characters</p>
               </div>
 
               <div className="space-y-2">

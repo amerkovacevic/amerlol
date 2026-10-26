@@ -24,7 +24,7 @@ import {
   Minus,
   RefreshCw,
   Award,
-  Star
+  Star,
 } from "lucide-react"
 import { toast } from "sonner"
 import { useAuth } from "@/components/auth/auth-provider"
@@ -49,20 +49,55 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 
 // Word list for daily puzzles (deterministic based on date)
 const WORD_LIST = [
-  "GAUNT", "SHIELD", "SWORD", "QUEST", "KNIGHT", "DRAGON", "CASTLE", "HERO",
-  "MAGIC", "POWER", "BRAVE", "HONOR", "GLORY", "VICTOR", "CHAMP", "LEGEND",
-  "MIGHT", "FORCE", "STORM", "FLAME", "THUNDER", "LIGHT", "DARK", "SHADOW",
-  "GUARD", "DEFEND", "ATTACK", "STRIKE", "BLADE", "ARMOR", "BATTLE", "WAR",
-  "PEACE", "HOPE", "FAITH", "TRUTH", "WISDOM", "COURAGE", "STRENGTH", "SPIRIT"
+  "GAUNT",
+  "SHIELD",
+  "SWORD",
+  "QUEST",
+  "KNIGHT",
+  "DRAGON",
+  "CASTLE",
+  "HERO",
+  "MAGIC",
+  "POWER",
+  "BRAVE",
+  "HONOR",
+  "GLORY",
+  "VICTOR",
+  "CHAMP",
+  "LEGEND",
+  "MIGHT",
+  "FORCE",
+  "STORM",
+  "FLAME",
+  "THUNDER",
+  "LIGHT",
+  "DARK",
+  "SHADOW",
+  "GUARD",
+  "DEFEND",
+  "ATTACK",
+  "STRIKE",
+  "BLADE",
+  "ARMOR",
+  "BATTLE",
+  "WAR",
+  "PEACE",
+  "HOPE",
+  "FAITH",
+  "TRUTH",
+  "WISDOM",
+  "COURAGE",
+  "STRENGTH",
+  "SPIRIT",
 ]
 
 // Generate daily word based on date (deterministic)
 function getDailyWord(date: Date): string {
-  const dateStr = date.toISOString().split('T')[0] // YYYY-MM-DD
-  const seed = dateStr.split('-').join('')
+  const dateStr = date.toISOString().split("T")[0] // YYYY-MM-DD
+  const seed = dateStr.split("-").join("")
   let hash = 0
   for (let i = 0; i < seed.length; i++) {
-    hash = ((hash << 5) - hash) + seed.charCodeAt(i)
+    hash = (hash << 5) - hash + seed.charCodeAt(i)
     hash = hash & hash
   }
   const index = Math.abs(hash) % WORD_LIST.length
@@ -70,30 +105,30 @@ function getDailyWord(date: Date): string {
 }
 
 // Check guess against word
-function checkGuess(guess: string, word: string): Array<'correct' | 'present' | 'absent'> {
-  const result: Array<'correct' | 'present' | 'absent'> = []
-  const wordArray = word.split('')
-  const guessArray = guess.split('')
+function checkGuess(guess: string, word: string): Array<"correct" | "present" | "absent"> {
+  const result: Array<"correct" | "present" | "absent"> = []
+  const wordArray = word.split("")
+  const guessArray = guess.split("")
   const used = new Array(word.length).fill(false)
 
   // First pass: mark correct positions
   for (let i = 0; i < guessArray.length; i++) {
     if (guessArray[i] === wordArray[i]) {
-      result[i] = 'correct'
+      result[i] = "correct"
       used[i] = true
     }
   }
 
   // Second pass: mark present letters
   for (let i = 0; i < guessArray.length; i++) {
-    if (result[i] === 'correct') continue
+    if (result[i] === "correct") continue
     const letter = guessArray[i]
     const index = wordArray.findIndex((w, idx) => w === letter && !used[idx])
     if (index !== -1) {
-      result[i] = 'present'
+      result[i] = "present"
       used[index] = true
     } else {
-      result[i] = 'absent'
+      result[i] = "absent"
     }
   }
 
@@ -141,7 +176,7 @@ export function AmerGauntletMain() {
   const [dailyWord, setDailyWord] = React.useState("")
   const [currentGuess, setCurrentGuess] = React.useState("")
   const [guesses, setGuesses] = React.useState<string[]>([])
-  const [results, setResults] = React.useState<Array<Array<'correct' | 'present' | 'absent'>>>([])
+  const [results, setResults] = React.useState<Array<Array<"correct" | "present" | "absent">>>([])
   const [gameStarted, setGameStarted] = React.useState(false)
   const [gameCompleted, setGameCompleted] = React.useState(false)
   const [startTime, setStartTime] = React.useState<number | null>(null)
@@ -159,7 +194,7 @@ export function AmerGauntletMain() {
   const settings = useAppSettings("amer-gauntlet")
 
   const today = new Date()
-  const todayStr = today.toISOString().split('T')[0]
+  const todayStr = today.toISOString().split("T")[0]
 
   // Initialize game
   React.useEffect(() => {
@@ -240,7 +275,7 @@ export function AmerGauntletMain() {
         setDailyLeaderboard(dailyEntries.map((entry, idx) => ({ ...entry, rank: idx + 1 })))
       } catch (dailyError: any) {
         // If composite index doesn't exist, try simpler query
-        if (dailyError.code === 'failed-precondition') {
+        if (dailyError.code === "failed-precondition") {
           console.warn("Composite index may be missing. Loading without time ordering.")
           const simpleQuery = query(
             dailyRef,
@@ -413,7 +448,7 @@ export function AmerGauntletMain() {
     attempts: number,
     won: boolean = true,
     finalGuesses: string[] = guesses,
-    finalResults: Array<Array<'correct' | 'present' | 'absent'>> = results
+    finalResults: Array<Array<"correct" | "present" | "absent">> = results
   ) => {
     if (!user) return
 
@@ -492,19 +527,18 @@ export function AmerGauntletMain() {
       if (statsDoc.exists()) {
         const stats = statsDoc.data()
         const newTotalGames = (stats.totalGames || 0) + 1
-        const newWins = won ? (stats.wins || 0) + 1 : (stats.wins || 0)
+        const newWins = won ? (stats.wins || 0) + 1 : stats.wins || 0
         const lastDate = stats.lastPlayedDate || ""
         const yesterday = new Date(today)
         yesterday.setDate(yesterday.getDate() - 1)
-        const yesterdayStr = yesterday.toISOString().split('T')[0]
-        const newStreak = lastDate === yesterdayStr ? (stats.currentStreak || 0) + 1 : (won ? 1 : 0)
+        const yesterdayStr = yesterday.toISOString().split("T")[0]
+        const newStreak = lastDate === yesterdayStr ? (stats.currentStreak || 0) + 1 : won ? 1 : 0
         const newBestStreak = Math.max(newStreak, stats.bestStreak || 0)
         const newTotalScore = (stats.totalScore || 0) + score
         const newAverageScore = Math.floor(newTotalScore / newTotalGames)
-        const newFastestTime = stats.fastestTime && stats.fastestTime > 0
-          ? Math.min(stats.fastestTime, finalTime)
-          : finalTime
-        const newPerfectGames = attempts === 1 ? (stats.perfectGames || 0) + 1 : (stats.perfectGames || 0)
+        const newFastestTime =
+          stats.fastestTime && stats.fastestTime > 0 ? Math.min(stats.fastestTime, finalTime) : finalTime
+        const newPerfectGames = attempts === 1 ? (stats.perfectGames || 0) + 1 : stats.perfectGames || 0
 
         await updateDoc(statsRef, {
           totalGames: newTotalGames,
@@ -539,7 +573,7 @@ export function AmerGauntletMain() {
       loadHistory()
 
       if (won) {
-        toast.success(`Congratulations! You solved it in ${attempts} attempt${attempts !== 1 ? 's' : ''}!`)
+        toast.success(`Congratulations! You solved it in ${attempts} attempt${attempts !== 1 ? "s" : ""}!`)
       } else {
         toast.error(`The word was: ${dailyWord}`)
       }
@@ -564,7 +598,7 @@ export function AmerGauntletMain() {
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
     const secs = seconds % 60
-    return `${mins}:${secs.toString().padStart(2, '0')}`
+    return `${mins}:${secs.toString().padStart(2, "0")}`
   }
 
   const shareResult = () => {
@@ -581,10 +615,10 @@ export function AmerGauntletMain() {
       return
     }
 
-    const emojiMap: Record<'correct' | 'present' | 'absent', string> = {
-      correct: '🟩',
-      present: '🟨',
-      absent: '⬛',
+    const emojiMap: Record<"correct" | "present" | "absent", string> = {
+      correct: "🟩",
+      present: "🟨",
+      absent: "⬛",
     }
 
     let shareText = `Amer Gauntlet ${todayStr}\n`
@@ -593,28 +627,31 @@ export function AmerGauntletMain() {
     shareText += `Score: ${todayResult.score}\n\n`
 
     resultsToShare.forEach((result) => {
-      shareText += result.map(r => emojiMap[r]).join('') + '\n'
+      shareText += result.map((r) => emojiMap[r]).join("") + "\n"
     })
 
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(shareText).then(() => {
-        toast.success("Result copied to clipboard!")
-      }).catch(() => {
-        // Fallback for browsers that don't support clipboard API
-        const textArea = document.createElement("textarea")
-        textArea.value = shareText
-        textArea.style.position = "fixed"
-        textArea.style.opacity = "0"
-        document.body.appendChild(textArea)
-        textArea.select()
-        try {
-          document.execCommand('copy')
+      navigator.clipboard
+        .writeText(shareText)
+        .then(() => {
           toast.success("Result copied to clipboard!")
-        } catch (err) {
-          toast.error("Failed to copy to clipboard")
-        }
-        document.body.removeChild(textArea)
-      })
+        })
+        .catch(() => {
+          // Fallback for browsers that don't support clipboard API
+          const textArea = document.createElement("textarea")
+          textArea.value = shareText
+          textArea.style.position = "fixed"
+          textArea.style.opacity = "0"
+          document.body.appendChild(textArea)
+          textArea.select()
+          try {
+            document.execCommand("copy")
+            toast.success("Result copied to clipboard!")
+          } catch (err) {
+            toast.error("Failed to copy to clipboard")
+          }
+          document.body.removeChild(textArea)
+        })
     } else {
       toast.error("Clipboard not supported in this browser")
     }
@@ -680,9 +717,7 @@ export function AmerGauntletMain() {
             <CardContent className="space-y-6">
               {!gameStarted && !gameCompleted && (
                 <div className="text-center space-y-4">
-                  <p className="text-muted-foreground">
-                    Ready to take on today's challenge?
-                  </p>
+                  <p className="text-muted-foreground">Ready to take on today's challenge?</p>
                   <Button onClick={startGame} size="lg">
                     Start Challenge
                   </Button>
@@ -698,9 +733,7 @@ export function AmerGauntletMain() {
                         {formatTime(elapsedTime)}
                       </Badge>
                     )}
-                    <Badge variant="outline">
-                      Attempts: {guesses.length}/6
-                    </Badge>
+                    <Badge variant="outline">Attempts: {guesses.length}/6</Badge>
                     {settings.showHints && !hintRevealed && (
                       <Button
                         variant="outline"
@@ -732,27 +765,26 @@ export function AmerGauntletMain() {
                       const isCurrentRow = rowIdx === guesses.length
 
                       return (
-                        <div
-                          key={rowIdx}
-                          className="flex gap-2 justify-center"
-                        >
+                        <div key={rowIdx} className="flex gap-2 justify-center">
                           {Array.from({ length: dailyWord.length }).map((_, colIdx) => {
-                            const letter = isCurrentRow && colIdx < currentGuess.length
-                              ? currentGuess[colIdx]
-                              : guess[colIdx] || ""
+                            const letter =
+                              isCurrentRow && colIdx < currentGuess.length
+                                ? currentGuess[colIdx]
+                                : guess[colIdx] || ""
                             const state = result[colIdx]
 
                             const className = `
                               w-12 h-12 border-2 rounded-md flex items-center justify-center text-xl font-bold
-                              ${!letter
-                                ? "border-gray-300 dark:border-gray-700"
-                                : state === 'correct'
-                                ? "bg-green-500 border-green-600 text-white"
-                                : state === 'present'
-                                ? "bg-yellow-500 border-yellow-600 text-white"
-                                : state === 'absent'
-                                ? "bg-gray-500 border-gray-600 text-white"
-                                : "border-gray-400 dark:border-gray-600 bg-white dark:bg-gray-800"
+                              ${
+                                !letter
+                                  ? "border-gray-300 dark:border-gray-700"
+                                  : state === "correct"
+                                    ? "bg-green-500 border-green-600 text-white"
+                                    : state === "present"
+                                      ? "bg-yellow-500 border-yellow-600 text-white"
+                                      : state === "absent"
+                                        ? "bg-gray-500 border-gray-600 text-white"
+                                        : "border-gray-400 dark:border-gray-600 bg-white dark:bg-gray-800"
                               }
                             `
 
@@ -784,13 +816,13 @@ export function AmerGauntletMain() {
                     <Input
                       value={currentGuess}
                       onChange={(e) => {
-                        const val = e.target.value.toUpperCase().replace(/[^A-Z]/g, '')
+                        const val = e.target.value.toUpperCase().replace(/[^A-Z]/g, "")
                         if (val.length <= dailyWord.length) {
                           setCurrentGuess(val)
                         }
                       }}
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
+                        if (e.key === "Enter") {
                           if (settings.autoSubmit && currentGuess.length === dailyWord.length) {
                             submitGuess()
                           }
@@ -822,7 +854,9 @@ export function AmerGauntletMain() {
                         <h3 className="text-2xl font-bold">Challenge Failed</h3>
                       </div>
                     )}
-                    <p className="text-muted-foreground">The word was: <strong>{dailyWord}</strong></p>
+                    <p className="text-muted-foreground">
+                      The word was: <strong>{dailyWord}</strong>
+                    </p>
                   </div>
 
                   <div className="grid grid-cols-3 gap-4">
@@ -851,14 +885,16 @@ export function AmerGauntletMain() {
                       <Share2 className="h-4 w-4 mr-2" />
                       Share Result
                     </Button>
-                    <Button onClick={() => {
-                      setGameCompleted(false)
-                      setGameStarted(false)
-                      setGuesses([])
-                      setResults([])
-                      setCurrentGuess("")
-                      setTodayResult(null)
-                    }}>
+                    <Button
+                      onClick={() => {
+                        setGameCompleted(false)
+                        setGameStarted(false)
+                        setGuesses([])
+                        setResults([])
+                        setCurrentGuess("")
+                        setTodayResult(null)
+                      }}
+                    >
                       <RefreshCw className="h-4 w-4 mr-2" />
                       Play Again
                     </Button>
@@ -894,9 +930,7 @@ export function AmerGauntletMain() {
                         <div
                           key={entry.userId}
                           className={`flex items-center justify-between p-3 rounded-lg border ${
-                            user && entry.userId === user.uid
-                              ? "bg-primary/10 border-primary"
-                              : "bg-muted/50"
+                            user && entry.userId === user.uid ? "bg-primary/10 border-primary" : "bg-muted/50"
                           }`}
                         >
                           <div className="flex items-center gap-3">
@@ -942,9 +976,7 @@ export function AmerGauntletMain() {
                         <div
                           key={entry.userId}
                           className={`flex items-center justify-between p-3 rounded-lg border ${
-                            user && entry.userId === user.uid
-                              ? "bg-primary/10 border-primary"
-                              : "bg-muted/50"
+                            user && entry.userId === user.uid ? "bg-primary/10 border-primary" : "bg-muted/50"
                           }`}
                         >
                           <div className="flex items-center gap-3">
@@ -1055,7 +1087,8 @@ export function AmerGauntletMain() {
                           <div>
                             <div className="font-medium">{result.date}</div>
                             <div className="text-xs text-muted-foreground">
-                              {result.completed ? "Completed" : "Failed"} • {result.attempts} attempts • {formatTime(result.time)}
+                              {result.completed ? "Completed" : "Failed"} • {result.attempts} attempts •{" "}
+                              {formatTime(result.time)}
                             </div>
                           </div>
                           <Badge variant={result.completed ? "default" : "destructive"}>

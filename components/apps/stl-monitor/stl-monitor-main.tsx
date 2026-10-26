@@ -29,7 +29,7 @@ import {
   Lightbulb,
   Radio,
   Eye,
-  EyeOff
+  EyeOff,
 } from "lucide-react"
 import { toast } from "sonner"
 import { useAuth } from "@/components/auth/auth-provider"
@@ -96,8 +96,18 @@ export function STLMonitorMain() {
   const replayIntervalRef = React.useRef<NodeJS.Timeout | null>(null)
 
   React.useEffect(() => {
-    setFilters((current) => ({ ...current, categories: settings.defaultCategories, severityMin: settings.defaultSeverityRange[0], severityMax: settings.defaultSeverityRange[1], timeWindow: settings.defaultTimeWindow }))
-  }, [JSON.stringify(settings.defaultCategories), JSON.stringify(settings.defaultSeverityRange), settings.defaultTimeWindow])
+    setFilters((current) => ({
+      ...current,
+      categories: settings.defaultCategories,
+      severityMin: settings.defaultSeverityRange[0],
+      severityMax: settings.defaultSeverityRange[1],
+      timeWindow: settings.defaultTimeWindow,
+    }))
+  }, [
+    JSON.stringify(settings.defaultCategories),
+    JSON.stringify(settings.defaultSeverityRange),
+    settings.defaultTimeWindow,
+  ])
 
   // Load initial data
   React.useEffect(() => {
@@ -115,7 +125,7 @@ export function STLMonitorMain() {
   React.useEffect(() => {
     if (filters.replayMode && isPlaying) {
       replayIntervalRef.current = setInterval(() => {
-        setReplayTime(prev => {
+        setReplayTime((prev) => {
           const next = new Date(prev.getTime() + 60000) // Advance 1 minute
           if (next > new Date()) {
             setIsPlaying(false)
@@ -140,13 +150,7 @@ export function STLMonitorMain() {
 
     try {
       // Fetch all data sources in parallel
-      const [
-        modotIncidents,
-        idotIncidents,
-        weatherAlerts,
-        transitAlerts,
-        newsItems,
-      ] = await Promise.all([
+      const [modotIncidents, idotIncidents, weatherAlerts, transitAlerts, newsItems] = await Promise.all([
         fetchMoDOTIncidents(),
         fetchIDOTIncidents(),
         fetchNWSAlerts(),
@@ -180,7 +184,7 @@ export function STLMonitorMain() {
 
   // Filter incidents based on current filters
   const filteredIncidents = React.useMemo(() => {
-    let filtered = incidents.filter(inc => {
+    let filtered = incidents.filter((inc) => {
       // Category filter
       if (!filters.categories[inc.category]) return false
 
@@ -207,12 +211,12 @@ export function STLMonitorMain() {
   }, [incidents, filters, replayTime])
 
   const toggleCategory = (category: IncidentCategory) => {
-    setFilters(prev => ({
+    setFilters((prev) => ({
       ...prev,
       categories: {
         ...prev.categories,
-        [category]: !prev.categories[category]
-      }
+        [category]: !prev.categories[category],
+      },
     }))
   }
 
@@ -220,7 +224,7 @@ export function STLMonitorMain() {
     return date.toLocaleTimeString("en-US", {
       hour: "numeric",
       minute: "2-digit",
-      hour12: true
+      hour12: true,
     })
   }
 
@@ -230,7 +234,7 @@ export function STLMonitorMain() {
       day: "numeric",
       hour: "numeric",
       minute: "2-digit",
-      hour12: true
+      hour12: true,
     })
   }
 
@@ -243,10 +247,14 @@ export function STLMonitorMain() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "active": return "bg-red-500"
-      case "resolving": return "bg-yellow-500"
-      case "cleared": return "bg-green-500"
-      default: return "bg-gray-500"
+      case "active":
+        return "bg-red-500"
+      case "resolving":
+        return "bg-yellow-500"
+      case "cleared":
+        return "bg-green-500"
+      default:
+        return "bg-gray-500"
     }
   }
 
@@ -295,22 +303,13 @@ export function STLMonitorMain() {
             <Radio className="h-6 w-6 text-red-500" />
             Live incidents
           </h2>
-          <p className="text-sm text-muted-foreground">
-            Greater St. Louis Area Incident Monitoring
-          </p>
+          <p className="text-sm text-muted-foreground">Greater St. Louis Area Incident Monitoring</p>
         </div>
         <div className="flex items-center gap-2">
           {lastRefresh && (
-            <span className="text-xs text-muted-foreground">
-              Updated {formatTime(lastRefresh)}
-            </span>
+            <span className="text-xs text-muted-foreground">Updated {formatTime(lastRefresh)}</span>
           )}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => loadAllData()}
-            disabled={isRefreshing}
-          >
+          <Button variant="outline" size="sm" onClick={() => loadAllData()} disabled={isRefreshing}>
             <RefreshCw className={`h-4 w-4 mr-1 ${isRefreshing ? "animate-spin" : ""}`} />
             Refresh
           </Button>
@@ -343,8 +342,8 @@ export function STLMonitorMain() {
                 {/* Category Toggles */}
                 <div className="flex items-center gap-2 flex-wrap">
                   {(Object.keys(filters.categories) as IncidentCategory[])
-                    .filter(cat => cat !== "crime") // Crime is analytics only
-                    .map(category => (
+                    .filter((cat) => cat !== "crime") // Crime is analytics only
+                    .map((category) => (
                       <Button
                         key={category}
                         variant={filters.categories[category] ? "default" : "outline"}
@@ -368,13 +367,13 @@ export function STLMonitorMain() {
                 <div className="flex items-center gap-2">
                   <Label className="text-xs">Window:</Label>
                   <div className="flex gap-1">
-                    {(["15m", "1h", "6h", "24h"] as const).map(window => (
+                    {(["15m", "1h", "6h", "24h"] as const).map((window) => (
                       <Button
                         key={window}
                         variant={filters.timeWindow === window ? "default" : "outline"}
                         size="sm"
                         className="text-xs px-2"
-                        onClick={() => setFilters(prev => ({ ...prev, timeWindow: window }))}
+                        onClick={() => setFilters((prev) => ({ ...prev, timeWindow: window }))}
                       >
                         {window}
                       </Button>
@@ -388,7 +387,7 @@ export function STLMonitorMain() {
                     variant={filters.replayMode ? "default" : "outline"}
                     size="sm"
                     onClick={() => {
-                      setFilters(prev => ({ ...prev, replayMode: !prev.replayMode }))
+                      setFilters((prev) => ({ ...prev, replayMode: !prev.replayMode }))
                       if (!filters.replayMode) {
                         setReplayTime(new Date(Date.now() - 3 * 60 * 60 * 1000)) // 3 hours ago
                       }
@@ -400,9 +399,7 @@ export function STLMonitorMain() {
                 </div>
 
                 {/* Incident Count */}
-                <Badge variant="secondary">
-                  {filteredIncidents.length} active
-                </Badge>
+                <Badge variant="secondary">{filteredIncidents.length} active</Badge>
               </div>
 
               {/* Replay Controls */}
@@ -416,11 +413,7 @@ export function STLMonitorMain() {
                     >
                       <SkipBack className="h-3 w-3" />
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setIsPlaying(!isPlaying)}
-                    >
+                    <Button variant="outline" size="sm" onClick={() => setIsPlaying(!isPlaying)}>
                       {isPlaying ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
                     </Button>
                   </div>
@@ -434,21 +427,24 @@ export function STLMonitorMain() {
                       className="w-full"
                     />
                   </div>
-                  <span className="text-sm font-mono">
-                    {formatDateTime(replayTime)}
-                  </span>
+                  <span className="text-sm font-mono">{formatDateTime(replayTime)}</span>
                 </div>
               )}
             </CardContent>
           </Card>
 
           {/* Map Container */}
-          <div className="relative rounded-lg overflow-hidden border bg-gray-100 dark:bg-muted" style={{ height: "calc(100vh - 380px)", minHeight: "500px" }}>
-            <React.Suspense fallback={
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="animate-pulse text-muted-foreground">Loading map...</div>
-              </div>
-            }>
+          <div
+            className="relative rounded-lg overflow-hidden border bg-gray-100 dark:bg-muted"
+            style={{ height: "calc(100vh - 380px)", minHeight: "500px" }}
+          >
+            <React.Suspense
+              fallback={
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="animate-pulse text-muted-foreground">Loading map...</div>
+                </div>
+              }
+            >
               <MapComponent
                 mapStyle={settings.mapStyle}
                 incidents={filteredIncidents}
@@ -480,18 +476,16 @@ export function STLMonitorMain() {
                           >
                             {selectedIncident.category}
                           </Badge>
-                          <div className={`w-2 h-2 rounded-full ${getStatusColor(selectedIncident.status)}`} />
+                          <div
+                            className={`w-2 h-2 rounded-full ${getStatusColor(selectedIncident.status)}`}
+                          />
                         </div>
                         <h3 className="font-semibold">{selectedIncident.title}</h3>
                         {selectedIncident.subtype && (
                           <span className="text-xs text-muted-foreground">{selectedIncident.subtype}</span>
                         )}
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setSelectedIncident(null)}
-                      >
+                      <Button variant="ghost" size="sm" onClick={() => setSelectedIncident(null)}>
                         <X className="h-4 w-4" />
                       </Button>
                     </div>
@@ -512,9 +506,7 @@ export function STLMonitorMain() {
                     {selectedIncident.description && (
                       <div>
                         <Label className="text-xs">Description</Label>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          {selectedIncident.description}
-                        </p>
+                        <p className="text-sm text-muted-foreground mt-1">{selectedIncident.description}</p>
                       </div>
                     )}
 
@@ -651,7 +643,7 @@ function AnalyticsDashboard() {
         date.setDate(date.getDate() - (days - i - 1))
         return {
           date: date.toISOString().split("T")[0],
-          count: Math.floor(Math.random() * 50) + 80
+          count: Math.floor(Math.random() * 50) + 80,
         }
       })
 
@@ -706,7 +698,7 @@ function AnalyticsDashboard() {
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <Label className="text-sm">Time Range:</Label>
-              {(["week", "month", "year"] as const).map(range => (
+              {(["week", "month", "year"] as const).map((range) => (
                 <Button
                   key={range}
                   variant={timeRange === range ? "default" : "outline"}
@@ -717,9 +709,7 @@ function AnalyticsDashboard() {
                 </Button>
               ))}
             </div>
-            <Badge variant="secondary">
-              Historical data • Updated monthly
-            </Badge>
+            <Badge variant="secondary">Historical data • Updated monthly</Badge>
           </div>
         </CardContent>
       </Card>
@@ -730,9 +720,7 @@ function AnalyticsDashboard() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm">Incidents by Hour of Day</CardTitle>
-            <CardDescription className="text-xs">
-              Distribution across 24 hours
-            </CardDescription>
+            <CardDescription className="text-xs">Distribution across 24 hours</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="h-40 flex items-end gap-0.5">
@@ -763,9 +751,7 @@ function AnalyticsDashboard() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm">Incidents by Day of Week</CardTitle>
-            <CardDescription className="text-xs">
-              Weekly distribution pattern
-            </CardDescription>
+            <CardDescription className="text-xs">Weekly distribution pattern</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="h-40 flex items-end gap-2">
@@ -779,9 +765,7 @@ function AnalyticsDashboard() {
                       style={{ height: `${height}%` }}
                       title={`${dayNames[day]} - ${count} incidents`}
                     />
-                    <span className="text-[10px] text-muted-foreground mt-1">
-                      {dayNames[day]}
-                    </span>
+                    <span className="text-[10px] text-muted-foreground mt-1">{dayNames[day]}</span>
                   </div>
                 )
               })}
@@ -793,9 +777,7 @@ function AnalyticsDashboard() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm">Temporal Heatmap</CardTitle>
-            <CardDescription className="text-xs">
-              Hour × Day distribution
-            </CardDescription>
+            <CardDescription className="text-xs">Hour × Day distribution</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-25 gap-0.5">
@@ -812,14 +794,15 @@ function AnalyticsDashboard() {
                   <div className="text-[8px] text-muted-foreground pr-1">{day}</div>
                   {Array.from({ length: 24 }, (_, hour) => {
                     const value = data.hourlyDistribution[hour] * (data.dailyDistribution[dayIdx] / 100)
-                    const maxValue = Math.max(...data.hourlyDistribution) * (Math.max(...data.dailyDistribution) / 100)
+                    const maxValue =
+                      Math.max(...data.hourlyDistribution) * (Math.max(...data.dailyDistribution) / 100)
                     const intensity = value / maxValue
                     return (
                       <div
                         key={`${day}-${hour}`}
                         className="aspect-square rounded-sm"
                         style={{
-                          backgroundColor: `rgba(239, 68, 68, ${intensity * 0.8 + 0.1})`
+                          backgroundColor: `rgba(239, 68, 68, ${intensity * 0.8 + 0.1})`,
                         }}
                         title={`${day} ${hour}:00 - ${Math.round(value)} avg incidents`}
                       />
@@ -835,15 +818,17 @@ function AnalyticsDashboard() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm">Top Incident Locations</CardTitle>
-            <CardDescription className="text-xs">
-              By neighborhood and corridor
-            </CardDescription>
+            <CardDescription className="text-xs">By neighborhood and corridor</CardDescription>
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="neighborhood" className="space-y-2">
               <TabsList className="h-8">
-                <TabsTrigger value="neighborhood" className="text-xs">Neighborhoods</TabsTrigger>
-                <TabsTrigger value="corridor" className="text-xs">Corridors</TabsTrigger>
+                <TabsTrigger value="neighborhood" className="text-xs">
+                  Neighborhoods
+                </TabsTrigger>
+                <TabsTrigger value="corridor" className="text-xs">
+                  Corridors
+                </TabsTrigger>
               </TabsList>
               <TabsContent value="neighborhood" className="space-y-1">
                 {data.neighborhoodStats.slice(0, 5).map((item, idx) => {
@@ -853,10 +838,7 @@ function AnalyticsDashboard() {
                     <div key={item.name} className="flex items-center gap-2">
                       <span className="text-xs w-24 truncate">{item.name}</span>
                       <div className="flex-1 h-4 bg-muted rounded overflow-hidden">
-                        <div
-                          className="h-full bg-primary/80 rounded"
-                          style={{ width: `${width}%` }}
-                        />
+                        <div className="h-full bg-primary/80 rounded" style={{ width: `${width}%` }} />
                       </div>
                       <span className="text-xs w-10 text-right">{item.count}</span>
                     </div>
@@ -871,10 +853,7 @@ function AnalyticsDashboard() {
                     <div key={item.name} className="flex items-center gap-2">
                       <span className="text-xs w-24 truncate">{item.name}</span>
                       <div className="flex-1 h-4 bg-muted rounded overflow-hidden">
-                        <div
-                          className="h-full bg-orange-500/80 rounded"
-                          style={{ width: `${width}%` }}
-                        />
+                        <div className="h-full bg-orange-500/80 rounded" style={{ width: `${width}%` }} />
                       </div>
                       <span className="text-xs w-10 text-right">{item.count}</span>
                     </div>
@@ -890,9 +869,9 @@ function AnalyticsDashboard() {
       <Card className="bg-muted/50">
         <CardContent className="py-3">
           <p className="text-xs text-muted-foreground text-center">
-            📊 Historical data from SLMPD, STL County, and MoDOT official datasets.
-            Crime statistics are for analytical purposes only and may be delayed.
-            Data ranges shown: {timeRange === "week" ? "7 days" : timeRange === "month" ? "30 days" : "365 days"}.
+            📊 Historical data from SLMPD, STL County, and MoDOT official datasets. Crime statistics are for
+            analytical purposes only and may be delayed. Data ranges shown:{" "}
+            {timeRange === "week" ? "7 days" : timeRange === "month" ? "30 days" : "365 days"}.
           </p>
         </CardContent>
       </Card>
@@ -929,9 +908,17 @@ function PredictiveInsights() {
       ].sort((a, b) => b.risk - a.risk)
 
       const highRiskLocations = [
-        { name: "I-64 @ Grand", score: 88, factors: ["High volume", "Complex interchange", "Construction zone"] },
+        {
+          name: "I-64 @ Grand",
+          score: 88,
+          factors: ["High volume", "Complex interchange", "Construction zone"],
+        },
         { name: "I-70 @ I-270", score: 82, factors: ["Merge point", "High speed", "Weather exposure"] },
-        { name: "Downtown @ Convention", score: 78, factors: ["Pedestrian traffic", "Event venue", "Parking congestion"] },
+        {
+          name: "Downtown @ Convention",
+          score: 78,
+          factors: ["Pedestrian traffic", "Event venue", "Parking congestion"],
+        },
         { name: "I-44 @ Jefferson", score: 75, factors: ["Curve geometry", "Lane reduction", "High volume"] },
         { name: "I-55 @ Arsenal", score: 71, factors: ["Exit ramp", "Volume spike", "Sight distance"] },
       ]
@@ -939,7 +926,7 @@ function PredictiveInsights() {
       const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
       const weeklyForecast = days.map((day, idx) => ({
         day,
-        probability: [75, 78, 80, 82, 85, 70, 65][idx]
+        probability: [75, 78, 80, 82, 85, 70, 65][idx],
       }))
 
       setPredictions({
@@ -995,9 +982,7 @@ function PredictiveInsights() {
               <Clock className="h-4 w-4" />
               High-Risk Hours Today
             </CardTitle>
-            <CardDescription className="text-xs">
-              Predicted incident likelihood by hour
-            </CardDescription>
+            <CardDescription className="text-xs">Predicted incident likelihood by hour</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
@@ -1019,7 +1004,8 @@ function PredictiveInsights() {
                         className="h-full rounded-full"
                         style={{
                           width: `${item.risk}%`,
-                          backgroundColor: item.risk >= 80 ? "#ef4444" : item.risk >= 60 ? "#f97316" : "#eab308"
+                          backgroundColor:
+                            item.risk >= 80 ? "#ef4444" : item.risk >= 60 ? "#f97316" : "#eab308",
                         }}
                       />
                     </div>
@@ -1038,9 +1024,7 @@ function PredictiveInsights() {
               <BarChart3 className="h-4 w-4" />
               7-Day Incident Forecast
             </CardTitle>
-            <CardDescription className="text-xs">
-              Predicted daily incident probability
-            </CardDescription>
+            <CardDescription className="text-xs">Predicted daily incident probability</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="h-32 flex items-end gap-2">
@@ -1050,9 +1034,11 @@ function PredictiveInsights() {
                   <div key={item.day} className="flex-1 flex flex-col items-center">
                     <div
                       className={`w-full rounded-t transition-colors ${
-                        item.probability >= 80 ? "bg-red-500" :
-                        item.probability >= 70 ? "bg-orange-500" :
-                        "bg-yellow-500"
+                        item.probability >= 80
+                          ? "bg-red-500"
+                          : item.probability >= 70
+                            ? "bg-orange-500"
+                            : "bg-yellow-500"
                       }`}
                       style={{ height: `${height}%` }}
                     />
@@ -1079,10 +1065,7 @@ function PredictiveInsights() {
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {predictions.highRiskLocations.map((location) => (
-                <div
-                  key={location.name}
-                  className={`p-3 rounded-lg border ${getRiskColor(location.score)}`}
-                >
+                <div key={location.name} className={`p-3 rounded-lg border ${getRiskColor(location.score)}`}>
                   <div className="flex items-center justify-between mb-2">
                     <span className="font-medium text-sm">{location.name}</span>
                     <Badge variant="outline" className="font-mono">
@@ -1112,8 +1095,8 @@ function PredictiveInsights() {
           </div>
           <p className="text-xs text-muted-foreground text-center">
             ⚠️ <strong>Disclaimer:</strong> Forecasts are probabilistic estimates based on historical data.
-            They are not guarantees of future events. Use for situational awareness only,
-            not for emergency planning or response decisions.
+            They are not guarantees of future events. Use for situational awareness only, not for emergency
+            planning or response decisions.
           </p>
         </CardContent>
       </Card>

@@ -1,23 +1,18 @@
 // STL Monitor Type Definitions
 
-export type IncidentCategory = 
-  | "traffic" 
-  | "weather" 
-  | "transit" 
-  | "news" 
-  | "crime"
+export type IncidentCategory = "traffic" | "weather" | "transit" | "news" | "crime"
 
 export type IncidentStatus = "active" | "resolving" | "cleared"
 
 export type ConfidenceLevel = "low" | "medium" | "high"
 
-export type DataSource = 
-  | "MoDOT" 
-  | "IDOT (East St. Louis Only)" 
-  | "NWS" 
-  | "Metro Transit" 
-  | "SLMPD" 
-  | "STL County" 
+export type DataSource =
+  | "MoDOT"
+  | "IDOT (East St. Louis Only)"
+  | "NWS"
+  | "Metro Transit"
+  | "SLMPD"
+  | "STL County"
   | "Local News"
 
 export interface GeoPoint {
@@ -199,14 +194,14 @@ export interface STLMonitorSettings {
 
 // Map Bounds for STL Metro (extended to include surrounding counties)
 export const STL_BOUNDS = {
-  center: { lat: 38.6270, lng: -90.1994 } as GeoPoint,
+  center: { lat: 38.627, lng: -90.1994 } as GeoPoint,
   zoom: 11,
   bounds: {
-    north: 39.10,  // Extended north to include Lincoln County (Troy, Winfield)
-    south: 38.20,  // Extended south to include Jefferson County (De Soto, Hillsboro)
-    east: -89.85,  // East St. Louis area and Illinois side
-    west: -91.20   // Extended west to include Franklin County (Washington, Union) and Warren County
-  }
+    north: 39.1, // Extended north to include Lincoln County (Troy, Winfield)
+    south: 38.2, // Extended south to include Jefferson County (De Soto, Hillsboro)
+    east: -89.85, // East St. Louis area and Illinois side
+    west: -91.2, // Extended west to include Franklin County (Washington, Union) and Warren County
+  },
 }
 
 // East St. Louis boundary (simplified polygon)
@@ -214,7 +209,7 @@ export const EAST_STL_BOUNDS = {
   north: 38.65,
   south: 38.58,
   east: -89.98,
-  west: -90.15
+  west: -90.15,
 }
 
 // Category colors for map markers

@@ -27,6 +27,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/components/auth/auth-provider", () => ({
   useAuth: () => ({
     user: mocks.user,
+    account: mocks.user,
     loading: false,
     ensurePlayerIdentity: mocks.ensurePlayerIdentity,
   }),

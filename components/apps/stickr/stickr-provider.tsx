@@ -1,12 +1,7 @@
 "use client"
 
 import * as React from "react"
-import {
-  doc,
-  onSnapshot,
-  runTransaction,
-  serverTimestamp,
-} from "firebase/firestore"
+import { doc, onSnapshot, runTransaction, serverTimestamp } from "firebase/firestore"
 import { toast } from "sonner"
 import { useAuth } from "@/components/auth/auth-provider"
 import { db } from "@/lib/firebase/config"
@@ -21,11 +16,7 @@ import {
 
 export interface StickrContextValue {
   state: StickrPersistedState
-  setState: (
-    next:
-      | StickrPersistedState
-      | ((previous: StickrPersistedState) => StickrPersistedState)
-  ) => void
+  setState: (next: StickrPersistedState | ((previous: StickrPersistedState) => StickrPersistedState)) => void
   hydrated: boolean
   stickerCount: number
   authLoading: boolean
@@ -37,11 +28,7 @@ const normalize = (raw: Partial<StickrPersistedState>) =>
 export function StickrProvider({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
   return (
-    <StickrSession
-      key={user?.uid ?? "guest"}
-      uid={user?.uid}
-      authLoading={loading}
-    >
+    <StickrSession key={user?.uid ?? "guest"} uid={user?.uid} authLoading={loading}>
       {children}
     </StickrSession>
   )
@@ -56,8 +43,7 @@ function StickrSession({
   authLoading: boolean
   children: React.ReactNode
 }) {
-  const [state, setState] =
-    React.useState<StickrPersistedState>(DEFAULT_STICKR_STATE)
+  const [state, setState] = React.useState<StickrPersistedState>(DEFAULT_STICKR_STATE)
   const [hydrated, setHydrated] = React.useState(false)
   const current = React.useRef(state)
   const remote = React.useRef(state)
@@ -86,9 +72,7 @@ function StickrSession({
           apply(raw ? normalize(JSON.parse(raw)) : DEFAULT_STICKR_STATE)
         } catch {
           setHydrated(true)
-          toast.error(
-            "Your saved sticker lists could not be read. They have been left untouched."
-          )
+          toast.error("Your saved sticker lists could not be read. They have been left untouched.")
         }
       }
       loadLocal()
@@ -101,9 +85,7 @@ function StickrSession({
       (snapshot) => {
         if (pending.current) return
         // Reading an absent document never initializes or migrates it.
-        apply(
-          snapshot.exists() ? normalize(snapshot.data()) : DEFAULT_STICKR_STATE
-        )
+        apply(snapshot.exists() ? normalize(snapshot.data()) : DEFAULT_STICKR_STATE)
       },
       () => {
         setHydrated(true)
@@ -121,9 +103,7 @@ function StickrSession({
 
   const persist: StickrContextValue["setState"] = (update) => {
     if (!ready.current) {
-      toast.error(
-        "Wait for your sticker lists to load successfully before editing."
-      )
+      toast.error("Wait for your sticker lists to load successfully before editing.")
       return
     }
     const before = current.current
@@ -139,21 +119,15 @@ function StickrSession({
         const latest = normalize(raw)
         for (const field of fields) {
           if (JSON.stringify(latest[field]) !== JSON.stringify(before[field]))
-            throw new Error(
-              "Your sticker lists changed in another tab. Reload before editing."
-            )
+            throw new Error("Your sticker lists changed in another tab. Reload before editing.")
         }
-        const changes = Object.fromEntries(
-          fields.map((field) => [field, next[field]])
-        )
+        const changes = Object.fromEntries(fields.map((field) => [field, next[field]]))
         localStorage.setItem(key, JSON.stringify({ ...raw, ...changes }))
         const merged = { ...latest, ...changes }
         current.current = merged
         setState(merged)
       } catch {
-        toast.error(
-          "Your sticker changes could not be saved. Existing lists have been left untouched."
-        )
+        toast.error("Your sticker changes could not be saved. Existing lists have been left untouched.")
       }
       return
     }
@@ -167,22 +141,16 @@ function StickrSession({
         const baseline = remote.current
         const merged = await runTransaction(db, async (transaction) => {
           const snapshot = await transaction.get(ref)
-          const latest = snapshot.exists()
-            ? normalize(snapshot.data())
-            : DEFAULT_STICKR_STATE
+          const latest = snapshot.exists() ? normalize(snapshot.data()) : DEFAULT_STICKR_STATE
           for (const field of fields)
-            if (
-              JSON.stringify(latest[field]) !== JSON.stringify(baseline[field])
-            )
+            if (JSON.stringify(latest[field]) !== JSON.stringify(baseline[field]))
               throw new Error(
                 "Your sticker lists changed on another device. Reload before making more changes."
               )
           transaction.set(
             ref,
             {
-              ...Object.fromEntries(
-                fields.map((field) => [field, next[field]])
-              ),
+              ...Object.fromEntries(fields.map((field) => [field, next[field]])),
               updatedAt: serverTimestamp(),
               ...(!snapshot.exists() ? { createdAt: serverTimestamp() } : {}),
             },
@@ -204,15 +172,12 @@ function StickrSession({
         if (active.current) {
           ready.current = false
           toast.error(
-            cause instanceof Error
-              ? cause.message
-              : "Sticker changes could not sync. Reload to retry."
+            cause instanceof Error ? cause.message : "Sticker changes could not sync. Reload to retry."
           )
         }
       })
       .finally(() => {
-        if (current.current === next || current.current === remote.current)
-          pending.current = false
+        if (current.current === next || current.current === remote.current) pending.current = false
       })
   }
   return (

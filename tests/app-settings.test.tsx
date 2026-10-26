@@ -46,7 +46,7 @@ const state = vi.hoisted(() => ({
   listeners: new Map<string, (snapshot: unknown) => void>(),
 }))
 vi.mock("@/components/auth/auth-provider", () => ({
-  useAuth: () => ({ user: state.user, loading: false }),
+  useAuth: () => ({ user: state.user, account: state.user, loading: false }),
 }))
 vi.mock("@/lib/firebase/config", () => ({ db: {} }))
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }))

@@ -49,10 +49,11 @@ export function AppSettingsProvider({
   appId: SettingsAppId
   children: React.ReactNode
 }) {
-  const { user, loading: authLoading } = useAuth()
+  const { account, loading: authLoading } = useAuth()
   const definition = settingsDefinition(appId)
   // A keyed session prevents a late response or draft from crossing account boundaries.
-  const uid = definition.collection ? user?.uid : undefined
+  // Anonymous game guests keep device settings, like any other guest.
+  const uid = definition.collection ? account?.uid : undefined
   return (
     <SettingsSession
       key={`${appId}:${uid ?? "guest"}`}

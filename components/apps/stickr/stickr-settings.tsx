@@ -1,36 +1,16 @@
 "use client"
 
 import * as React from "react"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useAuth } from "@/components/auth/auth-provider"
 import { AuthDialog } from "@/components/auth/auth-dialog"
 import { Button } from "@/components/ui/button"
 import { Settings, RotateCcw } from "lucide-react"
-import {
-  ALBUM_PRESETS,
-  clampStickerCount,
-  getPresetById,
-} from "@/lib/stickr/album-presets"
-import {
-  DEFAULT_STICKR_STATE,
-  normalizeState,
-  type StickrPersistedState,
-} from "@/lib/stickr/stickr-state"
+import { ALBUM_PRESETS, clampStickerCount, getPresetById } from "@/lib/stickr/album-presets"
+import { DEFAULT_STICKR_STATE, normalizeState, type StickrPersistedState } from "@/lib/stickr/stickr-state"
 import { useStickr } from "./stickr-provider"
 
 export function StickrSettings() {
@@ -77,8 +57,7 @@ export function StickrSettings() {
           Stickr Settings
         </h2>
         <p className="text-muted-foreground">
-          Choose your Panini FIFA World Cup™ album size and how your trade card
-          looks when you share it.
+          Choose your Panini FIFA World Cup™ album size and how your trade card looks when you share it.
         </p>
         {!user && (
           <p className="text-sm text-muted-foreground mt-2">
@@ -95,8 +74,7 @@ export function StickrSettings() {
         )}
         {user && (
           <p className="text-sm text-muted-foreground mt-2">
-            You’re editing your account’s lists. Unsynced device lists remain
-            available when signed out.
+            You’re editing your account’s lists. Unsynced device lists remain available when signed out.
           </p>
         )}
       </div>
@@ -105,8 +83,8 @@ export function StickrSettings() {
         <CardHeader>
           <CardTitle>Album</CardTitle>
           <CardDescription>
-            Sticker numbers run from 1 up to your album size. To protect your
-            lists, album changes are locked while duplicates or needs exist.
+            Sticker numbers run from 1 up to your album size. To protect your lists, album changes are locked
+            while duplicates or needs exist.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -136,9 +114,7 @@ export function StickrSettings() {
               <Label htmlFor="customCount">Sticker count</Label>
               <Input
                 id="customCount"
-                disabled={Boolean(
-                  state.duplicates.length || state.needs.length
-                )}
+                disabled={Boolean(state.duplicates.length || state.needs.length)}
                 type="number"
                 min={1}
                 max={1200}
@@ -146,10 +122,7 @@ export function StickrSettings() {
                 onChange={(e) => {
                   const v = clampStickerCount(parseInt(e.target.value, 10) || 1)
                   setState((prev) =>
-                    normalizeState(
-                      { ...prev, customStickerCount: v },
-                      getPresetById("custom")
-                    )
+                    normalizeState({ ...prev, customStickerCount: v }, getPresetById("custom"))
                   )
                 }}
               />
@@ -161,9 +134,7 @@ export function StickrSettings() {
       <Card>
         <CardHeader>
           <CardTitle>Share card</CardTitle>
-          <CardDescription>
-            Shown on the downloadable trade image.
-          </CardDescription>
+          <CardDescription>Shown on the downloadable trade image.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
@@ -173,18 +144,14 @@ export function StickrSettings() {
               placeholder="e.g. Alex · St. Louis"
               maxLength={80}
               value={state.displayName}
-              onChange={(e) =>
-                setState((prev) => ({ ...prev, displayName: e.target.value }))
-              }
+              onChange={(e) => setState((prev) => ({ ...prev, displayName: e.target.value }))}
             />
           </div>
           <div className="space-y-2">
             <Label>Card style</Label>
             <Select
               value={state.shareCardTheme}
-              onValueChange={(v: "light" | "dark") =>
-                setState((prev) => ({ ...prev, shareCardTheme: v }))
-              }
+              onValueChange={(v: "light" | "dark") => setState((prev) => ({ ...prev, shareCardTheme: v }))}
             >
               <SelectTrigger>
                 <SelectValue />

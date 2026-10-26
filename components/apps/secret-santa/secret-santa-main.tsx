@@ -23,7 +23,7 @@ import {
   UserMinus,
   Shuffle,
   Eye,
-  EyeOff
+  EyeOff,
 } from "lucide-react"
 import { toast } from "sonner"
 import { useAuth } from "@/components/auth/auth-provider"
@@ -40,10 +40,17 @@ import {
   serverTimestamp,
   Timestamp,
   runTransaction,
-  writeBatch
+  writeBatch,
 } from "firebase/firestore"
 import { createSecretSantaAssignments } from "@/lib/secret-santa/draw"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface CustomField {
@@ -164,9 +171,14 @@ export function SecretSantaMain() {
           exchangesData
             .filter((exchange) => exchange.drawn && exchange.participants.includes(user.uid))
             .map(async (exchange) => {
-              const assignment = await getDoc(doc(db, "secretSantaExchanges", exchange.id, "assignments", user.uid))
+              const assignment = await getDoc(
+                doc(db, "secretSantaExchanges", exchange.id, "assignments", user.uid)
+              )
               const legacyReceiver = exchange.legacyAssignments?.[user.uid] || ""
-              return [exchange.id, assignment.exists() ? assignment.data().receiverId as string : legacyReceiver] as const
+              return [
+                exchange.id,
+                assignment.exists() ? (assignment.data().receiverId as string) : legacyReceiver,
+              ] as const
             })
         )
         setUserAssignments(Object.fromEntries(assignments.filter(([, receiverId]) => receiverId)))
@@ -243,10 +255,10 @@ export function SecretSantaMain() {
         customFields: formData.customFields,
         participantResponses: {},
         participantNames: {
-          [user.uid]: participantNames[user.uid] || await getUserDisplayName(user.uid),
+          [user.uid]: participantNames[user.uid] || (await getUserDisplayName(user.uid)),
         },
         createdBy: user.uid,
-        createdByName: participantNames[user.uid] || await getUserDisplayName(user.uid),
+        createdByName: participantNames[user.uid] || (await getUserDisplayName(user.uid)),
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       }
@@ -509,15 +521,18 @@ export function SecretSantaMain() {
   }
 
   const filteredExchanges = React.useMemo(() => {
-    let filtered = exchanges.filter((exchange) => !settings.showMyExchangesOnly || Boolean(user && (exchange.createdBy === user.uid || exchange.participants.includes(user.uid))))
+    let filtered = exchanges.filter(
+      (exchange) =>
+        !settings.showMyExchangesOnly ||
+        Boolean(user && (exchange.createdBy === user.uid || exchange.participants.includes(user.uid)))
+    )
 
     // Filter by search query
     if (searchQuery) {
       const query = searchQuery.toLowerCase()
       filtered = filtered.filter(
         (exchange) =>
-          exchange.name.toLowerCase().includes(query) ||
-          exchange.description.toLowerCase().includes(query)
+          exchange.name.toLowerCase().includes(query) || exchange.description.toLowerCase().includes(query)
       )
     }
 
@@ -582,7 +597,10 @@ export function SecretSantaMain() {
   }
 
   const updateCustomFieldOptions = (fieldId: string, optionsString: string) => {
-    const options = optionsString.split(",").map((opt) => opt.trim()).filter((opt) => opt.length > 0)
+    const options = optionsString
+      .split(",")
+      .map((opt) => opt.trim())
+      .filter((opt) => opt.length > 0)
     updateCustomField(fieldId, { options })
   }
 
@@ -593,19 +611,26 @@ export function SecretSantaMain() {
       transition={{ duration: 0.5 }}
       className="space-y-6"
     >
-{/* Actions Bar */}
+      {/* Actions Bar */}
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            aria-label="Search exchanges" placeholder="Search exchanges..."
+            aria-label="Search exchanges"
+            placeholder="Search exchanges..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10"
           />
         </div>
 
-        <Dialog open={createDialogOpen} onOpenChange={(open) => { if (open) setFormData((form) => ({ ...form, budget: settings.defaultBudget })); setCreateDialogOpen(open) }}>
+        <Dialog
+          open={createDialogOpen}
+          onOpenChange={(open) => {
+            if (open) setFormData((form) => ({ ...form, budget: settings.defaultBudget }))
+            setCreateDialogOpen(open)
+          }}
+        >
           <DialogTrigger asChild>
             <Button onClick={() => !user && setAuthDialogOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
@@ -615,9 +640,7 @@ export function SecretSantaMain() {
           <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
               <DialogTitle>Create New Exchange</DialogTitle>
-              <DialogDescription>
-                Set up a new Secret Santa gift exchange
-              </DialogDescription>
+              <DialogDescription>Set up a new Secret Santa gift exchange</DialogDescription>
             </DialogHeader>
             <form onSubmit={handleCreateExchange} className="space-y-4">
               <div className="space-y-2">
@@ -669,12 +692,7 @@ export function SecretSantaMain() {
               <div className="space-y-3 pt-4 border-t">
                 <div className="flex items-center justify-between">
                   <Label>Custom Fields (Optional)</Label>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={addCustomField}
-                  >
+                  <Button type="button" variant="outline" size="sm" onClick={addCustomField}>
                     <Plus className="h-4 w-4 mr-1" />
                     Add Field
                   </Button>
@@ -697,7 +715,10 @@ export function SecretSantaMain() {
                             <Select
                               value={field.type}
                               onValueChange={(value: "text" | "number" | "select") =>
-                                updateCustomField(field.id, { type: value, options: value === "select" ? [] : undefined })
+                                updateCustomField(field.id, {
+                                  type: value,
+                                  options: value === "select" ? [] : undefined,
+                                })
                               }
                             >
                               <SelectTrigger>
@@ -743,11 +764,7 @@ export function SecretSantaMain() {
               </div>
 
               <div className="flex justify-end gap-3 pt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setCreateDialogOpen(false)}
-                >
+                <Button type="button" variant="outline" onClick={() => setCreateDialogOpen(false)}>
                   Cancel
                 </Button>
                 <Button type="submit">Create Exchange</Button>
@@ -770,11 +787,7 @@ export function SecretSantaMain() {
                 ? "No exchanges match your search"
                 : "No exchanges created yet. Create the first one!"}
             </p>
-            {!user && (
-              <Button onClick={() => setAuthDialogOpen(true)}>
-                Sign In to Create Exchange
-              </Button>
-            )}
+            {!user && <Button onClick={() => setAuthDialogOpen(true)}>Sign In to Create Exchange</Button>}
           </CardContent>
         </Card>
       ) : (
@@ -800,9 +813,7 @@ export function SecretSantaMain() {
                     )}
                   </div>
                   {exchange.description && (
-                    <CardDescription className="line-clamp-2">
-                      {exchange.description}
-                    </CardDescription>
+                    <CardDescription className="line-clamp-2">{exchange.description}</CardDescription>
                   )}
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -820,7 +831,8 @@ export function SecretSantaMain() {
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <Users className="h-4 w-4" />
                       <span>
-                        {exchange.participants.length} participant{exchange.participants.length !== 1 ? "s" : ""}
+                        {exchange.participants.length} participant
+                        {exchange.participants.length !== 1 ? "s" : ""}
                       </span>
                     </div>
                     {exchange.drawn && (
@@ -835,7 +847,8 @@ export function SecretSantaMain() {
                     )}
                     {exchange.customFields && exchange.customFields.length > 0 && (
                       <Badge variant="outline" className="mt-1">
-                        {exchange.customFields.length} custom field{exchange.customFields.length !== 1 ? "s" : ""}
+                        {exchange.customFields.length} custom field
+                        {exchange.customFields.length !== 1 ? "s" : ""}
                       </Badge>
                     )}
                   </div>
@@ -859,16 +872,18 @@ export function SecretSantaMain() {
                     <div className="pt-2 border-t">
                       <div className="flex items-center justify-between mb-2">
                         <p className="text-xs font-medium">Participants:</p>
-                        {canManageExchange(exchange) && exchange.participantResponses && Object.keys(exchange.participantResponses).length > 0 && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 text-xs"
-                            onClick={() => setViewResponsesOpen(exchange.id)}
-                          >
-                            View Responses
-                          </Button>
-                        )}
+                        {canManageExchange(exchange) &&
+                          exchange.participantResponses &&
+                          Object.keys(exchange.participantResponses).length > 0 && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 text-xs"
+                              onClick={() => setViewResponsesOpen(exchange.id)}
+                            >
+                              View Responses
+                            </Button>
+                          )}
                       </div>
                       <div className="flex flex-wrap gap-1">
                         {exchange.participants.map((participantId) => (
@@ -914,7 +929,8 @@ export function SecretSantaMain() {
                           {exchange.customFields && exchange.customFields.length > 0 && (
                             <dl className="mt-4 space-y-3 border-t border-primary/15 pt-3">
                               {exchange.customFields.map((field) => {
-                                const answer = exchange.participantResponses?.[userAssignment]?.[field.id]?.trim()
+                                const answer =
+                                  exchange.participantResponses?.[userAssignment]?.[field.id]?.trim()
                                 return (
                                   <div key={field.id}>
                                     <dt className="text-xs font-medium text-muted-foreground">
@@ -991,139 +1007,136 @@ export function SecretSantaMain() {
       )}
 
       {/* Join Dialog with Custom Fields */}
-      {joinDialogOpen && (() => {
-        const exchange = exchanges.find((e) => e.id === joinDialogOpen)
-        if (!exchange) return null
+      {joinDialogOpen &&
+        (() => {
+          const exchange = exchanges.find((e) => e.id === joinDialogOpen)
+          if (!exchange) return null
 
-        return (
-          <Dialog open={!!joinDialogOpen} onOpenChange={(open) => !open && setJoinDialogOpen(null)}>
-            <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Join {exchange.name}</DialogTitle>
-                <DialogDescription>
-                  {exchange.customFields && exchange.customFields.length > 0
-                    ? "Please fill out the following information:"
-                    : "Join this exchange"}
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4">
-                {exchange.customFields && exchange.customFields.map((field) => (
-                  <div key={field.id} className="space-y-2">
-                    <Label htmlFor={`join-${field.id}`}>
-                      {field.label} {field.required && <span className="text-destructive">*</span>}
-                    </Label>
-                    {field.type === "text" && (
-                      <Input
-                        id={`join-${field.id}`}
-                        value={joinResponses[field.id] || ""}
-                        onChange={(e) =>
-                          setJoinResponses({ ...joinResponses, [field.id]: e.target.value })
-                        }
-                        required={field.required}
-                        placeholder={`Enter ${field.label.toLowerCase()}`}
-                      />
-                    )}
-                    {field.type === "number" && (
-                      <Input
-                        id={`join-${field.id}`}
-                        type="number"
-                        value={joinResponses[field.id] || ""}
-                        onChange={(e) =>
-                          setJoinResponses({ ...joinResponses, [field.id]: e.target.value })
-                        }
-                        required={field.required}
-                        placeholder={`Enter ${field.label.toLowerCase()}`}
-                      />
-                    )}
-                    {field.type === "select" && (
-                      <Select
-                        value={joinResponses[field.id] || ""}
-                        onValueChange={(value) =>
-                          setJoinResponses({ ...joinResponses, [field.id]: value })
-                        }
-                        required={field.required}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder={`Select ${field.label.toLowerCase()}`} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {field.options?.map((option) => (
-                            <SelectItem key={option} value={option}>
-                              {option}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
+          return (
+            <Dialog open={!!joinDialogOpen} onOpenChange={(open) => !open && setJoinDialogOpen(null)}>
+              <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Join {exchange.name}</DialogTitle>
+                  <DialogDescription>
+                    {exchange.customFields && exchange.customFields.length > 0
+                      ? "Please fill out the following information:"
+                      : "Join this exchange"}
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  {exchange.customFields &&
+                    exchange.customFields.map((field) => (
+                      <div key={field.id} className="space-y-2">
+                        <Label htmlFor={`join-${field.id}`}>
+                          {field.label} {field.required && <span className="text-destructive">*</span>}
+                        </Label>
+                        {field.type === "text" && (
+                          <Input
+                            id={`join-${field.id}`}
+                            value={joinResponses[field.id] || ""}
+                            onChange={(e) =>
+                              setJoinResponses({ ...joinResponses, [field.id]: e.target.value })
+                            }
+                            required={field.required}
+                            placeholder={`Enter ${field.label.toLowerCase()}`}
+                          />
+                        )}
+                        {field.type === "number" && (
+                          <Input
+                            id={`join-${field.id}`}
+                            type="number"
+                            value={joinResponses[field.id] || ""}
+                            onChange={(e) =>
+                              setJoinResponses({ ...joinResponses, [field.id]: e.target.value })
+                            }
+                            required={field.required}
+                            placeholder={`Enter ${field.label.toLowerCase()}`}
+                          />
+                        )}
+                        {field.type === "select" && (
+                          <Select
+                            value={joinResponses[field.id] || ""}
+                            onValueChange={(value) =>
+                              setJoinResponses({ ...joinResponses, [field.id]: value })
+                            }
+                            required={field.required}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder={`Select ${field.label.toLowerCase()}`} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {field.options?.map((option) => (
+                                <SelectItem key={option} value={option}>
+                                  {option}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                      </div>
+                    ))}
+                  <div className="flex justify-end gap-3 pt-4">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setJoinDialogOpen(null)
+                        setJoinResponses({})
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button onClick={() => performJoin(joinDialogOpen)}>Join Exchange</Button>
                   </div>
-                ))}
-                <div className="flex justify-end gap-3 pt-4">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      setJoinDialogOpen(null)
-                      setJoinResponses({})
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                  <Button onClick={() => performJoin(joinDialogOpen)}>
-                    Join Exchange
-                  </Button>
                 </div>
-              </div>
-            </DialogContent>
-          </Dialog>
-        )
-      })()}
+              </DialogContent>
+            </Dialog>
+          )
+        })()}
 
       {/* View Responses Dialog */}
-      {viewResponsesOpen && (() => {
-        const exchange = exchanges.find((e) => e.id === viewResponsesOpen)
-        if (!exchange || !exchange.participantResponses || !exchange.customFields) return null
+      {viewResponsesOpen &&
+        (() => {
+          const exchange = exchanges.find((e) => e.id === viewResponsesOpen)
+          if (!exchange || !exchange.participantResponses || !exchange.customFields) return null
 
-        return (
-          <Dialog open={!!viewResponsesOpen} onOpenChange={(open) => !open && setViewResponsesOpen(null)}>
-            <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Participant Responses</DialogTitle>
-                <DialogDescription>
-                  View responses to custom fields from all participants
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4">
-                {exchange.participants.map((participantId) => {
-                  const responses = exchange.participantResponses?.[participantId] || {}
-                  return (
-                    <Card key={participantId} className="p-4">
-                      <div className="font-medium mb-3">
-                        {participantNames[participantId] || "Unknown"}
-                      </div>
-                      <div className="space-y-2">
-                        {exchange.customFields!.map((field) => {
-                          const value = responses[field.id] || "—"
-                          return (
-                            <div key={field.id} className="text-sm">
-                              <span className="text-muted-foreground">{field.label}:</span>{" "}
-                              <span className="font-medium">{value}</span>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    </Card>
-                  )
-                })}
-              </div>
-              <div className="flex justify-end pt-4">
-                <Button variant="outline" onClick={() => setViewResponsesOpen(null)}>
-                  Close
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
-        )
-      })()}
+          return (
+            <Dialog open={!!viewResponsesOpen} onOpenChange={(open) => !open && setViewResponsesOpen(null)}>
+              <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Participant Responses</DialogTitle>
+                  <DialogDescription>View responses to custom fields from all participants</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  {exchange.participants.map((participantId) => {
+                    const responses = exchange.participantResponses?.[participantId] || {}
+                    return (
+                      <Card key={participantId} className="p-4">
+                        <div className="font-medium mb-3">{participantNames[participantId] || "Unknown"}</div>
+                        <div className="space-y-2">
+                          {exchange.customFields!.map((field) => {
+                            const value = responses[field.id] || "—"
+                            return (
+                              <div key={field.id} className="text-sm">
+                                <span className="text-muted-foreground">{field.label}:</span>{" "}
+                                <span className="font-medium">{value}</span>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </Card>
+                    )
+                  })}
+                </div>
+                <div className="flex justify-end pt-4">
+                  <Button variant="outline" onClick={() => setViewResponsesOpen(null)}>
+                    Close
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          )
+        })()}
 
       <AuthDialog open={authDialogOpen} onOpenChange={setAuthDialogOpen} />
     </motion.div>
