@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import html2canvas from "html2canvas"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -35,6 +34,8 @@ import {
   makeQatar2022FwcStickerId,
   makeQatar2022TeamStickerId,
 } from "@/lib/stickr/qatar-2022-schema"
+import { copyText, downloadBlob } from "@/lib/browser"
+import { logUnexpectedError } from "@/lib/firebase/user-facing-errors"
 import { useStickr } from "./stickr-provider"
 
 type EditMode = "duplicates" | "needs"
@@ -47,7 +48,7 @@ export function StickrMain() {
   const [search, setSearch] = React.useState("")
   const [rangeStart, setRangeStart] = React.useState("")
   const [rangeEnd, setRangeEnd] = React.useState("")
-  const [activeTeam, setActiveTeam] = React.useState("USA")
+  const [selectedTeam, setActiveTeam] = React.useState("USA")
   const [activePanel, setActivePanel] = React.useState<"team" | "fwc">("team")
   const shareRef = React.useRef<HTMLDivElement>(null)
   const [downloading, setDownloading] = React.useState(false)
@@ -84,13 +85,8 @@ export function StickrMain() {
     return null
   }, [state.albumPresetId])
 
-  React.useEffect(() => {
-    if (!teamAlbum) return
-    const exists = teamAlbum.findTeam(activeTeam)
-    if (!exists) {
-      setActiveTeam(teamAlbum.defaultTeam)
-    }
-  }, [teamAlbum, activeTeam])
+  // Fall back to the album's default team when the selection isn't in this album.
+  const activeTeam = teamAlbum && !teamAlbum.findTeam(selectedTeam) ? teamAlbum.defaultTeam : selectedTeam
 
   const dupSet = React.useMemo(() => new Set(state.duplicates), [state.duplicates])
   const needSet = React.useMemo(() => new Set(state.needs), [state.needs])
@@ -230,19 +226,14 @@ export function StickrMain() {
       : formatNumericStickerList(state.duplicates)
     const lines = [
       `Album: ${albumLabel}`,
-      state.displayName ? `Collector: ${state.displayName}` : "",
+      ...(state.displayName ? [`Collector: ${state.displayName}`] : []),
       "",
       `Looking for: ${lookingFor}`,
       `Duplicates for trade: ${duplicatesForTrade}`,
       "",
       "Made with Stickr — amer.lol",
-    ].filter(Boolean)
-    try {
-      await navigator.clipboard.writeText(lines.join("\n"))
-      toast.success("Copied to clipboard")
-    } catch {
-      toast.error("Could not copy")
-    }
+    ]
+    await copyText(lines.join("\n"))
   }
 
   const downloadPng = async () => {
@@ -250,6 +241,8 @@ export function StickrMain() {
     if (!el) return
     setDownloading(true)
     try {
+      // Loaded on demand: it is large and only needed for this button.
+      const { default: html2canvas } = await import("html2canvas")
       const canvas = await html2canvas(el, {
         scale: 2,
         backgroundColor:
@@ -257,14 +250,12 @@ export function StickrMain() {
         useCORS: true,
         logging: false,
       })
-      const url = canvas.toDataURL("image/png")
-      const a = document.createElement("a")
-      a.href = url
-      a.download = `stickr-${state.displayName?.replace(/\s+/g, "-") || "trade"}.png`
-      a.click()
+      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"))
+      if (!blob) throw new Error("Canvas export failed")
+      downloadBlob(blob, `stickr-${state.displayName?.replace(/\s+/g, "-") || "trade"}.png`)
       toast.success("Image downloaded")
-    } catch (e) {
-      console.error(e)
+    } catch (error) {
+      logUnexpectedError("stickr:share-card", error)
       toast.error("Could not create image — try another browser")
     } finally {
       setDownloading(false)

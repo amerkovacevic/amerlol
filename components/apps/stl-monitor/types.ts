@@ -41,7 +41,9 @@ export interface Incident {
   createdAt: Date
   updatedAt: Date
   expiresAt?: Date
-  metadata?: Record<string, any>
+  metadata?: Record<string, unknown>
+  /** Generated placeholder data for a feed that is not connected yet — never a real report. */
+  simulated?: boolean
 }
 
 export interface Camera {
@@ -82,6 +84,7 @@ export interface TransitAlert {
   cause?: string
   activePeriods: Array<{ start: Date; end?: Date }>
   source: "Metro Transit"
+  simulated?: boolean
 }
 
 export interface NewsItem {

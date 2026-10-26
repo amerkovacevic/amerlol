@@ -32,8 +32,10 @@ import {
   EyeOff,
 } from "lucide-react"
 import { toast } from "sonner"
-import { useAuth } from "@/components/auth/auth-provider"
-import { AuthDialog } from "@/components/auth/auth-dialog"
+import { logUnexpectedError } from "@/lib/firebase/user-facing-errors"
+import { useNow } from "@/lib/hooks/use-now"
+import { useResettableState } from "@/lib/hooks/use-resettable-state"
+import { seededRandom } from "@/lib/random"
 import {
   Incident,
   FilterState,
@@ -72,143 +74,171 @@ const LOADING_MESSAGES = [
   "Finding traffic jams...",
 ]
 
+const REPLAY_SPAN_MS = 3 * 60 * 60 * 1000
+const REPLAY_STEP_MS = 60_000
+const REPLAY_TICK_MS = 500
+const TIME_WINDOW_MS: Record<FilterState["timeWindow"], number> = {
+  "15m": 15 * 60 * 1000,
+  "1h": 60 * 60 * 1000,
+  "6h": 6 * 60 * 60 * 1000,
+  "24h": 24 * 60 * 60 * 1000,
+}
+
+async function fetchAllIncidents(): Promise<Incident[]> {
+  const [modot, idot, weather, transit, news] = await Promise.all([
+    fetchMoDOTIncidents(),
+    fetchIDOTIncidents(),
+    fetchNWSAlerts(),
+    fetchTransitAlerts(),
+    fetchLocalNews(),
+  ])
+  return [
+    ...modot,
+    ...idot,
+    ...weatherAlertsToIncidents(weather),
+    ...transitAlertsToIncidents(transit),
+    ...newsToIncidents(news),
+  ]
+}
+
+interface ReplayState {
+  /** The replayable span is fixed when replay starts so the slider doesn't drift. */
+  start: number
+  end: number
+  time: number
+  playing: boolean
+}
+
+type ReplayAction =
+  | { type: "start"; now: number }
+  | { type: "seek"; time: number }
+  | { type: "toggle" }
+  | { type: "rewind" }
+  | { type: "tick" }
+
+function replayReducer(state: ReplayState, action: ReplayAction): ReplayState {
+  switch (action.type) {
+    case "start":
+      return {
+        start: action.now - REPLAY_SPAN_MS,
+        end: action.now,
+        time: action.now - REPLAY_SPAN_MS,
+        playing: false,
+      }
+    case "seek":
+      return { ...state, time: Math.min(state.end, Math.max(state.start, action.time)) }
+    case "toggle":
+      return { ...state, playing: !state.playing }
+    case "rewind":
+      return { ...state, time: state.start }
+    case "tick": {
+      const time = Math.min(state.end, state.time + REPLAY_STEP_MS)
+      return { ...state, time, playing: time < state.end }
+    }
+  }
+}
+
 export function STLMonitorMain() {
   const settings = useAppSettings("stl-monitor")
-  const { user, loading: authLoading } = useAuth()
-  const [authDialogOpen, setAuthDialogOpen] = React.useState(false)
   const [activeTab, setActiveTab] = React.useState<"live" | "analytics" | "insights">("live")
 
   // Data state
   const [incidents, setIncidents] = React.useState<Incident[]>([])
   const [loading, setLoading] = React.useState(true)
   const [lastRefresh, setLastRefresh] = React.useState<Date | null>(null)
+  const [isRefreshing, setIsRefreshing] = React.useState(false)
 
-  // UI state
-  const [filters, setFilters] = React.useState<FilterState>(DEFAULT_FILTER_STATE)
+  // Filters follow the saved defaults until the user changes them.
+  const defaultFilters: FilterState = {
+    ...DEFAULT_FILTER_STATE,
+    categories: settings.defaultCategories,
+    severityMin: settings.defaultSeverityRange[0],
+    severityMax: settings.defaultSeverityRange[1],
+    timeWindow: settings.defaultTimeWindow,
+  }
+  const [filters, setFilters] = useResettableState(defaultFilters, JSON.stringify(defaultFilters))
   const [selectedIncident, setSelectedIncident] = React.useState<Incident | null>(null)
   const [showFilters, setShowFilters] = React.useState(false)
-  const [isRefreshing, setIsRefreshing] = React.useState(false)
   const [currentMessageIndex, setCurrentMessageIndex] = React.useState(0)
+  const [replay, dispatchReplay] = React.useReducer(replayReducer, {
+    start: 0,
+    end: 0,
+    time: 0,
+    playing: false,
+  })
+  // Re-evaluates the live time window as incidents age out.
+  const now = useNow(30_000, !filters.replayMode)
 
-  // Replay state
-  const [replayTime, setReplayTime] = React.useState<Date>(new Date())
-  const [isPlaying, setIsPlaying] = React.useState(false)
-  const replayIntervalRef = React.useRef<NodeJS.Timeout | null>(null)
+  const applyIncidents = React.useCallback((next: Incident[]) => {
+    setIncidents(next)
+    setLastRefresh(new Date())
+    setLoading(false)
+  }, [])
 
+  // Initial load.
   React.useEffect(() => {
-    setFilters((current) => ({
-      ...current,
-      categories: settings.defaultCategories,
-      severityMin: settings.defaultSeverityRange[0],
-      severityMax: settings.defaultSeverityRange[1],
-      timeWindow: settings.defaultTimeWindow,
-    }))
-  }, [
-    JSON.stringify(settings.defaultCategories),
-    JSON.stringify(settings.defaultSeverityRange),
-    settings.defaultTimeWindow,
-  ])
-
-  // Load initial data
-  React.useEffect(() => {
-    loadAllData()
-    if (!settings.autoRefresh) return
-    const interval = setInterval(() => {
-      if (!filters.replayMode) {
-        loadAllData(true)
-      }
-    }, settings.refreshInterval * 1000) // Refresh every 30 seconds
-    return () => clearInterval(interval)
-  }, [filters.replayMode, settings.autoRefresh, settings.refreshInterval])
-
-  // Replay mode timer
-  React.useEffect(() => {
-    if (filters.replayMode && isPlaying) {
-      replayIntervalRef.current = setInterval(() => {
-        setReplayTime((prev) => {
-          const next = new Date(prev.getTime() + 60000) // Advance 1 minute
-          if (next > new Date()) {
-            setIsPlaying(false)
-            return new Date()
-          }
-          return next
-        })
-      }, 500) // Every 500ms = 1 minute of replay time
-    } else if (replayIntervalRef.current) {
-      clearInterval(replayIntervalRef.current)
-    }
+    let active = true
+    fetchAllIncidents()
+      .then((next) => {
+        if (!active) return
+        applyIncidents(next)
+        toast.success(`Loaded ${next.length} incidents`)
+      })
+      .catch((error: unknown) => {
+        if (!active) return
+        logUnexpectedError("stl-monitor:load", error)
+        setLoading(false)
+        toast.error("Failed to refresh data")
+      })
     return () => {
-      if (replayIntervalRef.current) {
-        clearInterval(replayIntervalRef.current)
-      }
+      active = false
     }
-  }, [filters.replayMode, isPlaying])
+  }, [applyIncidents])
 
-  const loadAllData = async (silent = false) => {
-    if (!silent) setLoading(true)
+  // Silent background refresh while viewing live data.
+  React.useEffect(() => {
+    if (!settings.autoRefresh || filters.replayMode) return
+    const timer = setInterval(() => {
+      fetchAllIncidents()
+        .then(applyIncidents)
+        .catch((error: unknown) => logUnexpectedError("stl-monitor:auto-refresh", error))
+    }, settings.refreshInterval * 1000)
+    return () => clearInterval(timer)
+  }, [applyIncidents, filters.replayMode, settings.autoRefresh, settings.refreshInterval])
+
+  React.useEffect(() => {
+    if (!filters.replayMode || !replay.playing) return
+    const timer = setInterval(() => dispatchReplay({ type: "tick" }), REPLAY_TICK_MS)
+    return () => clearInterval(timer)
+  }, [filters.replayMode, replay.playing])
+
+  const refresh = async () => {
     setIsRefreshing(true)
-
     try {
-      // Fetch all data sources in parallel
-      const [modotIncidents, idotIncidents, weatherAlerts, transitAlerts, newsItems] = await Promise.all([
-        fetchMoDOTIncidents(),
-        fetchIDOTIncidents(),
-        fetchNWSAlerts(),
-        fetchTransitAlerts(),
-        fetchLocalNews(),
-      ])
-
-      // Combine all incidents
-      const allIncidents: Incident[] = [
-        ...modotIncidents,
-        ...idotIncidents,
-        ...weatherAlertsToIncidents(weatherAlerts),
-        ...transitAlertsToIncidents(transitAlerts),
-        ...newsToIncidents(newsItems),
-      ]
-
-      setIncidents(allIncidents)
-      setLastRefresh(new Date())
-
-      if (!silent) {
-        toast.success(`Loaded ${allIncidents.length} incidents`)
-      }
+      const next = await fetchAllIncidents()
+      applyIncidents(next)
+      toast.success(`Loaded ${next.length} incidents`)
     } catch (error) {
-      console.error("Failed to load data:", error)
+      logUnexpectedError("stl-monitor:refresh", error)
       toast.error("Failed to refresh data")
     } finally {
-      setLoading(false)
       setIsRefreshing(false)
     }
   }
 
-  // Filter incidents based on current filters
   const filteredIncidents = React.useMemo(() => {
-    let filtered = incidents.filter((inc) => {
-      // Category filter
-      if (!filters.categories[inc.category]) return false
-
-      // Severity filter
-      if (inc.severity < filters.severityMin || inc.severity > filters.severityMax) return false
-
-      // Time window filter
-      const now = filters.replayMode ? replayTime : new Date()
-      const windowMs = {
-        "15m": 15 * 60 * 1000,
-        "1h": 60 * 60 * 1000,
-        "6h": 6 * 60 * 60 * 1000,
-        "24h": 24 * 60 * 60 * 1000,
-      }[filters.timeWindow]
-
-      const incidentTime = inc.createdAt.getTime()
-      if (incidentTime < now.getTime() - windowMs) return false
-      if (filters.replayMode && incidentTime > now.getTime()) return false
-
-      return true
+    const reference = filters.replayMode ? replay.time : now?.getTime()
+    return incidents.filter((incident) => {
+      if (!filters.categories[incident.category]) return false
+      if (incident.severity < filters.severityMin || incident.severity > filters.severityMax) return false
+      if (reference === undefined) return true
+      const time = incident.createdAt.getTime()
+      if (time < reference - TIME_WINDOW_MS[filters.timeWindow]) return false
+      return !filters.replayMode || time <= reference
     })
+  }, [incidents, filters, replay.time, now])
 
-    return filtered
-  }, [incidents, filters, replayTime])
+  const simulatedCount = filteredIncidents.filter((incident) => incident.simulated).length
 
   const toggleCategory = (category: IncidentCategory) => {
     setFilters((prev) => ({
@@ -309,7 +339,7 @@ export function STLMonitorMain() {
           {lastRefresh && (
             <span className="text-xs text-muted-foreground">Updated {formatTime(lastRefresh)}</span>
           )}
-          <Button variant="outline" size="sm" onClick={() => loadAllData()} disabled={isRefreshing}>
+          <Button variant="outline" size="sm" onClick={refresh} disabled={isRefreshing}>
             <RefreshCw className={`h-4 w-4 mr-1 ${isRefreshing ? "animate-spin" : ""}`} />
             Refresh
           </Button>
@@ -317,7 +347,11 @@ export function STLMonitorMain() {
       </div>
 
       {/* Main Tabs */}
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="flex-1 flex flex-col">
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => setActiveTab(value as typeof activeTab)}
+        className="flex-1 flex flex-col"
+      >
         <TabsList className="mb-4">
           <TabsTrigger value="live" className="flex items-center gap-1">
             <Radio className="h-3 w-3" />
@@ -373,7 +407,7 @@ export function STLMonitorMain() {
                         variant={filters.timeWindow === window ? "default" : "outline"}
                         size="sm"
                         className="text-xs px-2"
-                        onClick={() => setFilters((prev) => ({ ...prev, timeWindow: window }))}
+                        onClick={() => setFilters({ ...filters, timeWindow: window })}
                       >
                         {window}
                       </Button>
@@ -387,10 +421,8 @@ export function STLMonitorMain() {
                     variant={filters.replayMode ? "default" : "outline"}
                     size="sm"
                     onClick={() => {
-                      setFilters((prev) => ({ ...prev, replayMode: !prev.replayMode }))
-                      if (!filters.replayMode) {
-                        setReplayTime(new Date(Date.now() - 3 * 60 * 60 * 1000)) // 3 hours ago
-                      }
+                      if (!filters.replayMode) dispatchReplay({ type: "start", now: Date.now() })
+                      setFilters({ ...filters, replayMode: !filters.replayMode })
                     }}
                   >
                     <Clock className="h-3 w-3 mr-1" />
@@ -402,6 +434,16 @@ export function STLMonitorMain() {
                 <Badge variant="secondary">{filteredIncidents.length} active</Badge>
               </div>
 
+              {simulatedCount > 0 && (
+                <p className="mt-3 text-xs text-muted-foreground">
+                  {simulatedCount} dashed{" "}
+                  {simulatedCount === 1
+                    ? "marker is a simulated placeholder"
+                    : "markers are simulated placeholders"}{" "}
+                  for traffic and transit feeds that aren&apos;t connected yet. They are not real incidents.
+                </p>
+              )}
+
               {/* Replay Controls */}
               {filters.replayMode && (
                 <div className="mt-3 pt-3 border-t flex items-center gap-4">
@@ -409,25 +451,33 @@ export function STLMonitorMain() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setReplayTime(new Date(Date.now() - 3 * 60 * 60 * 1000))}
+                      onClick={() => dispatchReplay({ type: "rewind" })}
+                      aria-label="Rewind to start"
                     >
                       <SkipBack className="h-3 w-3" />
                     </Button>
-                    <Button variant="outline" size="sm" onClick={() => setIsPlaying(!isPlaying)}>
-                      {isPlaying ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => dispatchReplay({ type: "toggle" })}
+                      aria-label={replay.playing ? "Pause replay" : "Play replay"}
+                    >
+                      {replay.playing ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
                     </Button>
                   </div>
                   <div className="flex-1">
                     <input
                       type="range"
-                      min={Date.now() - 3 * 60 * 60 * 1000}
-                      max={Date.now()}
-                      value={replayTime.getTime()}
-                      onChange={(e) => setReplayTime(new Date(parseInt(e.target.value)))}
+                      aria-label="Replay time"
+                      min={replay.start}
+                      max={replay.end}
+                      step={REPLAY_STEP_MS}
+                      value={replay.time}
+                      onChange={(event) => dispatchReplay({ type: "seek", time: Number(event.target.value) })}
                       className="w-full"
                     />
                   </div>
-                  <span className="text-sm font-mono">{formatDateTime(replayTime)}</span>
+                  <span className="text-sm font-mono">{formatDateTime(new Date(replay.time))}</span>
                 </div>
               )}
             </CardContent>
@@ -481,6 +531,11 @@ export function STLMonitorMain() {
                           />
                         </div>
                         <h3 className="font-semibold">{selectedIncident.title}</h3>
+                        {selectedIncident.simulated && (
+                          <Badge variant="outline" className="mt-1 border-dashed">
+                            Simulated — not a real incident
+                          </Badge>
+                        )}
                         {selectedIncident.subtype && (
                           <span className="text-xs text-muted-foreground">{selectedIncident.subtype}</span>
                         )}
@@ -592,103 +647,74 @@ export function STLMonitorMain() {
           </React.Suspense>
         </TabsContent>
       </Tabs>
-
-      <AuthDialog open={authDialogOpen} onOpenChange={setAuthDialogOpen} />
     </div>
   )
 }
 
-// Analytics Dashboard Component
+// The analytics and insights tabs preview a planned dashboard. They are not
+// backed by incident records yet, so they use clearly labelled sample data.
+const SAMPLE_DATA_NOTICE =
+  "Sample data: these charts preview the dashboard layout and are not real incident or crime statistics."
+
+function sampleAnalytics(timeRange: "week" | "month" | "year", category: string, today: number) {
+  const random = seededRandom(`${timeRange}:${category}`)
+  const between = (min: number, spread: number) => Math.floor(random() * spread) + min
+  const days = timeRange === "week" ? 7 : timeRange === "month" ? 30 : 365
+  const byCount = (a: { count: number }, b: { count: number }) => b.count - a.count
+
+  return {
+    // Busier around the rush hours, quiet overnight.
+    hourlyDistribution: Array.from({ length: 24 }, (_, hour) =>
+      hour >= 7 && hour <= 9
+        ? between(40, 30)
+        : hour >= 16 && hour <= 18
+          ? between(45, 35)
+          : hour <= 5
+            ? between(5, 10)
+            : between(15, 25)
+    ),
+    dailyDistribution: [
+      between(100, 50),
+      between(120, 60),
+      between(125, 60),
+      between(130, 60),
+      between(128, 60),
+      between(140, 70),
+      between(110, 55),
+    ],
+    dailyTrend: Array.from({ length: days }, (_, index) => ({
+      date: new Date(today - (days - index - 1) * 86_400_000).toISOString().slice(0, 10),
+      count: between(80, 50),
+    })),
+    neighborhoodStats: [
+      { name: "Downtown", count: between(200, 100) },
+      { name: "Central West End", count: between(150, 80) },
+      { name: "South City", count: between(120, 70) },
+      { name: "North City", count: between(180, 90) },
+      { name: "Tower Grove", count: between(80, 50) },
+      { name: "Soulard", count: between(60, 40) },
+      { name: "The Hill", count: between(40, 30) },
+    ].sort(byCount),
+    corridorStats: [
+      { name: "I-64/US-40", count: between(300, 150) },
+      { name: "I-70", count: between(250, 120) },
+      { name: "I-44", count: between(200, 100) },
+      { name: "I-55", count: between(180, 80) },
+      { name: "I-270", count: between(160, 90) },
+    ].sort(byCount),
+  }
+}
+
 function AnalyticsDashboard() {
   const [timeRange, setTimeRange] = React.useState<"week" | "month" | "year">("month")
   const [selectedCategory, setSelectedCategory] = React.useState<IncidentCategory | "all">("all")
-  const [loading, setLoading] = React.useState(true)
-  const [data, setData] = React.useState<{
-    hourlyDistribution: number[]
-    dailyDistribution: number[]
-    dailyTrend: Array<{ date: string; count: number }>
-    neighborhoodStats: Array<{ name: string; count: number }>
-    corridorStats: Array<{ name: string; count: number }>
-  } | null>(null)
-
-  React.useEffect(() => {
-    loadAnalyticsData()
-  }, [timeRange, selectedCategory])
-
-  const loadAnalyticsData = async () => {
-    setLoading(true)
-    try {
-      // Generate sample analytics data
-      const hourly = Array.from({ length: 24 }, (_, i) => {
-        // Higher during rush hours
-        if (i >= 7 && i <= 9) return Math.floor(Math.random() * 30) + 40
-        if (i >= 16 && i <= 18) return Math.floor(Math.random() * 35) + 45
-        if (i >= 0 && i <= 5) return Math.floor(Math.random() * 10) + 5
-        return Math.floor(Math.random() * 25) + 15
-      })
-
-      const daily = [
-        Math.floor(Math.random() * 50) + 100, // Sunday
-        Math.floor(Math.random() * 60) + 120, // Monday
-        Math.floor(Math.random() * 60) + 125, // Tuesday
-        Math.floor(Math.random() * 60) + 130, // Wednesday
-        Math.floor(Math.random() * 60) + 128, // Thursday
-        Math.floor(Math.random() * 70) + 140, // Friday
-        Math.floor(Math.random() * 55) + 110, // Saturday
-      ]
-
-      const days = timeRange === "week" ? 7 : timeRange === "month" ? 30 : 365
-      const trend = Array.from({ length: days }, (_, i) => {
-        const date = new Date()
-        date.setDate(date.getDate() - (days - i - 1))
-        return {
-          date: date.toISOString().split("T")[0],
-          count: Math.floor(Math.random() * 50) + 80,
-        }
-      })
-
-      const neighborhoods = [
-        { name: "Downtown", count: Math.floor(Math.random() * 100) + 200 },
-        { name: "Central West End", count: Math.floor(Math.random() * 80) + 150 },
-        { name: "South City", count: Math.floor(Math.random() * 70) + 120 },
-        { name: "North City", count: Math.floor(Math.random() * 90) + 180 },
-        { name: "Tower Grove", count: Math.floor(Math.random() * 50) + 80 },
-        { name: "Soulard", count: Math.floor(Math.random() * 40) + 60 },
-        { name: "The Hill", count: Math.floor(Math.random() * 30) + 40 },
-      ].sort((a, b) => b.count - a.count)
-
-      const corridors = [
-        { name: "I-64/US-40", count: Math.floor(Math.random() * 150) + 300 },
-        { name: "I-70", count: Math.floor(Math.random() * 120) + 250 },
-        { name: "I-44", count: Math.floor(Math.random() * 100) + 200 },
-        { name: "I-55", count: Math.floor(Math.random() * 80) + 180 },
-        { name: "I-270", count: Math.floor(Math.random() * 90) + 160 },
-      ].sort((a, b) => b.count - a.count)
-
-      setData({
-        hourlyDistribution: hourly,
-        dailyDistribution: daily,
-        dailyTrend: trend,
-        neighborhoodStats: neighborhoods,
-        corridorStats: corridors,
-      })
-    } catch (error) {
-      console.error("Failed to load analytics:", error)
-      toast.error("Failed to load analytics data")
-    } finally {
-      setLoading(false)
-    }
-  }
+  const [today] = React.useState(() => Date.now())
+  const data = React.useMemo(
+    () => sampleAnalytics(timeRange, selectedCategory, today),
+    [timeRange, selectedCategory, today]
+  )
 
   const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
-
-  if (loading || !data) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-pulse text-muted-foreground">Loading analytics...</div>
-      </div>
-    )
-  }
 
   return (
     <div className="space-y-4">
@@ -709,7 +735,7 @@ function AnalyticsDashboard() {
                 </Button>
               ))}
             </div>
-            <Badge variant="secondary">Historical data • Updated monthly</Badge>
+            <Badge variant="secondary">Sample data</Badge>
           </div>
         </CardContent>
       </Card>
@@ -868,93 +894,50 @@ function AnalyticsDashboard() {
       {/* Disclaimer */}
       <Card className="bg-muted/50">
         <CardContent className="py-3">
-          <p className="text-xs text-muted-foreground text-center">
-            📊 Historical data from SLMPD, STL County, and MoDOT official datasets. Crime statistics are for
-            analytical purposes only and may be delayed. Data ranges shown:{" "}
-            {timeRange === "week" ? "7 days" : timeRange === "month" ? "30 days" : "365 days"}.
-          </p>
+          <p className="text-xs text-muted-foreground text-center">{SAMPLE_DATA_NOTICE}</p>
         </CardContent>
       </Card>
     </div>
   )
 }
 
-// Predictive Insights Component
+// Hand-picked examples that illustrate the planned insights view.
+const SAMPLE_PREDICTIONS = {
+  highRiskHours: [
+    { hour: 7, risk: 75, label: "Morning Rush" },
+    { hour: 8, risk: 85, label: "Morning Rush Peak" },
+    { hour: 9, risk: 70, label: "Morning Rush End" },
+    { hour: 12, risk: 55, label: "Lunch Hour" },
+    { hour: 16, risk: 72, label: "Evening Rush Start" },
+    { hour: 17, risk: 90, label: "Evening Rush Peak" },
+    { hour: 18, risk: 80, label: "Evening Rush" },
+    { hour: 22, risk: 45, label: "Late Night" },
+  ].sort((a, b) => b.risk - a.risk),
+  highRiskLocations: [
+    { name: "I-64 @ Grand", score: 88, factors: ["High volume", "Complex interchange", "Construction zone"] },
+    { name: "I-70 @ I-270", score: 82, factors: ["Merge point", "High speed", "Weather exposure"] },
+    {
+      name: "Downtown @ Convention",
+      score: 78,
+      factors: ["Pedestrian traffic", "Event venue", "Parking congestion"],
+    },
+    { name: "I-44 @ Jefferson", score: 75, factors: ["Curve geometry", "Lane reduction", "High volume"] },
+    { name: "I-55 @ Arsenal", score: 71, factors: ["Exit ramp", "Volume spike", "Sight distance"] },
+  ],
+  weeklyForecast: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day, index) => ({
+    day,
+    probability: [75, 78, 80, 82, 85, 70, 65][index],
+  })),
+}
+
 function PredictiveInsights() {
-  const [loading, setLoading] = React.useState(true)
-  const [predictions, setPredictions] = React.useState<{
-    highRiskHours: Array<{ hour: number; risk: number; label: string }>
-    highRiskLocations: Array<{ name: string; score: number; factors: string[] }>
-    weeklyForecast: Array<{ day: string; probability: number }>
-  } | null>(null)
-
-  React.useEffect(() => {
-    loadPredictions()
-  }, [])
-
-  const loadPredictions = async () => {
-    setLoading(true)
-    try {
-      // Generate sample predictions based on historical patterns
-      const highRiskHours = [
-        { hour: 7, risk: 75, label: "Morning Rush" },
-        { hour: 8, risk: 85, label: "Morning Rush Peak" },
-        { hour: 9, risk: 70, label: "Morning Rush End" },
-        { hour: 12, risk: 55, label: "Lunch Hour" },
-        { hour: 16, risk: 72, label: "Evening Rush Start" },
-        { hour: 17, risk: 90, label: "Evening Rush Peak" },
-        { hour: 18, risk: 80, label: "Evening Rush" },
-        { hour: 22, risk: 45, label: "Late Night" },
-      ].sort((a, b) => b.risk - a.risk)
-
-      const highRiskLocations = [
-        {
-          name: "I-64 @ Grand",
-          score: 88,
-          factors: ["High volume", "Complex interchange", "Construction zone"],
-        },
-        { name: "I-70 @ I-270", score: 82, factors: ["Merge point", "High speed", "Weather exposure"] },
-        {
-          name: "Downtown @ Convention",
-          score: 78,
-          factors: ["Pedestrian traffic", "Event venue", "Parking congestion"],
-        },
-        { name: "I-44 @ Jefferson", score: 75, factors: ["Curve geometry", "Lane reduction", "High volume"] },
-        { name: "I-55 @ Arsenal", score: 71, factors: ["Exit ramp", "Volume spike", "Sight distance"] },
-      ]
-
-      const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-      const weeklyForecast = days.map((day, idx) => ({
-        day,
-        probability: [75, 78, 80, 82, 85, 70, 65][idx],
-      }))
-
-      setPredictions({
-        highRiskHours,
-        highRiskLocations,
-        weeklyForecast,
-      })
-    } catch (error) {
-      console.error("Failed to load predictions:", error)
-      toast.error("Failed to load predictions")
-    } finally {
-      setLoading(false)
-    }
-  }
+  const predictions = SAMPLE_PREDICTIONS
 
   const getRiskColor = (risk: number) => {
     if (risk >= 80) return "text-red-500 bg-red-500/10 border-red-500/20"
     if (risk >= 60) return "text-orange-500 bg-orange-500/10 border-orange-500/20"
     if (risk >= 40) return "text-yellow-500 bg-yellow-500/10 border-yellow-500/20"
     return "text-green-500 bg-green-500/10 border-green-500/20"
-  }
-
-  if (loading || !predictions) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-pulse text-muted-foreground">Loading predictions...</div>
-      </div>
-    )
   }
 
   return (
@@ -966,9 +949,7 @@ function PredictiveInsights() {
             <Lightbulb className="h-8 w-8 text-purple-500" />
             <div>
               <h2 className="font-semibold">Predictive Insights</h2>
-              <p className="text-sm text-muted-foreground">
-                AI-powered forecasting based on historical patterns
-              </p>
+              <p className="text-sm text-muted-foreground">{SAMPLE_DATA_NOTICE}</p>
             </div>
           </div>
         </CardContent>

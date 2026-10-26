@@ -16,6 +16,10 @@ import {
   STL_BOUNDS,
 } from "./types"
 
+// Feed diagnostics help while developing but are noise in visitors' consoles.
+const debugLog: (...args: unknown[]) => void =
+  process.env.NODE_ENV === "production" ? () => {} : (...args) => console.log(...args)
+
 // ============================================================================
 // GEOGRAPHIC HELPERS - GEOGRAPHICAL FENCES
 // ============================================================================
@@ -2556,7 +2560,7 @@ function createGeocodeResult(
     location.lat = Math.min(location.lat, 38.4)
   }
 
-  console.log(
+  debugLog(
     `[Geocoding] Matched "${entry.name}" (${entry.type}) with ${confidence} confidence at (${location.lat.toFixed(4)}, ${location.lng.toFixed(4)})${isJeffersonCountyLocation(entry.location) ? " [Jefferson County]" : ""}`
   )
 
@@ -2648,7 +2652,7 @@ function parseRSSFeed(
     const itemMatches = Array.from(xml.matchAll(itemRegex))
     const entryMatches = Array.from(xml.matchAll(atomEntryRegex))
 
-    console.log(
+    debugLog(
       `[RSS Parse] ${feedName}: Found ${itemMatches.length} RSS items, ${entryMatches.length} Atom entries`
     )
 
@@ -2711,7 +2715,7 @@ function parseRSSFeed(
       }
     }
 
-    console.log(`[RSS Parse] ${feedName}: Successfully parsed ${items.length} items`)
+    debugLog(`[RSS Parse] ${feedName}: Successfully parsed ${items.length} items`)
   } catch (error) {
     console.error(`[RSS Parse] ${feedName}: Error parsing feed -`, error)
   }
@@ -2892,7 +2896,7 @@ async function fetchWithCorsProxy(url: string, timeout: number = 10000): Promise
     if (directResponse.ok) {
       const text = await directResponse.text()
       if (isValidRSSContent(text)) {
-        console.log(`[CORS] Direct fetch succeeded for ${url.substring(0, 50)}...`)
+        debugLog(`[CORS] Direct fetch succeeded for ${url.substring(0, 50)}...`)
         return text
       }
     }
@@ -2925,7 +2929,7 @@ async function fetchWithCorsProxy(url: string, timeout: number = 10000): Promise
             const json = await response.json()
             const text = json.contents || json.content || ""
             if (isValidRSSContent(text)) {
-              console.log(
+              debugLog(
                 `[CORS] Proxy ${proxy.substring(0, 30)}... succeeded (JSON) for ${url.substring(0, 50)}...`
               )
               return text
@@ -2952,7 +2956,7 @@ async function fetchWithCorsProxy(url: string, timeout: number = 10000): Promise
         const text = await response.text()
         // Validate it's actually RSS/XML content (not HTML error page)
         if (isValidRSSContent(text)) {
-          console.log(`[CORS] Proxy ${proxy.substring(0, 30)}... succeeded for ${url.substring(0, 50)}...`)
+          debugLog(`[CORS] Proxy ${proxy.substring(0, 30)}... succeeded for ${url.substring(0, 50)}...`)
           return text
         } else {
           // Check if it's an HTML error page
@@ -3003,7 +3007,7 @@ export async function fetchLocalNews(): Promise<NewsItem[]> {
   const feedPromises = STL_NEWS_FEEDS.map(async (feed) => {
     const startTime = Date.now()
     try {
-      console.log(`[News Fetch] Attempting to fetch ${feed.name}...`)
+      debugLog(`[News Fetch] Attempting to fetch ${feed.name}...`)
 
       // Try primary URL first
       let xml = await fetchWithCorsProxy(feed.url)
@@ -3011,14 +3015,14 @@ export async function fetchLocalNews(): Promise<NewsItem[]> {
       // If primary URL fails and we have fallback URLs, try them
       if (!xml && (feed as RSSFeedWithFallbacks).fallbackUrls) {
         const fallbackUrls = (feed as RSSFeedWithFallbacks).fallbackUrls!
-        console.log(
+        debugLog(
           `[News Fetch] Primary URL failed for ${feed.name}, trying ${fallbackUrls.length} fallback URL(s)...`
         )
 
         for (const fallbackUrl of fallbackUrls) {
           xml = await fetchWithCorsProxy(fallbackUrl)
           if (xml) {
-            console.log(`[News Fetch] ✓ ${feed.name}: Fallback URL succeeded`)
+            debugLog(`[News Fetch] ✓ ${feed.name}: Fallback URL succeeded`)
             break
           }
         }
@@ -3030,7 +3034,7 @@ export async function fetchLocalNews(): Promise<NewsItem[]> {
       }
 
       const items = parseRSSFeed(xml, feed.name)
-      console.log(`[News Fetch] ✓ ${feed.name}: Fetched ${items.length} items from RSS feed`)
+      debugLog(`[News Fetch] ✓ ${feed.name}: Fetched ${items.length} items from RSS feed`)
 
       const newsItems: NewsItem[] = []
       let relevantCount = 0
@@ -3071,7 +3075,7 @@ export async function fetchLocalNews(): Promise<NewsItem[]> {
       }
 
       const duration = Date.now() - startTime
-      console.log(
+      debugLog(
         `[News Fetch] ✓ ${feed.name}: ${newsItems.length} items added (${items.length} parsed, ${relevantCount} STL-relevant, ${geocodedCount} geocoded) in ${duration}ms`
       )
 
@@ -3104,14 +3108,14 @@ export async function fetchLocalNews(): Promise<NewsItem[]> {
   }
 
   // Log summary per feed
-  console.log(`[News Fetch] Feed Summary:`)
+  debugLog(`[News Fetch] Feed Summary:`)
   feedStats.forEach(({ feed, stats }) => {
     if (stats.fetched) {
-      console.log(
+      debugLog(
         `  ✓ ${feed}: ${stats.parsed} parsed → ${stats.relevant} relevant → ${stats.geocoded} geocoded`
       )
     } else {
-      console.log(`  ❌ ${feed}: Failed to fetch${stats.error ? ` (${stats.error})` : ""}`)
+      debugLog(`  ❌ ${feed}: Failed to fetch${stats.error ? ` (${stats.error})` : ""}`)
     }
   })
 
@@ -3129,12 +3133,12 @@ export async function fetchLocalNews(): Promise<NewsItem[]> {
   const geocoded = timeFiltered.filter((n) => n.location).length
   const notGeocoded = timeFiltered.filter((n) => !n.location).length
 
-  console.log(`[STL Monitor] News Summary:`)
-  console.log(`  - Total fetched: ${allNews.length}`)
-  console.log(`  - Within 48h: ${timeFiltered.length}`)
-  console.log(`  - Geocoded: ${geocoded} (High: ${highConfidence}, Medium: ${mediumConfidence})`)
-  console.log(`  - Not geocoded (rejected): ${notGeocoded}`)
-  console.log(`  - Geographical fence: All geocoded locations validated within STL bounds`)
+  debugLog(`[STL Monitor] News Summary:`)
+  debugLog(`  - Total fetched: ${allNews.length}`)
+  debugLog(`  - Within 48h: ${timeFiltered.length}`)
+  debugLog(`  - Geocoded: ${geocoded} (High: ${highConfidence}, Medium: ${mediumConfidence})`)
+  debugLog(`  - Not geocoded (rejected): ${notGeocoded}`)
+  debugLog(`  - Geographical fence: All geocoded locations validated within STL bounds`)
 
   return timeFiltered.slice(0, 100)
 }
@@ -3259,6 +3263,7 @@ async function generateMoDOTIncidents(): Promise<Incident[]> {
       createdAt,
       updatedAt: createdAt,
       expiresAt: new Date(createdAt.getTime() + 4 * 60 * 60 * 1000), // 4 hours
+      simulated: true,
     })
   }
 
@@ -3301,7 +3306,7 @@ export async function fetchMoDOTIncidents(): Promise<Incident[]> {
         params.append("outSR", "4326")
 
         const url = `${baseUrl}?${params.toString()}`
-        console.log(`[MoDOT API] Fetching layer ${layerId} from ${baseUrl}`)
+        debugLog(`[MoDOT API] Fetching layer ${layerId} from ${baseUrl}`)
 
         const response = await fetch(url, {
           method: "GET",
@@ -3325,7 +3330,7 @@ export async function fetchMoDOTIncidents(): Promise<Incident[]> {
           continue
         }
 
-        console.log(`[MoDOT API] Layer ${layerId}: ${data.features?.length || 0} features returned`)
+        debugLog(`[MoDOT API] Layer ${layerId}: ${data.features?.length || 0} features returned`)
 
         // Parse ArcGIS features
         for (const feature of data.features || []) {
@@ -3363,7 +3368,7 @@ export async function fetchMoDOTIncidents(): Promise<Incident[]> {
 
             // Validate location is within STL metro bounds
             if (!isWithinSTLMetro(location)) {
-              console.log(
+              debugLog(
                 `[MoDOT API] Feature ${attrs.OBJECT_ID || "unknown"} at (${location.lat}, ${location.lng}) outside STL bounds`
               )
               continue
@@ -3527,14 +3532,14 @@ export async function fetchMoDOTIncidents(): Promise<Incident[]> {
       }
     }
 
-    console.log(
+    debugLog(
       `[MoDOT API] Successfully fetched ${allIncidents.length} total incidents from ${layers.length} layers`
     )
     return allIncidents
   } catch (error) {
     console.error("[MoDOT API] Fatal error fetching incidents:", error)
     // Fallback to sample data if API fails
-    console.log("[MoDOT API] Falling back to sample data")
+    debugLog("[MoDOT API] Falling back to sample data")
     return generateMoDOTIncidents()
   }
 }
@@ -3621,7 +3626,7 @@ export async function fetchMoDOTCameras(): Promise<Camera[]> {
     params.append("outSR", "4326")
 
     const url = `${baseUrl}?${params.toString()}`
-    console.log("[MoDOT Cameras] Fetching cameras from NWSDATA/MapServer/0...")
+    debugLog("[MoDOT Cameras] Fetching cameras from NWSDATA/MapServer/0...")
 
     const response = await fetch(url, {
       method: "GET",
@@ -3643,7 +3648,7 @@ export async function fetchMoDOTCameras(): Promise<Camera[]> {
       throw new Error(`MoDOT Camera API error: ${data.error.message || JSON.stringify(data.error)}`)
     }
 
-    console.log(`[MoDOT Cameras] API returned ${data.features?.length || 0} features`)
+    debugLog(`[MoDOT Cameras] API returned ${data.features?.length || 0} features`)
 
     let cameras: Camera[] = []
     const now = new Date()
@@ -3701,11 +3706,11 @@ export async function fetchMoDOTCameras(): Promise<Camera[]> {
       }
     }
 
-    console.log(`[MoDOT Cameras] Fetched ${cameras.length} cameras from real API`)
+    debugLog(`[MoDOT Cameras] Fetched ${cameras.length} cameras from real API`)
 
     // If no cameras found from API, use fallback locations
     if (cameras.length === 0) {
-      console.log("[MoDOT Cameras] No cameras found from API, using fallback locations")
+      debugLog("[MoDOT Cameras] No cameras found from API, using fallback locations")
       cameras = CAMERA_LOCATIONS.map((cam, idx) => {
         const minutesAgo = Math.floor(Math.random() * 30)
         const isOk = Math.random() > 0.1
@@ -3796,6 +3801,7 @@ async function generateIDOTIncidents(): Promise<Incident[]> {
       createdAt,
       updatedAt: createdAt,
       expiresAt: new Date(createdAt.getTime() + 4 * 60 * 60 * 1000),
+      simulated: true,
     })
   }
 
@@ -4047,6 +4053,7 @@ export async function fetchTransitAlerts(): Promise<TransitAlert[]> {
           },
         ],
         source: "Metro Transit" as const,
+        simulated: true,
       })
     }
 
@@ -4122,6 +4129,7 @@ export function transitAlertsToIncidents(alerts: TransitAlert[]): Incident[] {
         createdAt: alert.activePeriods[0]?.start || new Date(),
         updatedAt: new Date(),
         expiresAt: alert.activePeriods[0]?.end,
+        simulated: alert.simulated,
       }
     })
 }

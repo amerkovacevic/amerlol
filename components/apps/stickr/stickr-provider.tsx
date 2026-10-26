@@ -26,7 +26,7 @@ const normalize = (raw: Partial<StickrPersistedState>) =>
   normalizeState(raw, getPresetById(raw.albumPresetId ?? ""))
 
 export function StickrProvider({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth()
+  const { account: user, loading } = useAuth()
   return (
     <StickrSession key={user?.uid ?? "guest"} uid={user?.uid} authLoading={loading}>
       {children}

@@ -14,7 +14,7 @@ import { DEFAULT_STICKR_STATE, normalizeState, type StickrPersistedState } from 
 import { useStickr } from "./stickr-provider"
 
 export function StickrSettings() {
-  const { user, loading: authLoading } = useAuth()
+  const { account: user, loading: authLoading } = useAuth()
   const { state, setState, hydrated } = useStickr()
   const [authDialogOpen, setAuthDialogOpen] = React.useState(false)
 

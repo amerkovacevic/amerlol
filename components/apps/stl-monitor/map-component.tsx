@@ -3,8 +3,7 @@
 import * as React from "react"
 import * as maplibregl from "maplibre-gl"
 import "maplibre-gl/dist/maplibre-gl.css"
-import { useTheme } from "next-themes"
-import { Incident, STL_BOUNDS, CATEGORY_COLORS, CATEGORY_ICONS } from "./types"
+import { CATEGORY_COLORS, CATEGORY_ICONS, STL_BOUNDS, type Incident } from "./types"
 
 interface MapComponentProps {
   mapStyle: "dark" | "light"
@@ -14,39 +13,86 @@ interface MapComponentProps {
   replayMode: boolean
 }
 
-// Get tile URLs based on theme
-function getTileUrls(isDark: boolean) {
-  const style = isDark ? "dark_all" : "light_all"
-  return [
-    `https://a.basemaps.cartocdn.com/${style}/{z}/{x}/{y}.png`,
-    `https://b.basemaps.cartocdn.com/${style}/{z}/{x}/{y}.png`,
-    `https://c.basemaps.cartocdn.com/${style}/{z}/{x}/{y}.png`,
-  ]
-}
+const NEW_INCIDENT_MS = 5 * 60 * 1000
+const { west, south, east, north } = STL_BOUNDS.bounds
 
-// Create map style object
 function createMapStyle(isDark: boolean): maplibregl.StyleSpecification {
+  const style = isDark ? "dark_all" : "light_all"
   return {
     version: 8,
     sources: {
       "osm-tiles": {
         type: "raster",
-        tiles: getTileUrls(isDark),
+        tiles: ["a", "b", "c"].map(
+          (host) => `https://${host}.basemaps.cartocdn.com/${style}/{z}/{x}/{y}.png`
+        ),
         tileSize: 256,
         attribution:
           '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
       },
     },
-    layers: [
-      {
-        id: "osm-tiles",
-        type: "raster",
-        source: "osm-tiles",
-        minzoom: 0,
-        maxzoom: 19,
-      },
-    ],
+    layers: [{ id: "osm-tiles", type: "raster", source: "osm-tiles", minzoom: 0, maxzoom: 19 }],
   }
+}
+
+/** Dashed outline of the monitored area; styles are replaced on theme change, so it is re-added. */
+function addBoundary(map: maplibregl.Map, isDark: boolean) {
+  if (map.getSource("stl-boundary")) return
+  map.addSource("stl-boundary", {
+    type: "geojson",
+    data: {
+      type: "Feature",
+      properties: {},
+      geometry: {
+        type: "Polygon",
+        coordinates: [
+          [
+            [west, south],
+            [east, south],
+            [east, north],
+            [west, north],
+            [west, south],
+          ],
+        ],
+      },
+    },
+  })
+  map.addLayer({
+    id: "stl-boundary-line",
+    type: "line",
+    source: "stl-boundary",
+    paint: {
+      "line-color": isDark ? "#3b82f6" : "#2563eb",
+      "line-width": 2,
+      "line-opacity": 0.3,
+      "line-dasharray": [4, 2],
+    },
+  })
+}
+
+/** Severity 0–100 maps to a 28–40px marker. */
+const markerSize = (severity: number) => Math.floor(28 + (severity / 100) * 12)
+
+function createMarkerElement(incident: Incident, ping: boolean): HTMLElement {
+  const color = CATEGORY_COLORS[incident.category]
+  const size = markerSize(incident.severity)
+
+  const wrapper = document.createElement("button")
+  wrapper.type = "button"
+  wrapper.className = incident.simulated ? "stl-marker stl-marker-simulated" : "stl-marker"
+  wrapper.setAttribute("aria-label", incident.simulated ? `Simulated: ${incident.title}` : incident.title)
+  wrapper.style.setProperty("--marker-size", `${size}px`)
+  wrapper.style.setProperty("--marker-color", color)
+
+  const ring = document.createElement("span")
+  ring.className = ping ? "stl-marker-ring stl-marker-ping" : "stl-marker-ring"
+
+  const circle = document.createElement("span")
+  circle.className = "stl-marker-circle"
+  circle.textContent = CATEGORY_ICONS[incident.category]
+
+  wrapper.append(ring, circle)
+  return wrapper
 }
 
 export default function MapComponent({
@@ -56,417 +102,188 @@ export default function MapComponent({
   selectedIncident,
   replayMode,
 }: MapComponentProps) {
-  const mapContainer = React.useRef<HTMLDivElement>(null)
-  const map = React.useRef<maplibregl.Map | null>(null)
-  const markers = React.useRef<Map<string, maplibregl.Marker>>(new Map())
-  const animationFrames = React.useRef<Map<string, number>>(new Map())
+  const container = React.useRef<HTMLDivElement>(null)
+  const mapRef = React.useRef<maplibregl.Map | null>(null)
+  const markers = React.useRef(new Map<string, maplibregl.Marker>())
   const previousView = React.useRef<{ center: [number, number]; zoom: number } | null>(null)
-  const { resolvedTheme } = useTheme()
-  const [mounted, setMounted] = React.useState(false)
-
-  // Track if component is mounted (for SSR)
-  React.useEffect(() => {
-    setMounted(true)
-  }, [])
-
   const isDark = mapStyle === "dark"
+  // The style the map currently shows; the map is created once and restyled in place.
+  const appliedDark = React.useRef(isDark)
+  // Marker click handlers look incidents up here so they always open the latest data.
+  const latestIncidents = React.useRef(new Map<string, Incident>())
+  const latestOnClick = React.useRef(onIncidentClick)
 
-  // Initialize map
+  React.useLayoutEffect(() => {
+    latestIncidents.current = new Map(incidents.map((incident) => [incident.id, incident]))
+    latestOnClick.current = onIncidentClick
+  })
+
   React.useEffect(() => {
-    if (!mapContainer.current || map.current) return
-
-    map.current = new maplibregl.Map({
-      container: mapContainer.current,
-      style: createMapStyle(isDark),
+    if (!container.current) return
+    const markerMap = markers.current
+    const map = new maplibregl.Map({
+      container: container.current,
+      style: createMapStyle(appliedDark.current),
       center: [STL_BOUNDS.center.lng, STL_BOUNDS.center.lat],
       zoom: STL_BOUNDS.zoom,
       minZoom: 9,
       maxZoom: 16,
       maxBounds: [
-        [STL_BOUNDS.bounds.west, STL_BOUNDS.bounds.south],
-        [STL_BOUNDS.bounds.east, STL_BOUNDS.bounds.north],
+        [west, south],
+        [east, north],
       ],
     })
-
-    // Add navigation controls
-    map.current.addControl(new maplibregl.NavigationControl(), "top-left")
-    map.current.addControl(new maplibregl.ScaleControl(), "bottom-left")
-
-    // Trigger resize after map loads to ensure proper rendering
-    map.current.on("load", () => {
-      setTimeout(() => {
-        map.current?.resize()
-      }, 100)
+    mapRef.current = map
+    map.addControl(new maplibregl.NavigationControl(), "top-left")
+    map.addControl(new maplibregl.ScaleControl(), "bottom-left")
+    map.on("load", () => {
+      addBoundary(map, appliedDark.current)
+      // The container may have been laid out after the map measured it.
+      map.resize()
     })
-
-    // Handle window resize
-    const handleResize = () => {
-      map.current?.resize()
-    }
-    window.addEventListener("resize", handleResize)
-
-    // Add STL metro area boundary
-    map.current.on("load", () => {
-      if (!map.current) return
-
-      // Add STL boundary outline
-      map.current.addSource("stl-boundary", {
-        type: "geojson",
-        data: {
-          type: "Feature",
-          properties: {},
-          geometry: {
-            type: "Polygon",
-            coordinates: [
-              [
-                [STL_BOUNDS.bounds.west, STL_BOUNDS.bounds.south],
-                [STL_BOUNDS.bounds.east, STL_BOUNDS.bounds.south],
-                [STL_BOUNDS.bounds.east, STL_BOUNDS.bounds.north],
-                [STL_BOUNDS.bounds.west, STL_BOUNDS.bounds.north],
-                [STL_BOUNDS.bounds.west, STL_BOUNDS.bounds.south],
-              ],
-            ],
-          },
-        },
-      })
-
-      map.current.addLayer({
-        id: "stl-boundary-line",
-        type: "line",
-        source: "stl-boundary",
-        paint: {
-          "line-color": "#3b82f6",
-          "line-width": 2,
-          "line-opacity": 0.3,
-          "line-dasharray": [4, 2],
-        },
-      })
-    })
+    const resize = () => map.resize()
+    window.addEventListener("resize", resize)
 
     return () => {
-      // Cleanup resize listener
-      window.removeEventListener("resize", handleResize)
-
-      // Cleanup animations
-      animationFrames.current.forEach((frame) => cancelAnimationFrame(frame))
-      animationFrames.current.clear()
-
-      // Cleanup markers
-      markers.current.forEach((marker) => marker.remove())
-      markers.current.clear()
-
-      if (map.current) {
-        map.current.remove()
-        map.current = null
-      }
+      window.removeEventListener("resize", resize)
+      markerMap.forEach((marker) => marker.remove())
+      markerMap.clear()
+      map.remove()
+      mapRef.current = null
     }
   }, [])
 
-  // Update map style when theme changes
   React.useEffect(() => {
-    if (!map.current || !mounted) return
-
-    // Update the tile source when theme changes
-    const source = map.current.getSource("osm-tiles") as maplibregl.RasterTileSource
-    if (source) {
-      // MapLibre doesn't support updating tiles directly, so we need to set the whole style
-      const center = map.current.getCenter()
-      const zoom = map.current.getZoom()
-      const bearing = map.current.getBearing()
-      const pitch = map.current.getPitch()
-
-      map.current.setStyle(createMapStyle(isDark))
-
-      // Restore view after style change
-      map.current.once("style.load", () => {
-        map.current?.jumpTo({ center, zoom, bearing, pitch })
-
-        // Re-add the STL boundary
-        if (map.current && !map.current.getSource("stl-boundary")) {
-          map.current.addSource("stl-boundary", {
-            type: "geojson",
-            data: {
-              type: "Feature",
-              properties: {},
-              geometry: {
-                type: "Polygon",
-                coordinates: [
-                  [
-                    [STL_BOUNDS.bounds.west, STL_BOUNDS.bounds.south],
-                    [STL_BOUNDS.bounds.east, STL_BOUNDS.bounds.south],
-                    [STL_BOUNDS.bounds.east, STL_BOUNDS.bounds.north],
-                    [STL_BOUNDS.bounds.west, STL_BOUNDS.bounds.north],
-                    [STL_BOUNDS.bounds.west, STL_BOUNDS.bounds.south],
-                  ],
-                ],
-              },
-            },
-          })
-
-          map.current.addLayer({
-            id: "stl-boundary-line",
-            type: "line",
-            source: "stl-boundary",
-            paint: {
-              "line-color": isDark ? "#3b82f6" : "#2563eb",
-              "line-width": 2,
-              "line-opacity": 0.3,
-              "line-dasharray": [4, 2],
-            },
-          })
-        }
-      })
+    const map = mapRef.current
+    if (!map || appliedDark.current === isDark) return
+    appliedDark.current = isDark
+    const view = {
+      center: map.getCenter(),
+      zoom: map.getZoom(),
+      bearing: map.getBearing(),
+      pitch: map.getPitch(),
     }
-  }, [isDark, mounted])
-
-  // Update markers when incidents change
-  React.useEffect(() => {
-    if (!map.current) return
-
-    const currentMarkerIds = new Set(markers.current.keys())
-    const newIncidentIds = new Set(incidents.map((inc) => inc.id))
-
-    // Remove markers that are no longer in incidents
-    currentMarkerIds.forEach((id) => {
-      if (!newIncidentIds.has(id)) {
-        const marker = markers.current.get(id)
-        if (marker) {
-          marker.remove()
-          markers.current.delete(id)
-        }
-        const frame = animationFrames.current.get(id)
-        if (frame) {
-          cancelAnimationFrame(frame)
-          animationFrames.current.delete(id)
-        }
-      }
+    map.setStyle(createMapStyle(isDark))
+    map.once("style.load", () => {
+      map.jumpTo(view)
+      addBoundary(map, isDark)
     })
+  }, [isDark])
 
-    // Add or update markers for incidents
-    incidents.forEach((incident) => {
-      if (markers.current.has(incident.id)) {
-        // Update existing marker position if needed
-        const marker = markers.current.get(incident.id)!
-        marker.setLngLat([incident.location.lng, incident.location.lat])
-      } else {
-        // Create new marker
-        const el = createMarkerElement(incident)
+  React.useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+    const current = markers.current
+    const ids = new Set(incidents.map((incident) => incident.id))
 
-        // Use anchor: "center" - this tells MapLibre to position the CENTER of the element at the coordinate
-        // The marker element uses margin offsets to ensure the visual marker is centered
-        const marker = new maplibregl.Marker({
-          element: el,
-          anchor: "center", // Center anchor ensures stable positioning at all zoom levels
-        })
+    for (const [id, marker] of current) {
+      if (ids.has(id)) continue
+      marker.remove()
+      current.delete(id)
+    }
+
+    for (const incident of incidents) {
+      const existing = current.get(incident.id)
+      if (existing) {
+        existing.setLngLat([incident.location.lng, incident.location.lat])
+        continue
+      }
+      // Recently reported incidents pulse briefly, except while replaying history.
+      const isNew = !replayMode && Date.now() - incident.createdAt.getTime() < NEW_INCIDENT_MS
+      const element = createMarkerElement(incident, isNew)
+      element.addEventListener("click", (event) => {
+        event.stopPropagation()
+        const latest = latestIncidents.current.get(incident.id)
+        if (latest) latestOnClick.current(latest)
+      })
+      current.set(
+        incident.id,
+        new maplibregl.Marker({ element, anchor: "center" })
           .setLngLat([incident.location.lng, incident.location.lat])
-          .addTo(map.current!)
+          .addTo(map)
+      )
+    }
+  }, [incidents, replayMode])
 
-        // Add click handler
-        el.addEventListener("click", (e) => {
-          e.stopPropagation()
-          onIncidentClick(incident)
-        })
-
-        markers.current.set(incident.id, marker)
-
-        // Start ping animation for new incidents
-        if (!replayMode) {
-          const timeSinceCreation = Date.now() - incident.createdAt.getTime()
-          if (timeSinceCreation < 5 * 60 * 1000) {
-            // Less than 5 minutes old
-            startPingAnimation(incident.id, el)
-          }
-        }
-      }
-    })
-  }, [incidents, onIncidentClick, replayMode])
-
-  // Center on selected incident or restore previous view
+  // Fly to the selected incident, then back to where the user was when it closes.
   React.useEffect(() => {
-    if (!map.current) return
-
+    const map = mapRef.current
+    if (!map) return
     if (selectedIncident) {
-      // Save current view before zooming to incident
-      previousView.current = {
-        center: map.current.getCenter().toArray() as [number, number],
-        zoom: map.current.getZoom(),
-      }
-
-      // Fly to selected incident
-      map.current.flyTo({
+      previousView.current ??= { center: map.getCenter().toArray() as [number, number], zoom: map.getZoom() }
+      map.flyTo({
         center: [selectedIncident.location.lng, selectedIncident.location.lat],
         zoom: 14,
         duration: 1000,
       })
     } else if (previousView.current) {
-      // Restore previous view when sidebar closes
-      map.current.flyTo({
-        center: previousView.current.center,
-        zoom: previousView.current.zoom,
-        duration: 1000,
-      })
+      map.flyTo({ ...previousView.current, duration: 1000 })
       previousView.current = null
     }
   }, [selectedIncident])
 
-  // Create marker element with proper anchoring for zoom stability
-  // MapLibre Marker with anchor: "center" positions the CENTER of the element at the coordinate
-  // So we need to offset the element by half its size so the visual center is at the coordinate
-  function createMarkerElement(incident: Incident): HTMLElement {
-    const color = CATEGORY_COLORS[incident.category]
-    const icon = CATEGORY_ICONS[incident.category]
-    const size = getSizeFromSeverity(incident.severity)
-    const halfSize = size / 2
-
-    // Create wrapper div - MapLibre will position this at the coordinate point
-    // When using anchor: "center", MapLibre positions the CENTER of this element at the coordinate
-    const wrapper = document.createElement("div")
-    wrapper.className = `marker-wrapper ${incident.category}`
-
-    // The wrapper needs to be positioned so its visual center (where the circle is) aligns with the coordinate
-    // Since we're using anchor: "center", we offset by half the size
-    wrapper.style.cssText = `
-      position: absolute;
-      width: ${size}px;
-      height: ${size}px;
-      margin-left: -${halfSize}px;
-      margin-top: -${halfSize}px;
-      cursor: pointer;
-      pointer-events: auto;
-      transform-origin: ${halfSize}px ${halfSize}px;
-      will-change: transform;
-    `
-
-    // The visual marker circle - fills the entire wrapper
-    const circle = document.createElement("div")
-    circle.className = "marker-circle"
-    circle.style.cssText = `
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: ${size}px;
-      height: ${size}px;
-      background-color: ${color};
-      border-radius: 50%;
-      border: 2px solid white;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: ${size * 0.5}px;
-      box-shadow: 0 2px 8px ${color}80;
-      transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
-      transform-origin: center center;
-      z-index: 2;
-    `
-    circle.innerHTML = icon
-
-    // Ping ring for animation
-    const pingRing = document.createElement("div")
-    pingRing.className = "ping-ring"
-    pingRing.style.cssText = `
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: ${size}px;
-      height: ${size}px;
-      border-radius: 50%;
-      border: 2px solid ${color};
-      opacity: 0;
-      pointer-events: none;
-      transform-origin: center center;
-      z-index: 1;
-    `
-
-    wrapper.appendChild(pingRing)
-    wrapper.appendChild(circle)
-
-    // Hover effects - only transform the circle, never the wrapper
-    wrapper.addEventListener("mouseenter", () => {
-      circle.style.transform = "scale(1.15)"
-      circle.style.boxShadow = `0 4px 16px ${color}`
-    })
-
-    wrapper.addEventListener("mouseleave", () => {
-      circle.style.transform = "scale(1)"
-      circle.style.boxShadow = `0 2px 8px ${color}80`
-    })
-
-    return wrapper
-  }
-
-  function getSizeFromSeverity(severity: number): number {
-    // Map severity 0-100 to size 28-40
-    return Math.floor(28 + (severity / 100) * 12)
-  }
-
-  function startPingAnimation(id: string, el: HTMLElement) {
-    const pingRing = el.querySelector(".ping-ring") as HTMLElement
-    if (!pingRing) return
-
-    let startTime: number | null = null
-    const duration = 2000 // 2 seconds per ping cycle
-    const repeatCount = 3 // Number of ping cycles
-
-    function animate(timestamp: number) {
-      if (!startTime) startTime = timestamp
-      const elapsed = timestamp - startTime
-      const cycle = Math.floor(elapsed / duration)
-
-      if (cycle >= repeatCount) {
-        pingRing.style.opacity = "0"
-        pingRing.style.transform = "scale(1)"
-        animationFrames.current.delete(id)
-        return
-      }
-
-      const progress = (elapsed % duration) / duration
-      const scale = 1 + progress * 2 // Scale from 1 to 3
-      const opacity = 1 - progress // Fade from 1 to 0
-
-      pingRing.style.transform = `scale(${scale})`
-      pingRing.style.opacity = String(opacity * 0.6)
-
-      animationFrames.current.set(id, requestAnimationFrame(animate))
-    }
-
-    animationFrames.current.set(id, requestAnimationFrame(animate))
-  }
-
   return (
-    <div ref={mapContainer} className="w-full h-full" style={{ minHeight: "500px" }}>
-      {/* Custom CSS for markers */}
+    <div ref={container} className="h-full w-full" style={{ minHeight: "500px" }}>
       <style jsx global>{`
-        /* Marker wrapper - positioned by MapLibre with center anchor */
-        .marker-wrapper {
-          /* Ensure marker doesn't get clipped */
-          overflow: visible !important;
-          /* No padding to avoid offset issues */
-          padding: 0 !important;
-          /* Box sizing to ensure size calculations are correct */
-          box-sizing: content-box !important;
+        /* MapLibre positions markers absolutely, which also anchors the layers below. */
+        .stl-marker {
+          width: var(--marker-size);
+          height: var(--marker-size);
+          padding: 0;
+          border: 0;
+          background: none;
+          cursor: pointer;
         }
-
-        /* Ensure MapLibre's marker container uses center transform origin */
-        .maplibregl-marker {
-          /* MapLibre handles positioning - don't interfere */
-          transform-origin: center center !important;
+        .stl-marker-circle,
+        .stl-marker-ring {
+          position: absolute;
+          inset: 0;
+          border-radius: 50%;
         }
-
-        .marker-wrapper.selected .marker-circle {
-          transform: scale(1.2) !important;
-          animation: pulse 1.5s ease-in-out infinite;
+        .stl-marker-circle {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background-color: var(--marker-color);
+          border: 2px solid white;
+          font-size: calc(var(--marker-size) * 0.5);
+          box-shadow: 0 2px 8px color-mix(in srgb, var(--marker-color) 50%, transparent);
+          transition:
+            transform 0.15s ease-out,
+            box-shadow 0.15s ease-out;
         }
-
-        @keyframes pulse {
-          0%,
-          100% {
-            box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4);
+        .stl-marker:hover .stl-marker-circle,
+        .stl-marker:focus-visible .stl-marker-circle {
+          transform: scale(1.15);
+          box-shadow: 0 4px 16px var(--marker-color);
+        }
+        .stl-marker-simulated .stl-marker-circle {
+          border-style: dashed;
+          opacity: 0.65;
+        }
+        .stl-marker-ring {
+          border: 2px solid var(--marker-color);
+          opacity: 0;
+          pointer-events: none;
+        }
+        .stl-marker-ping {
+          animation: stl-marker-ping 2s ease-out 3;
+        }
+        @keyframes stl-marker-ping {
+          from {
+            transform: scale(1);
+            opacity: 0.6;
           }
-          50% {
-            box-shadow: 0 0 0 10px rgba(255, 255, 255, 0);
+          to {
+            transform: scale(3);
+            opacity: 0;
           }
         }
-
+        @media (prefers-reduced-motion: reduce) {
+          .stl-marker-ping {
+            animation: none;
+          }
+        }
         .maplibregl-popup-content {
           background: rgba(0, 0, 0, 0.85);
           color: white;
@@ -474,7 +291,6 @@ export default function MapComponent({
           border-radius: 8px;
           font-size: 12px;
         }
-
         .maplibregl-popup-anchor-bottom .maplibregl-popup-tip {
           border-top-color: rgba(0, 0, 0, 0.85);
         }
