@@ -1,49 +1,26 @@
 "use client"
 
 import * as React from "react"
-import { useAppSettings } from "@/components/apps/settings-provider"
-
-import { motion } from "framer-motion"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Badge } from "@/components/ui/badge"
 import {
-  Plus,
-  Calendar,
-  MapPin,
-  Users,
-  Clock,
-  X,
-  Edit,
-  Trash2,
-  Search,
-  Filter,
-  UserPlus,
-  UserMinus,
-} from "lucide-react"
-import { toast } from "sonner"
-import { useAuth } from "@/components/auth/auth-provider"
-import { AuthDialog } from "@/components/auth/auth-dialog"
-import { changeGameMembership } from "@/lib/apps/game-membership"
-import { db } from "@/lib/firebase/config"
-import {
-  runTransaction,
-  collection,
-  query,
-  where,
-  orderBy,
-  getDocs,
-  getDoc,
   addDoc,
-  updateDoc,
+  collection,
   deleteDoc,
   doc,
+  getDocs,
+  orderBy,
+  query,
+  runTransaction,
   serverTimestamp,
-  Timestamp,
 } from "firebase/firestore"
+import { motion } from "framer-motion"
+import { Calendar, Clock, MapPin, Plus, Search, Trash2, UserMinus, UserPlus, Users, X } from "lucide-react"
+import { toast } from "sonner"
+import { useAppSettings } from "@/components/apps/settings-provider"
+import { AuthDialog } from "@/components/auth/auth-dialog"
+import { useAuth } from "@/components/auth/auth-provider"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Dialog,
   DialogContent,
@@ -52,6 +29,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { getProfileName, getProfileNames } from "@/lib/account/profile"
+import { changeGameMembership } from "@/lib/apps/game-membership"
+import { db } from "@/lib/firebase/config"
+import { getDataErrorMessage, getErrorCode, logUnexpectedError } from "@/lib/firebase/user-facing-errors"
+import { useAsync } from "@/lib/hooks/use-async"
 
 interface Game {
   id: string
@@ -63,353 +48,166 @@ interface Game {
   maxPlayers: number
   players: string[]
   createdBy: string
-  createdByName: string
-  createdAt: Timestamp
-  updatedAt: Timestamp
 }
 
-interface PlayerInfo {
-  uid: string
-  name: string
+const UNKNOWN_PLAYER = "Unknown Player"
+
+async function queryGames() {
+  const gamesRef = collection(db, "games")
+  try {
+    return await getDocs(query(gamesRef, orderBy("date", "asc"), orderBy("time", "asc")))
+  } catch (error) {
+    // Without the composite index, fall back to an unordered read and sort below.
+    if (getErrorCode(error) !== "failed-precondition") throw error
+    return getDocs(gamesRef)
+  }
 }
+
+async function loadGames(): Promise<{ games: Game[]; names: Record<string, string> }> {
+  const snapshot = await queryGames()
+  const games = snapshot.docs
+    .map((entry): Game => {
+      const data = entry.data()
+      return {
+        id: entry.id,
+        title: data.title || "",
+        description: data.description || "",
+        date: data.date || "",
+        time: data.time || "",
+        location: data.location || "",
+        maxPlayers: data.maxPlayers || 10,
+        players: Array.isArray(data.players) ? data.players.filter(Boolean) : [],
+        createdBy: data.createdBy || "",
+      }
+    })
+    .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time))
+
+  const names = await getProfileNames(
+    games.flatMap((game) => [...game.players, game.createdBy].filter(Boolean)),
+    UNKNOWN_PLAYER
+  )
+  return { games, names }
+}
+
+const emptyForm = (location: string, maxPlayers: number) => ({
+  title: "",
+  description: "",
+  date: "",
+  time: "",
+  location,
+  maxPlayers,
+})
 
 export function PickupSoccerMain() {
   const settings = useAppSettings("pickup-soccer")
-  const { user } = useAuth()
-  const [games, setGames] = React.useState<Game[]>([])
-  const [loading, setLoading] = React.useState(true)
+  const { account } = useAuth()
+  const gamesQuery = useAsync("games", loadGames)
+  const games = React.useMemo(() => gamesQuery.data?.games ?? [], [gamesQuery.data])
+  const playerNames = gamesQuery.data?.names ?? {}
+  const loading = gamesQuery.loading
   const [authDialogOpen, setAuthDialogOpen] = React.useState(false)
   const [createDialogOpen, setCreateDialogOpen] = React.useState(false)
   const [searchQuery, setSearchQuery] = React.useState("")
   const [filterDate, setFilterDate] = React.useState("")
-  const [playerNames, setPlayerNames] = React.useState<Record<string, string>>({})
+  const [formData, setFormData] = React.useState(() => emptyForm("", 10))
 
-  // Form state
-  const [formData, setFormData] = React.useState({
-    title: "",
-    description: "",
-    date: "",
-    time: "",
-    location: "",
-    maxPlayers: 10,
-  })
-
-  // Load games from Firestore
   React.useEffect(() => {
-    loadGames()
-  }, [])
+    if (gamesQuery.error) toast.error(getDataErrorMessage(gamesQuery.error, "load games"))
+  }, [gamesQuery.error])
 
-  const loadGames = async () => {
+  // Organisers and players must be identifiable to each other.
+  const ensureProfileName = async (uid: string, action: string) => {
     try {
-      setLoading(true)
-      const gamesRef = collection(db, "games")
-
-      // Try compound query first, fallback to simple query if index doesn't exist
-      let snapshot
-      try {
-        const q = query(gamesRef, orderBy("date", "asc"), orderBy("time", "asc"))
-        snapshot = await getDocs(q)
-      } catch (indexError: any) {
-        // If compound index doesn't exist, try single orderBy
-        if (indexError?.code === "failed-precondition") {
-          console.warn("Compound index not found, using single orderBy")
-          const q = query(gamesRef, orderBy("date", "asc"))
-          snapshot = await getDocs(q)
-        } else {
-          // If that fails, just get all games without ordering
-          snapshot = await getDocs(gamesRef)
-        }
-      }
-
-      const gamesData: Game[] = []
-      const playerUids = new Set<string>()
-
-      snapshot.forEach((doc) => {
-        const data = doc.data()
-        gamesData.push({
-          id: doc.id,
-          title: data.title || "",
-          description: data.description || "",
-          date: data.date || "",
-          time: data.time || "",
-          location: data.location || "",
-          maxPlayers: data.maxPlayers || 10,
-          players: Array.isArray(data.players) ? data.players : [],
-          createdBy: data.createdBy || "",
-          createdByName: data.createdByName || "",
-          createdAt: data.createdAt,
-          updatedAt: data.updatedAt,
-        } as Game)
-
-        // Collect all player UIDs to fetch names
-        if (Array.isArray(data.players)) {
-          data.players.forEach((uid: string) => {
-            if (uid) playerUids.add(uid)
-          })
-        }
-        if (data.createdBy) {
-          playerUids.add(data.createdBy)
-        }
-      })
-
-      // Sort games by date and time client-side if query didn't order them
-      gamesData.sort((a, b) => {
-        if (a.date !== b.date) {
-          return a.date.localeCompare(b.date)
-        }
-        return a.time.localeCompare(b.time)
-      })
-
-      setGames(gamesData)
-
-      // Load player names
-      if (playerUids.size > 0) {
-        await loadPlayerNames(Array.from(playerUids))
-      }
-    } catch (error: any) {
-      console.error("Failed to load games:", error)
-      if (error?.code === "permission-denied") {
-        toast.error("Permission denied. Please check Firestore rules.")
-      } else {
-        toast.error("Failed to load games. Please try again.")
-      }
-    } finally {
-      setLoading(false)
+      if (await getProfileName(uid)) return true
+      toast.error(`Please set your display name in Account Settings before ${action} a game`)
+    } catch {
+      toast.error("Failed to verify user profile")
     }
+    return false
   }
 
-  const loadPlayerNames = async (uids: string[]) => {
-    const names: Record<string, string> = {}
-
-    await Promise.all(
-      uids.map(async (uid) => {
-        try {
-          const userDocRef = doc(db, "users", uid)
-          const userDoc = await getDoc(userDocRef)
-          if (userDoc.exists()) {
-            const userData = userDoc.data()
-            names[uid] = userData.displayName || userData.username || "Unknown Player"
-          } else {
-            names[uid] = "Unknown Player"
-          }
-        } catch (error) {
-          console.error(`Failed to load name for ${uid}:`, error)
-          names[uid] = "Unknown Player"
-        }
-      })
-    )
-
-    setPlayerNames(names)
-  }
-
-  const getUserDisplayName = async (uid: string): Promise<string> => {
-    if (playerNames[uid]) {
-      return playerNames[uid]
-    }
-
-    try {
-      const userDocRef = doc(db, "users", uid)
-      const userDoc = await getDoc(userDocRef)
-      if (userDoc.exists()) {
-        const userData = userDoc.data()
-        const name = userData.displayName || userData.username || "Unknown Player"
-        setPlayerNames((prev) => ({ ...prev, [uid]: name }))
-        return name
-      }
-    } catch (error) {
-      console.error(`Failed to load name for ${uid}:`, error)
-    }
-
-    return "Unknown Player"
-  }
-
-  const handleCreateGame = async (e: React.FormEvent) => {
-    e.preventDefault()
-
-    if (!user) {
+  const changeMembership = async (game: Game, join: boolean) => {
+    if (!account) {
       setAuthDialogOpen(true)
       return
     }
-
-    // Check if user has display name set
+    if (join && !(await ensureProfileName(account.uid, "joining"))) return
     try {
-      const userDocRef = doc(db, "users", user.uid)
-      const userDoc = await getDoc(userDocRef)
-      if (!userDoc.exists()) {
-        toast.error("Please set your display name in Account Settings before creating a game")
-        return
-      }
-      const userData = userDoc.data()
-      if (!userData.displayName && !userData.username) {
-        toast.error("Please set your display name in Account Settings before creating a game")
-        return
-      }
+      // Validate against the latest document so concurrent joins respect capacity.
+      const gameRef = doc(db, "games", game.id)
+      await runTransaction(db, async (transaction) => {
+        const snapshot = await transaction.get(gameRef)
+        if (!snapshot.exists()) throw new Error("This game no longer exists")
+        const current = snapshot.data()
+        transaction.update(gameRef, {
+          players: changeGameMembership(current.players, account.uid, current.maxPlayers, join),
+          updatedAt: serverTimestamp(),
+        })
+      })
+      toast.success(join ? "Joined game successfully!" : "Left game successfully")
+      gamesQuery.reload()
     } catch (error) {
-      toast.error("Failed to verify user profile")
+      logUnexpectedError("pickup-soccer:membership", error)
+      // changeGameMembership throws user-facing messages such as "Game is full".
+      toast.error(
+        getErrorCode(error) || !(error instanceof Error)
+          ? getDataErrorMessage(error, join ? "join the game" : "leave the game")
+          : error.message
+      )
+    }
+  }
+
+  const handleCreateGame = async (event: React.FormEvent) => {
+    event.preventDefault()
+    if (!account) {
+      setAuthDialogOpen(true)
       return
     }
+    if (!(await ensureProfileName(account.uid, "creating"))) return
 
     try {
-      const gameData = {
-        title: formData.title,
-        description: formData.description,
-        date: formData.date,
-        time: formData.time,
-        location: formData.location,
-        maxPlayers: formData.maxPlayers,
-        players: settings.autoJoin ? [user.uid] : [],
-        createdBy: user.uid,
+      await addDoc(collection(db, "games"), {
+        ...formData,
+        players: settings.autoJoin ? [account.uid] : [],
+        createdBy: account.uid,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-      }
-
-      await addDoc(collection(db, "games"), gameData)
-
+      })
       toast.success("Game created successfully!")
       setCreateDialogOpen(false)
-      setFormData({
-        title: "",
-        description: "",
-        date: "",
-        time: "",
-        location: "",
-        maxPlayers: 10,
-      })
-
-      loadGames()
-    } catch (error: any) {
-      console.error("Failed to create game:", error)
-      if (error.code === "permission-denied") {
-        toast.error("Permission denied. Please sign in to create games.")
-      } else {
-        toast.error("Failed to create game")
-      }
-    }
-  }
-
-  const handleJoinGame = async (gameId: string) => {
-    if (!user) {
-      setAuthDialogOpen(true)
-      return
-    }
-
-    // Check if user has display name
-    try {
-      const userDocRef = doc(db, "users", user.uid)
-      const userDoc = await getDoc(userDocRef)
-      if (!userDoc.exists()) {
-        toast.error("Please set your display name in Account Settings before joining a game")
-        return
-      }
-      const userData = userDoc.data()
-      if (!userData.displayName && !userData.username) {
-        toast.error("Please set your display name in Account Settings before joining a game")
-        return
-      }
+      gamesQuery.reload()
     } catch (error) {
-      toast.error("Failed to verify user profile")
-      return
-    }
-
-    try {
-      const game = games.find((g) => g.id === gameId)
-      if (!game) return
-
-      if (game.players.includes(user.uid)) {
-        toast.error("You're already in this game")
-        return
-      }
-
-      if (game.players.length >= game.maxPlayers) {
-        toast.error("Game is full")
-        return
-      }
-
-      const gameRef = doc(db, "games", gameId)
-      await runTransaction(db, async (transaction) => {
-        const snapshot = await transaction.get(gameRef)
-        if (!snapshot.exists()) throw new Error("This game no longer exists")
-        const current = snapshot.data()
-        transaction.update(gameRef, {
-          players: changeGameMembership(current.players, user.uid, current.maxPlayers, true),
-          updatedAt: serverTimestamp(),
-        })
-      })
-
-      toast.success("Joined game successfully!")
-      loadGames()
-    } catch (error: any) {
-      console.error("Failed to join game:", error)
-      if (error.code === "permission-denied") {
-        toast.error("Permission denied")
-      } else {
-        toast.error(error instanceof Error ? error.message : "Failed to join game")
-      }
+      logUnexpectedError("pickup-soccer:create", error)
+      toast.error(
+        getErrorCode(error) === "permission-denied"
+          ? "Permission denied. Please sign in to create games."
+          : "Failed to create game"
+      )
     }
   }
 
-  const handleLeaveGame = async (gameId: string) => {
-    if (!user) {
-      setAuthDialogOpen(true)
-      return
-    }
-
-    try {
-      const game = games.find((g) => g.id === gameId)
-      if (!game) return
-
-      if (!game.players.includes(user.uid)) {
-        toast.error("You're not in this game")
-        return
-      }
-
-      const gameRef = doc(db, "games", gameId)
-      await runTransaction(db, async (transaction) => {
-        const snapshot = await transaction.get(gameRef)
-        if (!snapshot.exists()) throw new Error("This game no longer exists")
-        const current = snapshot.data()
-        transaction.update(gameRef, {
-          players: changeGameMembership(current.players, user.uid, current.maxPlayers, false),
-          updatedAt: serverTimestamp(),
-        })
-      })
-
-      toast.success("Left game successfully")
-      loadGames()
-    } catch (error: any) {
-      console.error("Failed to leave game:", error)
-      toast.error(error instanceof Error ? error.message : "Failed to leave game")
-    }
-  }
-
-  const handleDeleteGame = async (gameId: string) => {
-    if (!user) return
-
-    const game = games.find((g) => g.id === gameId)
-    if (!game || game.createdBy !== user.uid) {
+  const handleDeleteGame = async (game: Game) => {
+    if (!account || game.createdBy !== account.uid) {
       toast.error("You can only delete games you created")
       return
     }
-
-    if (!confirm("Are you sure you want to delete this game? This cannot be undone.")) {
-      return
-    }
-
+    if (!confirm("Are you sure you want to delete this game? This cannot be undone.")) return
     try {
-      await deleteDoc(doc(db, "games", gameId))
+      await deleteDoc(doc(db, "games", game.id))
       toast.success("Game deleted successfully")
-      loadGames()
-    } catch (error: any) {
-      console.error("Failed to delete game:", error)
+      gamesQuery.reload()
+    } catch (error) {
+      logUnexpectedError("pickup-soccer:delete", error)
       toast.error("Failed to delete game")
     }
   }
 
+  const uid = account?.uid
   const filteredGames = React.useMemo(() => {
     let filtered = games.filter(
       (game) =>
         !settings.showMyGamesOnly ||
-        Boolean(user && (game.createdBy === user.uid || game.players.includes(user.uid)))
+        Boolean(uid && (game.createdBy === uid || game.players.includes(uid)))
     )
 
     // Filter by search query
@@ -429,19 +227,14 @@ export function PickupSoccerMain() {
     }
 
     return filtered
-  }, [games, searchQuery, filterDate, settings.showMyGamesOnly, user?.uid])
+  }, [games, searchQuery, filterDate, settings.showMyGamesOnly, uid])
 
   const isGameFull = (game: Game) => {
     return Array.isArray(game.players) && game.players.length >= game.maxPlayers
   }
 
-  const isUserInGame = (game: Game) => {
-    return user && Array.isArray(game.players) && game.players.includes(user.uid)
-  }
-
-  const canManageGame = (game: Game) => {
-    return user && game.createdBy && game.createdBy === user.uid
-  }
+  const isUserInGame = (game: Game) => Boolean(uid && game.players.includes(uid))
+  const canManageGame = (game: Game) => Boolean(uid && game.createdBy === uid)
 
   const formatDate = (dateString: string) => {
     if (!dateString) return "Date TBD"
@@ -512,17 +305,12 @@ export function PickupSoccerMain() {
         <Dialog
           open={createDialogOpen}
           onOpenChange={(open) => {
-            if (open)
-              setFormData((form) => ({
-                ...form,
-                location: settings.defaultLocation,
-                maxPlayers: settings.defaultMaxPlayers,
-              }))
+            if (open) setFormData(emptyForm(settings.defaultLocation, settings.defaultMaxPlayers))
             setCreateDialogOpen(open)
           }}
         >
           <DialogTrigger asChild>
-            <Button onClick={() => !user && setAuthDialogOpen(true)}>
+            <Button onClick={() => !account && setAuthDialogOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
               Create Game
             </Button>
@@ -560,7 +348,6 @@ export function PickupSoccerMain() {
                   <Label htmlFor="date">Date *</Label>
                   <Input
                     id="date"
-                    aria-label="Filter games by date"
                     type="date"
                     value={formData.date}
                     onChange={(e) => setFormData({ ...formData, date: e.target.value })}
@@ -599,7 +386,7 @@ export function PickupSoccerMain() {
                   min="2"
                   max="22"
                   value={formData.maxPlayers}
-                  onChange={(e) => setFormData({ ...formData, maxPlayers: parseInt(e.target.value) || 10 })}
+                  onChange={(e) => setFormData({ ...formData, maxPlayers: parseInt(e.target.value, 10) || 10 })}
                   required
                 />
               </div>
@@ -628,7 +415,7 @@ export function PickupSoccerMain() {
                 ? "No games match your filters"
                 : "No games scheduled yet. Create the first one!"}
             </p>
-            {!user && <Button onClick={() => setAuthDialogOpen(true)}>Sign In to Create Game</Button>}
+            {!account && <Button onClick={() => setAuthDialogOpen(true)}>Sign In to Create Game</Button>}
           </CardContent>
         </Card>
       ) : (
@@ -643,7 +430,7 @@ export function PickupSoccerMain() {
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8"
-                      onClick={() => handleDeleteGame(game.id)}
+                      onClick={() => handleDeleteGame(game)}
                     >
                       <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
@@ -706,7 +493,7 @@ export function PickupSoccerMain() {
                       variant="outline"
                       size="sm"
                       className="flex-1"
-                      onClick={() => handleLeaveGame(game.id)}
+                      onClick={() => changeMembership(game, false)}
                     >
                       <UserMinus className="h-4 w-4 mr-2" />
                       Leave
@@ -715,8 +502,8 @@ export function PickupSoccerMain() {
                     <Button
                       size="sm"
                       className="flex-1"
-                      onClick={() => handleJoinGame(game.id)}
-                      disabled={isGameFull(game) || !user}
+                      onClick={() => changeMembership(game, true)}
+                      disabled={isGameFull(game) || !account}
                     >
                       <UserPlus className="h-4 w-4 mr-2" />
                       {isGameFull(game) ? "Full" : "Join"}

@@ -52,10 +52,10 @@ export function getDataErrorMessage(error: unknown, action: string): string {
     case "deadline-exceeded":
       return "The service is temporarily unavailable. Please try again shortly."
     case "not-found":
-      return "This exchange no longer exists. Refresh the page to see the latest list."
+      return "This no longer exists. Refresh the page to see the latest version."
     case "already-exists":
     case "aborted":
-      return "Someone else updated this exchange. Refresh and try again."
+      return "Someone else updated this at the same time. Refresh and try again."
     default:
       return `We could not ${action}. Please try again.`
   }

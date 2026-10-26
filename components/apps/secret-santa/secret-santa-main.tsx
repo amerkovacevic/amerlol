@@ -1,8 +1,6 @@
 "use client"
 
 import * as React from "react"
-import { useAppSettings } from "@/components/apps/settings-provider"
-
 import { motion } from "framer-motion"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -26,6 +24,7 @@ import {
   EyeOff,
 } from "lucide-react"
 import { toast } from "sonner"
+import { useAppSettings } from "@/components/apps/settings-provider"
 import { useAuth } from "@/components/auth/auth-provider"
 import { AuthDialog } from "@/components/auth/auth-dialog"
 import { db } from "@/lib/firebase/config"
@@ -38,10 +37,12 @@ import {
   addDoc,
   doc,
   serverTimestamp,
-  Timestamp,
   runTransaction,
   writeBatch,
 } from "firebase/firestore"
+import { getProfileName } from "@/lib/account/profile"
+import { getDataErrorMessage, getErrorCode, logUnexpectedError } from "@/lib/firebase/user-facing-errors"
+import { useAsync } from "@/lib/hooks/use-async"
 import { createSecretSantaAssignments } from "@/lib/secret-santa/draw"
 import {
   Dialog,
@@ -75,245 +76,157 @@ interface Exchange {
   participantResponses?: Record<string, Record<string, string>> // participantId -> { fieldId: value }
   createdBy: string
   createdByName: string
-  createdAt: Timestamp
-  updatedAt: Timestamp
 }
+
+const UNKNOWN_PARTICIPANT = "Unknown Participant"
+
+async function queryExchanges() {
+  const exchangesRef = collection(db, "secretSantaExchanges")
+  try {
+    return await getDocs(query(exchangesRef, orderBy("exchangeDate", "asc")))
+  } catch (error) {
+    // Without the index, fall back to an unordered read and sort below.
+    if (getErrorCode(error) !== "failed-precondition") throw error
+    return getDocs(exchangesRef)
+  }
+}
+
+async function loadExchanges(uid: string | null) {
+  const snapshot = await queryExchanges()
+  const names: Record<string, string> = {}
+  const exchanges = snapshot.docs
+    .map((entry): Exchange => {
+      const data = entry.data()
+      Object.assign(names, data.participantNames || {})
+      if (data.createdBy && data.createdByName) names[data.createdBy] = data.createdByName
+      return {
+        id: entry.id,
+        name: data.name || "",
+        description: data.description || "",
+        budget: data.budget || "",
+        exchangeDate: data.exchangeDate || "",
+        participants: Array.isArray(data.participants) ? data.participants : [],
+        drawn: data.drawn || false,
+        participantNames: data.participantNames || {},
+        legacyAssignments: data.assignments || {},
+        customFields: data.customFields || [],
+        participantResponses: data.participantResponses || {},
+        createdBy: data.createdBy || "",
+        createdByName: data.createdByName || "",
+      }
+    })
+    .sort((a, b) => a.exchangeDate.localeCompare(b.exchangeDate))
+
+  // Each participant can read only their own assignment document.
+  const assignments: Record<string, string> = {}
+  if (uid) {
+    await Promise.all(
+      exchanges
+        .filter((exchange) => exchange.drawn && exchange.participants.includes(uid))
+        .map(async (exchange) => {
+          const assignment = await getDoc(doc(db, "secretSantaExchanges", exchange.id, "assignments", uid))
+          const receiverId = assignment.exists()
+            ? (assignment.data().receiverId as string)
+            : exchange.legacyAssignments?.[uid]
+          if (receiverId) assignments[exchange.id] = receiverId
+        })
+    )
+  }
+  return { exchanges, names, assignments }
+}
+
+const emptyForm = (budget: string) => ({
+  name: "",
+  description: "",
+  budget,
+  exchangeDate: "",
+  customFields: [] as CustomField[],
+})
+
+/** Validation messages thrown inside transactions are already user-facing. */
+const failureMessage = (error: unknown, action: string) =>
+  getErrorCode(error) || !(error instanceof Error) ? getDataErrorMessage(error, action) : error.message
 
 export function SecretSantaMain() {
   const settings = useAppSettings("secret-santa")
-  const { user } = useAuth()
-  const [exchanges, setExchanges] = React.useState<Exchange[]>([])
-  const [loading, setLoading] = React.useState(true)
+  const { account } = useAuth()
+  const uid = account?.uid ?? null
+  const exchangesQuery = useAsync(uid ?? "guest", () => loadExchanges(uid))
+  const exchanges = React.useMemo(() => exchangesQuery.data?.exchanges ?? [], [exchangesQuery.data])
+  const participantNames = exchangesQuery.data?.names ?? {}
+  const userAssignments = exchangesQuery.data?.assignments ?? {}
+  const loading = exchangesQuery.loading
+  const reload = exchangesQuery.reload
   const [authDialogOpen, setAuthDialogOpen] = React.useState(false)
   const [createDialogOpen, setCreateDialogOpen] = React.useState(false)
   const [joinDialogOpen, setJoinDialogOpen] = React.useState<string | null>(null)
   const [searchQuery, setSearchQuery] = React.useState("")
-  const [participantNames, setParticipantNames] = React.useState<Record<string, string>>({})
-  const [userAssignments, setUserAssignments] = React.useState<Record<string, string>>({})
   const [revealedAssignments, setRevealedAssignments] = React.useState<Record<string, boolean>>({})
   const [viewResponsesOpen, setViewResponsesOpen] = React.useState<string | null>(null)
-
-  // Form state
-  const [formData, setFormData] = React.useState({
-    name: "",
-    description: "",
-    budget: "",
-    exchangeDate: "",
-    customFields: [] as CustomField[],
-  })
-
-  // Join form responses
+  const [formData, setFormData] = React.useState(() => emptyForm(""))
   const [joinResponses, setJoinResponses] = React.useState<Record<string, string>>({})
 
-  // Load exchanges from Firestore
   React.useEffect(() => {
-    loadExchanges()
-  }, [user?.uid])
+    if (exchangesQuery.error) toast.error(getDataErrorMessage(exchangesQuery.error, "load exchanges"))
+  }, [exchangesQuery.error])
 
-  const loadExchanges = async () => {
+  /** Returns the account's public name, or null after telling the user to set one. */
+  const requireProfileName = async (uid: string, action: string) => {
     try {
-      setLoading(true)
-      const exchangesRef = collection(db, "secretSantaExchanges")
-
-      let snapshot
-      try {
-        const q = query(exchangesRef, orderBy("exchangeDate", "asc"))
-        snapshot = await getDocs(q)
-      } catch (indexError: any) {
-        if (indexError?.code === "failed-precondition") {
-          console.warn("Index not found, fetching all exchanges")
-          snapshot = await getDocs(exchangesRef)
-        } else {
-          snapshot = await getDocs(exchangesRef)
-        }
-      }
-
-      const exchangesData: Exchange[] = []
-      const embeddedNames: Record<string, string> = {}
-
-      snapshot.forEach((doc) => {
-        const data = doc.data()
-        exchangesData.push({
-          id: doc.id,
-          name: data.name || "",
-          description: data.description || "",
-          budget: data.budget || "",
-          exchangeDate: data.exchangeDate || "",
-          participants: Array.isArray(data.participants) ? data.participants : [],
-          drawn: data.drawn || false,
-          participantNames: data.participantNames || {},
-          legacyAssignments: data.assignments || {},
-          customFields: data.customFields || [],
-          participantResponses: data.participantResponses || {},
-          createdBy: data.createdBy || "",
-          createdByName: data.createdByName || "",
-          createdAt: data.createdAt,
-          updatedAt: data.updatedAt,
-        } as Exchange)
-
-        Object.assign(embeddedNames, data.participantNames || {})
-        if (data.createdBy && data.createdByName) embeddedNames[data.createdBy] = data.createdByName
-      })
-
-      // Sort exchanges by date client-side if query didn't order them
-      exchangesData.sort((a, b) => {
-        if (a.exchangeDate !== b.exchangeDate) {
-          return a.exchangeDate.localeCompare(b.exchangeDate)
-        }
-        return 0
-      })
-
-      setExchanges(exchangesData)
-      setParticipantNames(embeddedNames)
-
-      if (user) {
-        const assignments = await Promise.all(
-          exchangesData
-            .filter((exchange) => exchange.drawn && exchange.participants.includes(user.uid))
-            .map(async (exchange) => {
-              const assignment = await getDoc(
-                doc(db, "secretSantaExchanges", exchange.id, "assignments", user.uid)
-              )
-              const legacyReceiver = exchange.legacyAssignments?.[user.uid] || ""
-              return [
-                exchange.id,
-                assignment.exists() ? (assignment.data().receiverId as string) : legacyReceiver,
-              ] as const
-            })
-        )
-        setUserAssignments(Object.fromEntries(assignments.filter(([, receiverId]) => receiverId)))
-      } else {
-        setUserAssignments({})
-      }
-    } catch (error: any) {
-      console.error("Failed to load exchanges:", error)
-      if (error?.code === "permission-denied") {
-        toast.error("Permission denied. Please check Firestore rules.")
-      } else {
-        toast.error("Failed to load exchanges. Please try again.")
-      }
-    } finally {
-      setLoading(false)
+      const name = participantNames[uid] || (await getProfileName(uid))
+      if (name) return name
+      toast.error(`Please set your display name in Account Settings before ${action} an exchange`)
+    } catch {
+      toast.error("Failed to verify user profile")
     }
+    return null
   }
 
-  const getUserDisplayName = async (uid: string): Promise<string> => {
-    if (participantNames[uid]) {
-      return participantNames[uid]
-    }
-
-    try {
-      const userDocRef = doc(db, "users", uid)
-      const userDoc = await getDoc(userDocRef)
-      if (userDoc.exists()) {
-        const userData = userDoc.data()
-        const name = userData.displayName || userData.username || "Unknown Participant"
-        setParticipantNames((prev) => ({ ...prev, [uid]: name }))
-        return name
-      }
-    } catch (error) {
-      console.error(`Failed to load name for ${uid}:`, error)
-    }
-
-    return "Unknown Participant"
-  }
-
-  const handleCreateExchange = async (e: React.FormEvent) => {
-    e.preventDefault()
-
-    if (!user) {
+  const handleCreateExchange = async (event: React.FormEvent) => {
+    event.preventDefault()
+    if (!account) {
       setAuthDialogOpen(true)
       return
     }
-
-    // Check if user has display name set
-    try {
-      const userDocRef = doc(db, "users", user.uid)
-      const userDoc = await getDoc(userDocRef)
-      if (!userDoc.exists()) {
-        toast.error("Please set your display name in Account Settings before creating an exchange")
-        return
-      }
-      const userData = userDoc.data()
-      if (!userData.displayName && !userData.username) {
-        toast.error("Please set your display name in Account Settings before creating an exchange")
-        return
-      }
-    } catch (error) {
-      toast.error("Failed to verify user profile")
-      return
-    }
+    const displayName = await requireProfileName(account.uid, "creating")
+    if (!displayName) return
 
     try {
-      const exchangeData = {
-        name: formData.name,
-        description: formData.description,
-        budget: formData.budget,
-        exchangeDate: formData.exchangeDate,
-        participants: [user.uid],
+      await addDoc(collection(db, "secretSantaExchanges"), {
+        ...formData,
+        participants: [account.uid],
         drawn: false,
-        customFields: formData.customFields,
         participantResponses: {},
-        participantNames: {
-          [user.uid]: participantNames[user.uid] || (await getUserDisplayName(user.uid)),
-        },
-        createdBy: user.uid,
-        createdByName: participantNames[user.uid] || (await getUserDisplayName(user.uid)),
+        participantNames: { [account.uid]: displayName },
+        createdBy: account.uid,
+        createdByName: displayName,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-      }
-
-      await addDoc(collection(db, "secretSantaExchanges"), exchangeData)
-
+      })
       toast.success("Exchange created successfully! You've been added as a participant.")
       setCreateDialogOpen(false)
-      setFormData({
-        name: "",
-        description: "",
-        budget: "",
-        exchangeDate: "",
-        customFields: [],
-      })
-
-      loadExchanges()
-    } catch (error: any) {
-      console.error("Failed to create exchange:", error)
-      if (error.code === "permission-denied") {
-        toast.error("Permission denied. Please sign in to create exchanges.")
-      } else {
-        toast.error("Failed to create exchange")
-      }
+      reload()
+    } catch (error) {
+      logUnexpectedError("secret-santa:create", error)
+      toast.error(
+        getErrorCode(error) === "permission-denied"
+          ? "Permission denied. Please sign in to create exchanges."
+          : "Failed to create exchange"
+      )
     }
   }
 
   const handleJoinExchange = async (exchangeId: string) => {
-    if (!user) {
+    if (!account) {
       setAuthDialogOpen(true)
       return
     }
-
-    // Check if user has display name
-    try {
-      const userDocRef = doc(db, "users", user.uid)
-      const userDoc = await getDoc(userDocRef)
-      if (!userDoc.exists()) {
-        toast.error("Please set your display name in Account Settings before joining an exchange")
-        return
-      }
-      const userData = userDoc.data()
-      if (!userData.displayName && !userData.username) {
-        toast.error("Please set your display name in Account Settings before joining an exchange")
-        return
-      }
-    } catch (error) {
-      toast.error("Failed to verify user profile")
-      return
-    }
+    if (!(await requireProfileName(account.uid, "joining"))) return
 
     const exchange = exchanges.find((e) => e.id === exchangeId)
     if (!exchange) return
 
-    if (exchange.participants.includes(user.uid)) {
+    if (exchange.participants.includes(account.uid)) {
       toast.error("You're already in this exchange")
       return
     }
@@ -340,7 +253,7 @@ export function SecretSantaMain() {
   }
 
   const performJoin = async (exchangeId: string) => {
-    if (!user) return
+    if (!account) return
 
     try {
       const exchange = exchanges.find((e) => e.id === exchangeId)
@@ -360,7 +273,7 @@ export function SecretSantaMain() {
         }
       }
 
-      const displayName = await getUserDisplayName(user.uid)
+      const displayName = (await requireProfileName(account.uid, "joining")) ?? UNKNOWN_PARTICIPANT
       const exchangeRef = doc(db, "secretSantaExchanges", exchangeId)
       await runTransaction(db, async (transaction) => {
         const snapshot = await transaction.get(exchangeRef)
@@ -368,14 +281,14 @@ export function SecretSantaMain() {
         const current = snapshot.data()
         const participants = Array.isArray(current.participants) ? current.participants : []
         if (current.drawn) throw new Error("Names have already been drawn")
-        if (participants.includes(user.uid)) throw new Error("You are already in this exchange")
+        if (participants.includes(account.uid)) throw new Error("You are already in this exchange")
 
         transaction.update(exchangeRef, {
-          participants: [...participants, user.uid],
-          participantNames: { ...(current.participantNames || {}), [user.uid]: displayName },
+          participants: [...participants, account.uid],
+          participantNames: { ...(current.participantNames || {}), [account.uid]: displayName },
           participantResponses: {
             ...(current.participantResponses || {}),
-            ...(Object.keys(joinResponses).length > 0 ? { [user.uid]: joinResponses } : {}),
+            ...(Object.keys(joinResponses).length > 0 ? { [account.uid]: joinResponses } : {}),
           },
           updatedAt: serverTimestamp(),
         })
@@ -384,19 +297,15 @@ export function SecretSantaMain() {
       toast.success("Joined exchange successfully!")
       setJoinDialogOpen(null)
       setJoinResponses({})
-      loadExchanges()
-    } catch (error: any) {
-      console.error("Failed to join exchange:", error)
-      if (error.code === "permission-denied") {
-        toast.error("Permission denied")
-      } else {
-        toast.error("Failed to join exchange")
-      }
+      reload()
+    } catch (error) {
+      logUnexpectedError("secret-santa:join", error)
+      toast.error(failureMessage(error, "join the exchange"))
     }
   }
 
   const handleLeaveExchange = async (exchangeId: string) => {
-    if (!user) {
+    if (!account) {
       setAuthDialogOpen(true)
       return
     }
@@ -409,14 +318,14 @@ export function SecretSantaMain() {
         const current = snapshot.data()
         const participants = Array.isArray(current.participants) ? current.participants : []
         if (current.drawn) throw new Error("Names have already been drawn")
-        if (!participants.includes(user.uid)) throw new Error("You are not in this exchange")
+        if (!participants.includes(account.uid)) throw new Error("You are not in this exchange")
 
         const responses = { ...(current.participantResponses || {}) }
         const names = { ...(current.participantNames || {}) }
-        delete responses[user.uid]
-        delete names[user.uid]
+        delete responses[account.uid]
+        delete names[account.uid]
         transaction.update(exchangeRef, {
-          participants: participants.filter((uid: string) => uid !== user.uid),
+          participants: participants.filter((participant: string) => participant !== account.uid),
           participantResponses: responses,
           participantNames: names,
           updatedAt: serverTimestamp(),
@@ -424,15 +333,15 @@ export function SecretSantaMain() {
       })
 
       toast.success("Left exchange successfully")
-      loadExchanges()
-    } catch (error: any) {
-      console.error("Failed to leave exchange:", error)
-      toast.error("Failed to leave exchange")
+      reload()
+    } catch (error) {
+      logUnexpectedError("secret-santa:leave", error)
+      toast.error(failureMessage(error, "leave the exchange"))
     }
   }
 
   const handleDrawNames = async (exchangeId: string) => {
-    if (!user) {
+    if (!account) {
       setAuthDialogOpen(true)
       return
     }
@@ -440,7 +349,7 @@ export function SecretSantaMain() {
     const exchange = exchanges.find((e) => e.id === exchangeId)
     if (!exchange) return
 
-    if (exchange.createdBy !== user.uid) {
+    if (exchange.createdBy !== account.uid) {
       toast.error("Only the organizer can draw names")
       return
     }
@@ -465,7 +374,7 @@ export function SecretSantaMain() {
         const snapshot = await transaction.get(exchangeRef)
         if (!snapshot.exists()) throw new Error("Exchange no longer exists")
         const current = snapshot.data()
-        if (current.createdBy !== user.uid) throw new Error("Only the organizer can draw names")
+        if (current.createdBy !== account.uid) throw new Error("Only the organizer can draw names")
         if (current.drawn) throw new Error("Names have already been drawn")
 
         const participants = Array.isArray(current.participants) ? current.participants : []
@@ -477,18 +386,16 @@ export function SecretSantaMain() {
       })
 
       toast.success("Names drawn successfully! Participants can now view their assignments.")
-      loadExchanges()
-    } catch (error: any) {
-      console.error("Failed to draw names:", error)
-      toast.error("Failed to draw names")
+      reload()
+    } catch (error) {
+      logUnexpectedError("secret-santa:draw", error)
+      toast.error(failureMessage(error, "draw names"))
     }
   }
 
   const handleDeleteExchange = async (exchangeId: string) => {
-    if (!user) return
-
     const exchange = exchanges.find((e) => e.id === exchangeId)
-    if (!exchange || exchange.createdBy !== user.uid) {
+    if (!account || !exchange || exchange.createdBy !== account.uid) {
       toast.error("You can only delete exchanges you created")
       return
     }
@@ -506,9 +413,9 @@ export function SecretSantaMain() {
       batch.delete(exchangeRef)
       await batch.commit()
       toast.success("Exchange deleted successfully")
-      loadExchanges()
-    } catch (error: any) {
-      console.error("Failed to delete exchange:", error)
+      reload()
+    } catch (error) {
+      logUnexpectedError("secret-santa:delete", error)
       toast.error("Failed to delete exchange")
     }
   }
@@ -524,7 +431,7 @@ export function SecretSantaMain() {
     let filtered = exchanges.filter(
       (exchange) =>
         !settings.showMyExchangesOnly ||
-        Boolean(user && (exchange.createdBy === user.uid || exchange.participants.includes(user.uid)))
+        Boolean(uid && (exchange.createdBy === uid || exchange.participants.includes(uid)))
     )
 
     // Filter by search query
@@ -537,20 +444,11 @@ export function SecretSantaMain() {
     }
 
     return filtered
-  }, [exchanges, searchQuery, settings.showMyExchangesOnly, user?.uid])
+  }, [exchanges, searchQuery, settings.showMyExchangesOnly, uid])
 
-  const isUserInExchange = (exchange: Exchange) => {
-    return user && Array.isArray(exchange.participants) && exchange.participants.includes(user.uid)
-  }
-
-  const canManageExchange = (exchange: Exchange) => {
-    return user && exchange.createdBy && exchange.createdBy === user.uid
-  }
-
-  const getUserAssignment = (exchange: Exchange) => {
-    if (!user || !exchange.drawn) return null
-    return userAssignments[exchange.id] || null
-  }
+  const isUserInExchange = (exchange: Exchange) => Boolean(uid && exchange.participants.includes(uid))
+  const canManageExchange = (exchange: Exchange) => Boolean(uid && exchange.createdBy === uid)
+  const getUserAssignment = (exchange: Exchange) => (exchange.drawn && userAssignments[exchange.id]) || null
 
   const formatDate = (dateString: string) => {
     if (!dateString) return "Date TBD"
@@ -627,12 +525,12 @@ export function SecretSantaMain() {
         <Dialog
           open={createDialogOpen}
           onOpenChange={(open) => {
-            if (open) setFormData((form) => ({ ...form, budget: settings.defaultBudget }))
+            if (open) setFormData(emptyForm(settings.defaultBudget))
             setCreateDialogOpen(open)
           }}
         >
           <DialogTrigger asChild>
-            <Button onClick={() => !user && setAuthDialogOpen(true)}>
+            <Button onClick={() => !account && setAuthDialogOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
               Create Exchange
             </Button>
@@ -787,7 +685,7 @@ export function SecretSantaMain() {
                 ? "No exchanges match your search"
                 : "No exchanges created yet. Create the first one!"}
             </p>
-            {!user && <Button onClick={() => setAuthDialogOpen(true)}>Sign In to Create Exchange</Button>}
+            {!account && <Button onClick={() => setAuthDialogOpen(true)}>Sign In to Create Exchange</Button>}
           </CardContent>
         </Card>
       ) : (
@@ -992,7 +890,7 @@ export function SecretSantaMain() {
                         size="sm"
                         className="flex-1"
                         onClick={() => handleJoinExchange(exchange.id)}
-                        disabled={exchange.drawn || !user}
+                        disabled={exchange.drawn || !account}
                       >
                         <UserPlus className="h-4 w-4 mr-2" />
                         {exchange.drawn ? "Closed" : "Join"}
