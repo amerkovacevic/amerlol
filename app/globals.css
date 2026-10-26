@@ -95,5 +95,5 @@
 .nf-snake i:first-child { transform:translateY(-3px); }
 @keyframes nf-glitch { 0%,95%,100% { filter:none } 96% { filter:hue-rotate(80deg);transform:translateX(2px) } 98% { transform:translateX(-2px) } }
 .nf-glitch { animation:nf-glitch 2.7s steps(1) infinite; }
-@media (max-width:639px) { button[aria-label="Decorative 404"] { top:78%;z-index:20;font-size:58vw;color:hsl(var(--foreground)/.05); } }
+@media (max-width:639px) { .nf-backdrop { top:78%;z-index:20;font-size:58vw;color:hsl(var(--foreground)/.05); } }
 @media (prefers-reduced-motion:reduce) { .nf-fall { animation-duration:.01ms; } .nf-snake { animation:none;left:1rem; } .nf-glitch { animation:none; } }
