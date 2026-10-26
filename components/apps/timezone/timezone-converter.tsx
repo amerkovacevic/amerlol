@@ -1,199 +1,114 @@
 "use client"
 
 import * as React from "react"
+import { Calendar, Clock, Copy, Moon, Plus, Search, Sun, X } from "lucide-react"
+import { toast } from "sonner"
 import { useAppSettings } from "@/components/apps/settings-provider"
-
-import { motion } from "framer-motion"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import {
-  Plus,
-  X,
-  Copy,
-  Search,
-  Clock,
-  Sun,
-  Moon,
-  Calendar
-} from "lucide-react"
 import { formatZoneTime, timezoneOffset } from "@/lib/apps/timezone"
-import { toast } from "sonner"
+import { copyText } from "@/lib/browser"
+import { useNow } from "@/lib/hooks/use-now"
+import { useResettableState } from "@/lib/hooks/use-resettable-state"
 
-interface TimeZone {
+interface Zone {
   id: string
   name: string
   city: string
-  offset: number
-  abbreviation: string
 }
 
-// Popular time zones
-const POPULAR_TIMEZONES: TimeZone[] = [
-  { id: "America/New_York", name: "Eastern Time", city: "New York", offset: -5, abbreviation: "EST" },
-  { id: "America/Chicago", name: "Central Time", city: "Chicago", offset: -6, abbreviation: "CST" },
-  { id: "America/Denver", name: "Mountain Time", city: "Denver", offset: -7, abbreviation: "MST" },
-  { id: "America/Los_Angeles", name: "Pacific Time", city: "Los Angeles", offset: -8, abbreviation: "PST" },
-  { id: "Europe/London", name: "Greenwich Mean Time", city: "London", offset: 0, abbreviation: "GMT" },
-  { id: "Europe/Paris", name: "Central European Time", city: "Paris", offset: 1, abbreviation: "CET" },
-  { id: "Asia/Tokyo", name: "Japan Standard Time", city: "Tokyo", offset: 9, abbreviation: "JST" },
-  { id: "Asia/Shanghai", name: "China Standard Time", city: "Shanghai", offset: 8, abbreviation: "CST" },
-  { id: "Asia/Dubai", name: "Gulf Standard Time", city: "Dubai", offset: 4, abbreviation: "GST" },
-  { id: "Australia/Sydney", name: "Australian Eastern Time", city: "Sydney", offset: 10, abbreviation: "AEST" },
-  { id: "America/Sao_Paulo", name: "Brasilia Time", city: "São Paulo", offset: -3, abbreviation: "BRT" },
-  { id: "Asia/Kolkata", name: "India Standard Time", city: "Mumbai", offset: 5.5, abbreviation: "IST" },
+const POPULAR_ZONES: Zone[] = [
+  { id: "America/New_York", name: "Eastern Time", city: "New York" },
+  { id: "America/Chicago", name: "Central Time", city: "Chicago" },
+  { id: "America/Denver", name: "Mountain Time", city: "Denver" },
+  { id: "America/Los_Angeles", name: "Pacific Time", city: "Los Angeles" },
+  { id: "Europe/London", name: "Greenwich Mean Time", city: "London" },
+  { id: "Europe/Paris", name: "Central European Time", city: "Paris" },
+  { id: "Asia/Tokyo", name: "Japan Standard Time", city: "Tokyo" },
+  { id: "Asia/Shanghai", name: "China Standard Time", city: "Shanghai" },
+  { id: "Asia/Dubai", name: "Gulf Standard Time", city: "Dubai" },
+  { id: "Australia/Sydney", name: "Australian Eastern Time", city: "Sydney" },
+  { id: "America/Sao_Paulo", name: "Brasilia Time", city: "São Paulo" },
+  { id: "Asia/Kolkata", name: "India Standard Time", city: "Kolkata" },
 ]
 
-const ALL_TIMEZONES = Intl.supportedValuesOf("timeZone").map((tz) => {
-  const now = new Date()
-  const formatter = new Intl.DateTimeFormat("en-US", {
-    timeZone: tz,
-    timeZoneName: "short",
-  })
-  const parts = formatter.formatToParts(now)
-  const tzName = parts.find((p) => p.type === "timeZoneName")?.value || ""
+const MAX_SEARCH_RESULTS = 20
 
-  // Get offset
-  const utcDate = new Date(now.toLocaleString("en-US", { timeZone: "UTC" }))
-  const tzDate = new Date(now.toLocaleString("en-US", { timeZone: tz }))
-  const offset = (tzDate.getTime() - utcDate.getTime()) / (1000 * 60 * 60)
+function zoneFromId(id: string): Zone {
+  return { id, name: id, city: id.split("/").pop()!.replaceAll("_", " ") }
+}
 
-  // Extract city name
-  const city = tz.split("/").pop()?.replace(/_/g, " ") || tz
+// Built on first search; there are several hundred zones.
+let allZones: Zone[] | null = null
+function getAllZones(): Zone[] {
+  return (allZones ??= Intl.supportedValuesOf("timeZone").map(zoneFromId))
+}
 
-  return {
-    id: tz,
-    name: tz,
-    city: city,
-    offset: offset,
-    abbreviation: tzName,
-  }
-})
+const isDaytime = (zone: string, date: Date) => {
+  const hour = Number(new Intl.DateTimeFormat("en-US", { timeZone: zone, hour: "numeric", hourCycle: "h23" }).format(date))
+  return hour >= 6 && hour < 18
+}
+
+const formatFull = (zone: string, date: Date, hour12: boolean, showSeconds: boolean) =>
+  new Intl.DateTimeFormat("en-US", {
+    timeZone: zone,
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    ...(showSeconds ? { second: "2-digit" } : {}),
+    hour12,
+  }).format(date)
 
 export function TimeZoneConverter() {
   const settings = useAppSettings("timezone")
-  const [selectedTimeZones, setSelectedTimeZones] = React.useState<TimeZone[]>([
-    POPULAR_TIMEZONES[0], // New York
-    POPULAR_TIMEZONES[4], // London
-    POPULAR_TIMEZONES[6], // Tokyo
-  ])
-  const [currentTime, setCurrentTime] = React.useState(new Date())
-  const [selectedDate, setSelectedDate] = React.useState<string>("")
-  const [selectedTime, setSelectedTime] = React.useState<string>("")
+  const zoneDefaultsKey = settings.defaultTimeZones.join(",")
+  const defaultZones = React.useMemo(
+    () => zoneDefaultsKey.split(",").map((id) => POPULAR_ZONES.find((zone) => zone.id === id) ?? zoneFromId(id)),
+    [zoneDefaultsKey]
+  )
+  // Saved defaults replace the list; additions and removals last until they change.
+  const [zones, setZones] = useResettableState(defaultZones, zoneDefaultsKey)
+  const now = useNow(1000, settings.autoRefresh)
+  const [selectedDate, setSelectedDate] = React.useState("")
+  const [selectedTime, setSelectedTime] = React.useState("")
   const [searchQuery, setSearchQuery] = React.useState("")
   const [showSearch, setShowSearch] = React.useState(false)
 
-  const zoneDefaults = JSON.stringify(settings.defaultTimeZones)
-  React.useEffect(() => {
-    setSelectedTimeZones(settings.defaultTimeZones.map((id) => ALL_TIMEZONES.find((zone) => zone.id === id) ?? { id, name: id, city: id.split("/").pop()!.replaceAll("_", " "), offset: 0, abbreviation: "" }))
-  }, [zoneDefaults])
-  const displayDate = selectedDate && selectedTime ? new Date(selectedDate + "T" + selectedTime) : currentTime
+  const customDate = selectedDate && selectedTime ? new Date(`${selectedDate}T${selectedTime}`) : null
+  const displayDate = customDate ?? now
 
-  // Update current time every second
-  React.useEffect(() => {
-    if (!settings.autoRefresh) return
-    setCurrentTime(new Date())
-    const timer = setInterval(() => {
-      setCurrentTime(new Date())
-    }, 1000)
-    return () => clearInterval(timer)
-  }, [settings.autoRefresh])
+  const searchResults = React.useMemo(() => {
+    const query = searchQuery.trim().toLowerCase()
+    if (!query) return POPULAR_ZONES
+    return getAllZones()
+      .filter((zone) => zone.city.toLowerCase().includes(query) || zone.id.toLowerCase().includes(query))
+      .slice(0, MAX_SEARCH_RESULTS)
+  }, [searchQuery])
 
-  // Get time in a specific timezone
-  const getTimeInZone = (timeZone: TimeZone, date?: Date) => {
-    let dateToUse: Date
-    if (selectedDate && selectedTime) {
-      // Create date from selected date and time in local timezone
-      const [hours, minutes] = selectedTime.split(":").map(Number)
-      dateToUse = new Date(selectedDate + "T" + selectedTime)
-      dateToUse.setHours(hours, minutes, 0, 0)
-    } else {
-      dateToUse = date || currentTime
-    }
-
-    try {
-      return new Intl.DateTimeFormat("en-US", {
-        timeZone: timeZone.id,
-        hour: "2-digit",
-        minute: "2-digit",
-        second: settings.showSeconds ? "2-digit" : undefined,
-        hour12: settings.timeFormat === "12",
-        weekday: "short",
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      }).format(dateToUse)
-    } catch {
-      return "Invalid timezone"
-    }
-  }
-
-  // Get hour for day/night indicator
-  const getHourInZone = (timeZone: TimeZone) => {
-    let dateToUse: Date
-    if (selectedDate && selectedTime) {
-      const [hours, minutes] = selectedTime.split(":").map(Number)
-      dateToUse = new Date(selectedDate + "T" + selectedTime)
-      dateToUse.setHours(hours, minutes, 0, 0)
-    } else {
-      dateToUse = currentTime
-    }
-
-    try {
-      return parseInt(
-        new Intl.DateTimeFormat("en-US", {
-          timeZone: timeZone.id,
-          hour: "2-digit",
-          hour12: false,
-        }).format(dateToUse)
-      )
-    } catch {
-      return 12
-    }
-  }
-
-  const isDayTime = (hour: number) => {
-    return hour >= 6 && hour < 18
-  }
-
-  const addTimeZone = (timeZone: TimeZone) => {
-    if (selectedTimeZones.some((tz) => tz.id === timeZone.id)) {
+  const addZone = (zone: Zone) => {
+    if (zones.some(({ id }) => id === zone.id)) {
       toast.error("Time zone already added")
       return
     }
-    setSelectedTimeZones([...selectedTimeZones, timeZone])
+    setZones([...zones, zone])
     setShowSearch(false)
     setSearchQuery("")
-    toast.success(`Added ${timeZone.city}`)
+    toast.success(`Added ${zone.city}`)
   }
 
-  const removeTimeZone = (id: string) => {
-    if (selectedTimeZones.length <= 1) {
+  const removeZone = (id: string) => {
+    if (zones.length <= 1) {
       toast.error("At least one time zone must be displayed")
       return
     }
-    setSelectedTimeZones(selectedTimeZones.filter((tz) => tz.id !== id))
+    setZones(zones.filter((zone) => zone.id !== id))
     toast.success("Time zone removed")
   }
-
-  const copyTime = (timeZone: TimeZone) => {
-    const time = getTimeInZone(timeZone)
-    navigator.clipboard.writeText(time)
-    toast.success(`Copied time for ${timeZone.city}`)
-  }
-
-  const filteredTimeZones = React.useMemo(() => {
-    if (!searchQuery) return POPULAR_TIMEZONES
-
-    const query = searchQuery.toLowerCase()
-    return ALL_TIMEZONES.filter(
-      (tz) =>
-        tz.city.toLowerCase().includes(query) ||
-        tz.id.toLowerCase().includes(query) ||
-        tz.name.toLowerCase().includes(query)
-    ).slice(0, 20) // Limit results
-  }, [searchQuery])
 
   const clearCustomTime = () => {
     setSelectedDate("")
@@ -202,47 +117,29 @@ export function TimeZoneConverter() {
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-      className="space-y-6"
-    >
-{/* Date/Time Picker */}
+    <div className="space-y-6">
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Calendar className="h-5 w-5" />
             Select Date & Time
           </CardTitle>
-          <CardDescription>
-            Choose a specific date and time to convert, or leave empty to use current time
-          </CardDescription>
+          <CardDescription>Choose a specific date and time to convert, or leave empty to use current time</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex flex-col gap-4 sm:flex-row">
             <div className="flex-1 space-y-2">
               <Label htmlFor="date">Date</Label>
-              <Input
-                id="date"
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-              />
+              <Input id="date" type="date" value={selectedDate} onChange={(event) => setSelectedDate(event.target.value)} />
             </div>
             <div className="flex-1 space-y-2">
               <Label htmlFor="time">Time</Label>
-              <Input
-                id="time"
-                type="time"
-                value={selectedTime}
-                onChange={(e) => setSelectedTime(e.target.value)}
-              />
+              <Input id="time" type="time" value={selectedTime} onChange={(event) => setSelectedTime(event.target.value)} />
             </div>
             {(selectedDate || selectedTime) && (
               <div className="flex items-end">
                 <Button variant="outline" onClick={clearCustomTime}>
-                  <X className="h-4 w-4 mr-2" />
+                  <X className="mr-2 h-4 w-4" />
                   Clear
                 </Button>
               </div>
@@ -251,11 +148,10 @@ export function TimeZoneConverter() {
         </CardContent>
       </Card>
 
-      {/* Add Time Zone */}
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">Time Zones</h3>
-        <Button onClick={() => setShowSearch(!showSearch)} variant="outline">
-          <Plus className="h-4 w-4 mr-2" />
+        <h2 className="text-lg font-semibold">Time Zones</h2>
+        <Button onClick={() => setShowSearch(!showSearch)} variant="outline" aria-expanded={showSearch}>
+          <Plus className="mr-2 h-4 w-4" />
           Add Time Zone
         </Button>
       </div>
@@ -265,124 +161,117 @@ export function TimeZoneConverter() {
           <CardHeader>
             <CardTitle>Search Time Zones</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search by city or timezone..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              <div className="max-h-60 overflow-y-auto space-y-2">
-                {filteredTimeZones.map((tz) => (
-                  <Button
-                    key={tz.id}
-                    variant="ghost"
-                    className="w-full justify-start"
-                    onClick={() => addTimeZone(tz)}
-                  >
-                    <div className="flex items-center justify-between w-full">
-                      <div className="text-left">
-                        <div className="font-medium">{tz.city}</div>
-                        <div className="text-sm text-muted-foreground">{tz.id}</div>
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        {timezoneOffset(tz.id, displayDate)}
-                      </div>
-                    </div>
-                  </Button>
-                ))}
-              </div>
+          <CardContent className="space-y-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                aria-label="Search time zones"
+                placeholder="Search by city or timezone..."
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                className="pl-10"
+                autoFocus
+              />
+            </div>
+            <div className="max-h-60 space-y-2 overflow-y-auto">
+              {searchResults.map((zone) => (
+                <Button key={zone.id} variant="ghost" className="h-auto w-full justify-between py-2" onClick={() => addZone(zone)}>
+                  <span className="text-left">
+                    <span className="block font-medium">{zone.city}</span>
+                    <span className="block text-sm text-muted-foreground">{zone.id}</span>
+                  </span>
+                  {displayDate && (
+                    <span className="text-sm text-muted-foreground">{timezoneOffset(zone.id, displayDate)}</span>
+                  )}
+                </Button>
+              ))}
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Time Zone Display */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {selectedTimeZones.map((tz) => {
-          const hour = getHourInZone(tz)
-          const isDay = isDayTime(hour)
-          const timeString = getTimeInZone(tz)
-
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {zones.map((zone) => {
+          const day = displayDate ? isDaytime(zone.id, displayDate) : true
           return (
-            <Card key={tz.id} className="relative">
+            <Card key={zone.id}>
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <CardTitle className="text-lg">{tz.city}</CardTitle>
-                    <CardDescription>{tz.name}</CardDescription>
+                    <CardTitle className="text-lg">{zone.city}</CardTitle>
+                    <CardDescription>{zone.name}</CardDescription>
                   </div>
                   <Button
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8"
-                    onClick={() => removeTimeZone(tz.id)}
+                    onClick={() => removeZone(zone.id)}
+                    aria-label={`Remove ${zone.city}`}
                   >
                     <X className="h-4 w-4" />
                   </Button>
                 </div>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      {settings.showDayNight && (isDay ? (
-                        <Sun className="h-5 w-5 text-yellow-500" />
-                      ) : (
-                        <Moon className="h-5 w-5 text-blue-500" />
-                      ))}
-                      <span className="text-sm font-medium">
-                        {settings.showDayNight ? (isDay ? "Day" : "Night") : ""}
-                      </span>
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      {timezoneOffset(tz.id, displayDate)}
-                    </div>
-                  </div>
-
-                  <div className="space-y-1">
-                    <div className="text-2xl font-bold font-mono">
-                      {formatZoneTime(tz.id, displayDate, settings.timeFormat, settings.showSeconds)}
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      {new Intl.DateTimeFormat("en-US", { timeZone: tz.id, dateStyle: "medium" }).format(displayDate)}
-                    </div>
-                  </div>
-
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full"
-                    onClick={() => copyTime(tz)}
-                  >
-                    <Copy className="h-4 w-4 mr-2" />
-                    Copy Time
-                  </Button>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  {settings.showDayNight && displayDate ? (
+                    <span className="flex items-center gap-2 text-sm font-medium">
+                      {day ? <Sun className="h-5 w-5 text-yellow-500" /> : <Moon className="h-5 w-5 text-blue-500" />}
+                      {day ? "Day" : "Night"}
+                    </span>
+                  ) : (
+                    <span />
+                  )}
+                  {displayDate && (
+                    <span className="text-sm text-muted-foreground">{timezoneOffset(zone.id, displayDate)}</span>
+                  )}
                 </div>
+
+                <div className="space-y-1">
+                  <div className="font-mono text-2xl font-bold">
+                    {displayDate ? formatZoneTime(zone.id, displayDate, settings.timeFormat, settings.showSeconds) : "--:--"}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    {displayDate
+                      ? new Intl.DateTimeFormat("en-US", { timeZone: zone.id, dateStyle: "medium" }).format(displayDate)
+                      : " "}
+                  </div>
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  disabled={!displayDate}
+                  onClick={() =>
+                    displayDate &&
+                    copyText(
+                      formatFull(zone.id, displayDate, settings.timeFormat === "12", settings.showSeconds),
+                      `Copied time for ${zone.city}`
+                    )
+                  }
+                >
+                  <Copy className="mr-2 h-4 w-4" />
+                  Copy Time
+                </Button>
               </CardContent>
             </Card>
           )
         })}
       </div>
 
-      {selectedTimeZones.length === 0 && (
+      {zones.length === 0 && (
         <Card>
           <CardContent className="py-12 text-center">
-            <Clock className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-            <p className="text-muted-foreground mb-4">
-              No time zones selected. Add a time zone to get started.
-            </p>
+            <Clock className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
+            <p className="mb-4 text-muted-foreground">No time zones selected. Add a time zone to get started.</p>
             <Button onClick={() => setShowSearch(true)}>
-              <Plus className="h-4 w-4 mr-2" />
+              <Plus className="mr-2 h-4 w-4" />
               Add Time Zone
             </Button>
           </CardContent>
         </Card>
       )}
-    </motion.div>
+    </div>
   )
 }

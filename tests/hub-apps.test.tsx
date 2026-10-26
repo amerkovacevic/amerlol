@@ -477,3 +477,10 @@ it("applies STL Monitor's map appearance preference", async () => {
     "light"
   )
 })
+
+it("generates a Let Me Google That link straight from an example query", async () => {
+  await mount("lmgtfy")
+  await userEvent.click(screen.getByRole("button", { name: "Why is the sky blue?" }))
+  const url = new URL(document.querySelector("code")!.textContent!)
+  expect(url.searchParams.get("q")).toBe("Why is the sky blue?")
+})

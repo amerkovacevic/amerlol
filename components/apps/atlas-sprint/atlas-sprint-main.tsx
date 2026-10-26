@@ -1,8 +1,6 @@
 "use client"
 
 import * as React from "react"
-import { useAppSettings } from "@/components/apps/settings-provider"
-
 import { AnimatePresence, motion } from "framer-motion"
 import { Check, Clock3, Flag, Globe2, Play, RotateCcw, Trophy } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
@@ -10,8 +8,10 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { useAppSettings } from "@/components/apps/settings-provider"
 import { CONTINENTS, COUNTRIES, type Continent, normalizeCountry } from "./countries"
 import { CountryMap } from "./country-map"
+import { useNow } from "@/lib/hooks/use-now"
 
 type Region = "World" | Continent
 type Status = "setup" | "playing" | "finished"
@@ -20,12 +20,16 @@ function formatTime(seconds: number) {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`
 }
 
+const WORLD_SECONDS = 15 * 60
+const quizSeconds = (region: Region, countries: number) =>
+  region === "World" ? WORLD_SECONDS : Math.max(3 * 60, countries * 8)
+
 export function AtlasSprintMain() {
   const [region, setRegion] = React.useState<Region>("World")
   const [status, setStatus] = React.useState<Status>("setup")
   const [guessed, setGuessed] = React.useState<string[]>([])
   const [value, setValue] = React.useState("")
-  const [remaining, setRemaining] = React.useState(15 * 60)
+  const [endsAt, setEndsAt] = React.useState(0)
   const [feedback, setFeedback] = React.useState<string | null>(null)
   const preferences = useAppSettings("atlas-sprint")
   const inputRef = React.useRef<HTMLInputElement>(null)
@@ -34,8 +38,10 @@ export function AtlasSprintMain() {
   const pool = React.useMemo(() => region === "World" ? COUNTRIES : COUNTRIES.filter((country) => country.continent === region), [region])
   const guessedSet = React.useMemo(() => new Set(guessed), [guessed])
   const progress = Math.round((guessed.length / pool.length) * 100)
-  const finish = React.useCallback(() => setStatus("finished"), [])
-
+  // The countdown is derived from a deadline; the clock only drives the display.
+  const now = useNow(250, status === "playing")
+  const remaining = now ? Math.max(0, Math.ceil((endsAt - now.getTime()) / 1000)) : quizSeconds(region, pool.length)
+  const finish = () => setStatus("finished")
 
   React.useEffect(() => () => {
     if (pendingGuessRef.current) window.clearTimeout(pendingGuessRef.current)
@@ -43,22 +49,17 @@ export function AtlasSprintMain() {
 
   React.useEffect(() => {
     if (status !== "playing") return
-    if (guessed.length === pool.length) { finish(); return }
-    const timer = window.setInterval(() => setRemaining((time) => {
-      if (time <= 1) { window.clearInterval(timer); finish(); return 0 }
-      return time - 1
-    }), 1000)
-    return () => window.clearInterval(timer)
-  }, [status, guessed.length, pool.length, finish])
+    const timer = window.setTimeout(() => setStatus("finished"), endsAt - Date.now())
+    return () => window.clearTimeout(timer)
+  }, [status, endsAt])
 
   const startGame = () => {
     if (pendingGuessRef.current) window.clearTimeout(pendingGuessRef.current)
     setGuessed([])
     setValue("")
     setFeedback(null)
-    setRemaining(region === "World" ? 15 * 60 : Math.max(3 * 60, pool.length * 8))
+    setEndsAt(Date.now() + quizSeconds(region, pool.length) * 1000)
     setStatus("playing")
-    window.setTimeout(() => inputRef.current?.focus(), 50)
   }
 
   const acceptGuess = (raw: string) => {
@@ -71,9 +72,11 @@ export function AtlasSprintMain() {
       setFeedback(`${match.name} was already guessed`)
       return
     }
-    setGuessed((current) => [...current, match.name])
+    const next = [...guessed, match.name]
+    setGuessed(next)
     setFeedback(`${match.name} added`)
     setValue("")
+    if (next.length === pool.length) finish()
   }
 
   const updateGuess = (raw: string) => {

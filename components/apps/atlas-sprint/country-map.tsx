@@ -57,10 +57,18 @@ export function CountryMap({ region, guessed, revealRemaining = false, focusOnGu
   const { resolvedTheme } = useTheme()
   const { color: accentColor } = useAccentColor()
   const palette = THEME_COLORS.find((option) => option.id === accentColor) ?? THEME_COLORS[0]
+  // The map is rebuilt only when its colours change; quiz state is read from here
+  // so the asynchronous load always applies the latest guesses.
+  const latestQuiz = React.useRef({ region, guessed, revealRemaining })
+  React.useLayoutEffect(() => {
+    latestQuiz.current = { region, guessed, revealRemaining }
+  })
 
   React.useEffect(() => {
     if (!containerRef.current) return
+    let removed = false
     const dark = resolvedTheme === "dark"
+    const { region } = latestQuiz.current
     const map = new maplibregl.Map({
       container: containerRef.current,
       style: {
@@ -81,9 +89,17 @@ export function CountryMap({ region, guessed, revealRemaining = false, focusOnGu
 
     const popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 8 })
     map.on("load", async () => {
-      const response = await fetch("/data/countries.geojson")
-      const data = await response.json() as FeatureCollection
+      let data: FeatureCollection
+      try {
+        const response = await fetch("/data/countries.geojson")
+        if (!response.ok) return
+        data = await response.json() as FeatureCollection
+      } catch {
+        return
+      }
+      if (removed) return
       dataRef.current = data
+      const { region, guessed, revealRemaining } = latestQuiz.current
       map.addSource("countries", { type: "geojson", data })
       map.addLayer({
         id: "countries-fill",
@@ -112,12 +128,13 @@ export function CountryMap({ region, guessed, revealRemaining = false, focusOnGu
     map.on("mouseleave", "countries-fill", () => { map.getCanvas().style.cursor = ""; popup.remove() })
 
     return () => {
+      removed = true
       if (returnTimerRef.current) window.clearTimeout(returnTimerRef.current)
       labelMarkersRef.current.forEach((marker) => marker.remove())
       labelMarkersRef.current = []
       popup.remove(); map.remove(); mapRef.current = null
     }
-  }, [accentColor, palette.hex, palette.hue, resolvedTheme])
+  }, [palette.hex, palette.hue, resolvedTheme])
 
   React.useEffect(() => {
     const map = mapRef.current

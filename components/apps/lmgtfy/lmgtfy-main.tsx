@@ -1,15 +1,17 @@
 "use client"
 
 import * as React from "react"
-import { useSettingsContext, useAppSettings } from "@/components/apps/settings-provider"
-
+import { useAppSettings, useSettingsContext } from "@/components/apps/settings-provider"
+import { copyText } from "@/lib/browser"
+import { useHydrated } from "@/lib/hooks/use-hydrated"
 import { motion, AnimatePresence } from "framer-motion"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Badge } from "@/components/ui/badge"
+import { badgeVariants } from "@/components/ui/badge"
+import { cn } from "@/lib/utils"
 import {
   Search,
   Copy,
@@ -32,170 +34,114 @@ const ANIMATION_STEPS = [
   { text: "Let me Google that for you!", delay: 2000, emoji: "🎉" },
 ]
 
+const EXAMPLE_QUERIES = [
+  "How to make pizza?",
+  "What is React?",
+  "Why is the sky blue?",
+  "Best restaurants near me",
+  "How to tie a tie?",
+  "What time is it?",
+]
+
+const COPIED_RESET_MS = 2000
+
+/** Playback options carried by a shared link; missing or invalid values fall back to settings. */
+interface SharedLink {
+  query: string
+  speed: number | null
+  delay: number | null
+  showQuery: boolean | null
+}
+
+function readSharedLink(): SharedLink | null {
+  if (typeof window === "undefined") return null
+  const params = new URLSearchParams(window.location.search)
+  const query = params.get("q")?.trim()
+  if (!query) return null
+  const speed = Number(params.get("speed"))
+  const delay = Number(params.get("delay"))
+  return {
+    query,
+    speed: speed >= 0.5 && speed <= 2 ? speed : null,
+    delay: params.has("delay") && Number.isInteger(delay) && delay >= 0 && delay <= 10_000 ? delay : null,
+    showQuery: params.has("show") ? params.get("show") !== "0" : null,
+  }
+}
+
 export function LMGTFYMain() {
   const settings = useAppSettings("lmgtfy")
   const { loading: settingsLoading } = useSettingsContext()
-  const settingsRef = React.useRef(settings)
-  React.useEffect(() => { settingsRef.current = settings }, [settings])
-  const timers = React.useRef<ReturnType<typeof setTimeout>[]>([])
-  React.useEffect(() => () => { timers.current.forEach(clearTimeout) }, [])
+  const hydrated = useHydrated()
+  // The link is only readable in the browser, so the animation starts after hydration.
+  const [sharedLink] = React.useState(readSharedLink)
+  const playing = hydrated ? sharedLink : null
   const [query, setQuery] = React.useState("")
   const [shareableLink, setShareableLink] = React.useState("")
   const [copied, setCopied] = React.useState(false)
-  const [isAnimating, setIsAnimating] = React.useState(false)
   const [currentStep, setCurrentStep] = React.useState(0)
   const [showRedirect, setShowRedirect] = React.useState(false)
-  const searchParams = React.useMemo(() => {
-    if (typeof window === "undefined") return null
-    return new URLSearchParams(window.location.search)
-  }, [])
+  const copiedTimer = React.useRef<ReturnType<typeof setTimeout>>()
+  const canShare = hydrated && typeof navigator.share === "function"
+  const speed = sharedLink?.speed ?? settings.defaultAnimationSpeed
+  const redirectDelay = sharedLink?.delay ?? settings.redirectDelay
+  const showQuery = sharedLink?.showQuery ?? settings.showQueryInAnimation
 
-  // Update meta tags for link preview when query parameter is present
-  // Only update if we're on the LMGTFY app page
+  React.useEffect(() => () => clearTimeout(copiedTimer.current), [])
+
+  // Play the shared link's animation once settings (the playback fallbacks) are known.
   React.useEffect(() => {
-    if (settingsLoading) return
-    // Safety check: only update meta tags if we're on the LMGTFY route
-    if (typeof window === "undefined") return
-    const pathname = window.location.pathname
-    if (!pathname.includes("/a/lmgtfy") && !pathname.includes("/lmgtfy")) return
+    if (!sharedLink || settingsLoading) return
+    const timers: ReturnType<typeof setTimeout>[] = []
+    let elapsed = 0
+    ANIMATION_STEPS.forEach((step, index) => {
+      if (index > 0) timers.push(setTimeout(() => setCurrentStep(index), elapsed))
+      elapsed += step.delay / speed
+    })
+    timers.push(setTimeout(() => setShowRedirect(true), elapsed))
+    timers.push(
+      setTimeout(() => {
+        window.location.href = `https://www.google.com/search?q=${encodeURIComponent(sharedLink.query)}`
+      }, elapsed + redirectDelay)
+    )
+    return () => timers.forEach(clearTimeout)
+  }, [sharedLink, settingsLoading, speed, redirectDelay])
 
-    if (searchParams?.has("q")) {
-      const sharedQuery = searchParams.get("q") || ""
-      if (sharedQuery) {
-        // Update document title and meta tags for social sharing
-        document.title = "Hmm, I wonder..."
-
-        // Update or create Open Graph meta tags
-        const updateMetaTag = (property: string, content: string) => {
-          let meta = document.querySelector(`meta[property="${property}"]`) ||
-                     document.querySelector(`meta[name="${property}"]`)
-          if (!meta) {
-            meta = document.createElement("meta")
-            meta.setAttribute("property", property)
-            document.head.appendChild(meta)
-          }
-          meta.setAttribute("content", content)
-        }
-
-        updateMetaTag("og:title", "Hmm, I wonder...")
-        updateMetaTag("og:description", sharedQuery)
-        updateMetaTag("og:type", "website")
-        updateMetaTag("twitter:card", "summary")
-        updateMetaTag("twitter:title", "Hmm, I wonder...")
-        updateMetaTag("twitter:description", sharedQuery)
-
-        // Update description meta tag
-        let descMeta = document.querySelector('meta[name="description"]')
-        if (!descMeta) {
-          descMeta = document.createElement("meta")
-          descMeta.setAttribute("name", "description")
-          document.head.appendChild(descMeta)
-        }
-        descMeta.setAttribute("content", sharedQuery)
-
-        setQuery(sharedQuery)
-        startAnimation(sharedQuery)
-      }
-    }
-    return () => { timers.current.forEach(clearTimeout); timers.current = [] }
-  }, [searchParams, settingsLoading])
-
-  const startAnimation = (searchQuery: string) => {
-    timers.current.forEach(clearTimeout); timers.current = []
-    const speedParam = Number(searchParams?.get("speed"))
-    const delayParam = Number(searchParams?.get("delay"))
-    const speed = speedParam >= 0.5 && speedParam <= 2 ? speedParam : settingsRef.current.defaultAnimationSpeed
-    const delay = searchParams?.has("delay") && Number.isInteger(delayParam) && delayParam >= 0 && delayParam <= 10000 ? delayParam : settingsRef.current.redirectDelay
-    setIsAnimating(true)
-    setCurrentStep(0)
-    setShowRedirect(false)
-
-    // Play through animation steps
-    let stepIndex = 0
-    const playStep = () => {
-      if (stepIndex < ANIMATION_STEPS.length) {
-        const currentDelay = ANIMATION_STEPS[stepIndex].delay / speed
-        setCurrentStep(stepIndex)
-        timers.current.push(setTimeout(() => {
-          stepIndex++
-          playStep()
-        }, currentDelay))
-      } else {
-        // Show redirect message
-        setShowRedirect(true)
-        // Redirect to Google after a moment
-        timers.current.push(setTimeout(() => {
-          const googleUrl = `https://www.google.com/search?q=${encodeURIComponent(searchQuery)}`
-          window.location.href = googleUrl
-        }, delay))
-      }
-    }
-    playStep()
-  }
-
-  const generateLink = () => {
-    if (!query.trim()) {
+  const generateLink = (text = query) => {
+    const trimmed = text.trim()
+    if (!trimmed) {
       toast.error("Please enter a search query")
       return
     }
-
-    // Get the current pathname, or default to /a/lmgtfy if not available
-    const pathname = typeof window !== "undefined"
-      ? window.location.pathname
-      : "/a/lmgtfy"
-    const baseUrl = typeof window !== "undefined"
-      ? window.location.origin
-      : ""
-    const params = new URLSearchParams({ q: query.trim(), speed: String(settings.defaultAnimationSpeed), delay: String(settings.redirectDelay), show: settings.showQueryInAnimation ? "1" : "0" })
-    const link = `${baseUrl}${pathname}?${params}`
-    setShareableLink(link)
+    const params = new URLSearchParams({
+      q: trimmed,
+      speed: String(settings.defaultAnimationSpeed),
+      delay: String(settings.redirectDelay),
+      show: settings.showQueryInAnimation ? "1" : "0",
+    })
+    setShareableLink(`${window.location.origin}${window.location.pathname}?${params}`)
     toast.success("Link generated! Copy it to share.")
   }
 
   const copyLink = async () => {
-    if (!shareableLink) {
-      toast.error("Please generate a link first")
-      return
-    }
-
-    try {
-      await navigator.clipboard.writeText(shareableLink)
-      setCopied(true)
-      toast.success("Link copied to clipboard!")
-      setTimeout(() => setCopied(false), 2000)
-    } catch (error) {
-      toast.error("Failed to copy link")
-    }
+    if (!(await copyText(shareableLink, "Link copied to clipboard!"))) return
+    setCopied(true)
+    clearTimeout(copiedTimer.current)
+    copiedTimer.current = setTimeout(() => setCopied(false), COPIED_RESET_MS)
   }
 
   const shareLink = async () => {
-    if (!shareableLink) {
-      toast.error("Please generate a link first")
-      return
-    }
-
-    if (typeof navigator !== "undefined" && "share" in navigator && navigator.share) {
-      try {
-        await navigator.share({
-          title: "Let me Google that for you!",
-          text: query,
-          url: shareableLink,
-        })
-        toast.success("Link shared!")
-      } catch (error) {
-        // User cancelled or error
-        if ((error as Error).name !== "AbortError") {
-          toast.error("Failed to share link")
-        }
-      }
-    } else {
-      // Fallback to copy
-      copyLink()
+    if (!canShare) return copyLink()
+    try {
+      await navigator.share({ title: "Let me Google that for you!", text: query, url: shareableLink })
+      toast.success("Link shared!")
+    } catch (error) {
+      // Closing the share sheet is not an error.
+      if ((error as Error).name !== "AbortError") toast.error("Failed to share link")
     }
   }
 
   // If animating, show the animation screen
-  if (isAnimating) {
+  if (playing) {
     return (
       <div className="h-full flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-background dark:to-secondary p-4 sm:p-6 md:p-8">
         <motion.div
@@ -305,13 +251,13 @@ export function LMGTFYMain() {
             </motion.div>
           </AnimatePresence>
 
-          {query && (searchParams?.has("show") ? searchParams.get("show") !== "0" : settings.showQueryInAnimation) && (
+          {showQuery && (
             <motion.p
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mt-8 sm:mt-10 md:mt-12 px-4"
             >
-              "{query}"
+              "{playing.query}"
             </motion.p>
           )}
         </motion.div>
@@ -338,10 +284,8 @@ export function LMGTFYMain() {
                 placeholder="e.g., How to make pizza? What is React? Why is the sky blue?"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && e.ctrlKey) {
-                    generateLink()
-                  }
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) generateLink()
                 }}
                 className="min-h-[100px] resize-none"
               />
@@ -351,7 +295,7 @@ export function LMGTFYMain() {
             </div>
 
             <Button
-              onClick={generateLink}
+              onClick={() => generateLink()}
               className="w-full"
               disabled={!query.trim()}
             >
@@ -394,7 +338,7 @@ export function LMGTFYMain() {
                   )}
                 </Button>
 
-                {typeof navigator !== "undefined" && "share" in navigator && (
+                {canShare && (
                   <Button
                     onClick={shareLink}
                     variant="outline"
@@ -406,9 +350,7 @@ export function LMGTFYMain() {
                 )}
 
                 <Button
-                  onClick={() => {
-                    window.open(shareableLink, "_blank")
-                  }}
+                  onClick={() => window.open(shareableLink, "_blank", "noopener")}
                   variant="outline"
                 >
                   <ExternalLink className="h-4 w-4 mr-2" />
@@ -429,25 +371,18 @@ export function LMGTFYMain() {
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-2">
-              {[
-                "How to make pizza?",
-                "What is React?",
-                "Why is the sky blue?",
-                "Best restaurants near me",
-                "How to tie a tie?",
-                "What time is it?",
-              ].map((example) => (
-                <Badge
+              {EXAMPLE_QUERIES.map((example) => (
+                <button
                   key={example}
-                  variant="secondary"
-                  className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"
+                  type="button"
+                  className={cn(badgeVariants({ variant: "secondary" }), "hover:bg-primary hover:text-primary-foreground")}
                   onClick={() => {
                     setQuery(example)
-                    generateLink()
+                    generateLink(example)
                   }}
                 >
                   {example}
-                </Badge>
+                </button>
               ))}
             </div>
           </CardContent>
