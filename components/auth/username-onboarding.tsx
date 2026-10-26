@@ -5,21 +5,11 @@ import { AtSign, Loader2 } from "lucide-react"
 import { doc, getDoc, onSnapshot, serverTimestamp, setDoc } from "firebase/firestore"
 import { useAuth } from "@/components/auth/auth-provider"
 import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { db } from "@/lib/firebase/config"
-import {
-  getUsernameError,
-  normalizeUsernameInput,
-  USERNAME_MAX_LENGTH,
-} from "@/lib/account/username"
+import { getUsernameError, normalizeUsernameInput, USERNAME_MAX_LENGTH } from "@/lib/account/username"
 
 type ProfileCheck = { uid: string; needsUsername: boolean } | null
 
@@ -52,10 +42,7 @@ export function UsernameOnboarding() {
   }, [authLoading, user])
 
   const open = Boolean(
-    user &&
-      !user.isAnonymous &&
-      profileCheck?.uid === user.uid &&
-      profileCheck.needsUsername
+    user && !user.isAnonymous && profileCheck?.uid === user.uid && profileCheck.needsUsername
   )
 
   const saveUsername = async (event: React.FormEvent) => {
@@ -115,7 +102,10 @@ export function UsernameOnboarding() {
           <div className="space-y-2">
             <Label htmlFor="first-username">Username</Label>
             <div className="relative">
-              <AtSign className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+              <AtSign
+                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                aria-hidden="true"
+              />
               <Input
                 id="first-username"
                 value={username}

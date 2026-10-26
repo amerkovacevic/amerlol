@@ -80,7 +80,11 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
           </TabsList>
 
           <TabsContent value="email" className="mt-4 space-y-4">
-            <Tabs value={authMode} onValueChange={(value) => setAuthMode(value as AuthMode)} className="w-full">
+            <Tabs
+              value={authMode}
+              onValueChange={(value) => setAuthMode(value as AuthMode)}
+              className="w-full"
+            >
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="signin">Sign In</TabsTrigger>
                 <TabsTrigger value="signup">Sign Up</TabsTrigger>
@@ -131,7 +135,13 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
           </TabsContent>
 
           <TabsContent value="google" className="mt-4 space-y-4">
-            <Button type="button" variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={loading}>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={handleGoogleSignIn}
+              disabled={loading}
+            >
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

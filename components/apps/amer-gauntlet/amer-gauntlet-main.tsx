@@ -14,7 +14,17 @@ import {
   where,
 } from "firebase/firestore"
 import { motion } from "framer-motion"
-import { CheckCircle2, Flame, History, Lightbulb, Share2, Timer, TrendingUp, Trophy, XCircle } from "lucide-react"
+import {
+  CheckCircle2,
+  Flame,
+  History,
+  Lightbulb,
+  Share2,
+  Timer,
+  TrendingUp,
+  Trophy,
+  XCircle,
+} from "lucide-react"
 import { toast } from "sonner"
 import { useAppSettings } from "@/components/apps/settings-provider"
 import { AuthDialog } from "@/components/auth/auth-dialog"
@@ -93,7 +103,11 @@ async function loadDailyLeaderboard(date: string): Promise<LeaderboardEntry[]> {
 
 async function loadAllTimeLeaderboard(): Promise<LeaderboardEntry[]> {
   const snapshot = await getDocs(
-    query(collection(db, "amerGauntletAllTimeLeaderboard"), orderBy("totalScore", "desc"), limit(LEADERBOARD_LIMIT))
+    query(
+      collection(db, "amerGauntletAllTimeLeaderboard"),
+      orderBy("totalScore", "desc"),
+      limit(LEADERBOARD_LIMIT)
+    )
   )
   return snapshot.docs.map((entry) => {
     const data = entry.data()
@@ -118,7 +132,11 @@ async function loadAccountData(uid: string, date: string) {
     getDoc(doc(db, "users", uid, "amerGauntletResults", date)),
     getDoc(doc(db, "users", uid, "amerGauntletStats", "default")),
     getDocs(
-      query(collection(db, "users", uid, "amerGauntletResults"), orderBy("date", "desc"), limit(HISTORY_LIMIT))
+      query(
+        collection(db, "users", uid, "amerGauntletResults"),
+        orderBy("date", "desc"),
+        limit(HISTORY_LIMIT)
+      )
     ),
   ])
   const todayData = today.data()
@@ -239,7 +257,8 @@ export function AmerGauntletMain() {
       },
     }
     setFinished(game)
-    if (won) toast.success(`Congratulations! You solved it in ${attempts} attempt${attempts === 1 ? "" : "s"}!`)
+    if (won)
+      toast.success(`Congratulations! You solved it in ${attempts} attempt${attempts === 1 ? "" : "s"}!`)
     else toast.error(`The word was: ${word}`)
 
     try {
@@ -305,7 +324,11 @@ export function AmerGauntletMain() {
               <Flame className="h-3 w-3" />
               {stats.currentStreak}
             </Badge>
-            <Badge variant="outline" className="flex items-center gap-1" aria-label="Wins out of games played">
+            <Badge
+              variant="outline"
+              className="flex items-center gap-1"
+              aria-label="Wins out of games played"
+            >
               <Trophy className="h-3 w-3" />
               {stats.wins}/{stats.totalGames}
             </Badge>
@@ -351,7 +374,12 @@ export function AmerGauntletMain() {
                       Attempts: {guesses.length}/{MAX_ATTEMPTS}
                     </Badge>
                     {settings.showHints && !hintsUsed && (
-                      <Button variant="outline" size="sm" onClick={revealHint} className="flex items-center gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={revealHint}
+                        className="flex items-center gap-1"
+                      >
                         <Lightbulb className="h-3 w-3" />
                         Use Hint (-100 pts)
                       </Button>
@@ -390,7 +418,11 @@ export function AmerGauntletMain() {
                         )
                       }
                       onKeyDown={(event) => {
-                        if (event.key === "Enter" && settings.autoSubmit && currentGuess.length === word.length) {
+                        if (
+                          event.key === "Enter" &&
+                          settings.autoSubmit &&
+                          currentGuess.length === word.length
+                        ) {
                           submitGuess()
                         }
                       }}
@@ -425,7 +457,9 @@ export function AmerGauntletMain() {
                     </p>
                   </div>
 
-                  {rows.length > 0 && <Board word={word} rows={rows} guesses={shownGuesses} animate={false} />}
+                  {rows.length > 0 && (
+                    <Board word={word} rows={rows} guesses={shownGuesses} animate={false} />
+                  )}
 
                   <div className="grid grid-cols-3 gap-4">
                     <StatTile label="Attempts" value={todayGame.result.attempts} />
@@ -436,7 +470,9 @@ export function AmerGauntletMain() {
                   {rows.length > 0 && (
                     <Button
                       variant="outline"
-                      onClick={() => copyText(shareText(todayGame.result, rows), "Result copied to clipboard!")}
+                      onClick={() =>
+                        copyText(shareText(todayGame.result, rows), "Result copied to clipboard!")
+                      }
                     >
                       <Share2 className="mr-2 h-4 w-4" />
                       Share Result

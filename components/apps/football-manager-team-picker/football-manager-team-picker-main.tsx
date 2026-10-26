@@ -161,15 +161,28 @@ export function FootballManagerTeamPickerMain() {
         // Single picks avoid repeating the team that was just picked.
         team.id !== lastPick &&
         (!needle ||
-          [team.name, team.city, team.countryName, team.leagueName].some((text) => text.toLowerCase().includes(needle)))
+          [team.name, team.city, team.countryName, team.leagueName].some((text) =>
+            text.toLowerCase().includes(needle)
+          ))
     )
-  }, [allTeams, countryFilter, favorites, leagueFilter, options, pickedTeams, searchQuery, settings.showFavoritesOnly])
+  }, [
+    allTeams,
+    countryFilter,
+    favorites,
+    leagueFilter,
+    options,
+    pickedTeams,
+    searchQuery,
+    settings.showFavoritesOnly,
+  ])
 
   const saveToHistory = async (picked: LocatedTeam[]) => {
     if (!account || !settings.autoAddToHistory) return
     try {
       await Promise.all(
-        picked.map((team) => addDoc(historyPath(account.uid), { ...teamDocument(team), pickedAt: serverTimestamp() }))
+        picked.map((team) =>
+          addDoc(historyPath(account.uid), { ...teamDocument(team), pickedAt: serverTimestamp() })
+        )
       )
       accountData.reload()
     } catch (error) {
@@ -191,7 +204,9 @@ export function FootballManagerTeamPickerMain() {
     })
     if (relaxed) toast.warning(`Not enough teams in the same ${relaxed}. Picked from all available teams.`)
     setPickedTeams(picked)
-    toast.success(single ? `Picked: ${picked[0].name}` : `Picked ${picked.length} team${picked.length === 1 ? "" : "s"}`)
+    toast.success(
+      single ? `Picked: ${picked[0].name}` : `Picked ${picked.length} team${picked.length === 1 ? "" : "s"}`
+    )
     void saveToHistory(picked)
   }
 
@@ -210,7 +225,9 @@ export function FootballManagerTeamPickerMain() {
     } catch (error) {
       logUnexpectedError("team-picker:favorite", error)
       toast.error(
-        getErrorCode(error) === "permission-denied" ? "Permission denied. Please sign in." : "Failed to update favorites"
+        getErrorCode(error) === "permission-denied"
+          ? "Permission denied. Please sign in."
+          : "Failed to update favorites"
       )
     }
   }
@@ -218,7 +235,9 @@ export function FootballManagerTeamPickerMain() {
   const clearCollection = async (kind: "history" | "favorites") => {
     if (!account) return
     try {
-      const snapshot = await getDocs(kind === "history" ? historyPath(account.uid) : favoritesPath(account.uid))
+      const snapshot = await getDocs(
+        kind === "history" ? historyPath(account.uid) : favoritesPath(account.uid)
+      )
       await Promise.all(snapshot.docs.map((entry) => deleteDoc(entry.ref)))
       setFavoriteOverrides({})
       accountData.reload()
@@ -261,7 +280,12 @@ export function FootballManagerTeamPickerMain() {
   )
   const favoriteTeams = allTeams.filter((team) => favorites.has(team.id))
   const teamCard = (team: LocatedTeam, key: string) => (
-    <TeamCard key={key} team={team} favorite={favorites.has(team.id)} onToggleFavorite={() => toggleFavorite(team)} />
+    <TeamCard
+      key={key}
+      team={team}
+      favorite={favorites.has(team.id)}
+      onToggleFavorite={() => toggleFavorite(team)}
+    />
   )
   const signInPrompt = (icon: React.ReactNode, message: string) => (
     <Card>
@@ -335,7 +359,9 @@ export function FootballManagerTeamPickerMain() {
                       max={20}
                       value={options.numPicks}
                       onChange={(event) =>
-                        setOption({ numPicks: Math.max(2, Math.min(20, parseInt(event.target.value, 10) || 4)) })
+                        setOption({
+                          numPicks: Math.max(2, Math.min(20, parseInt(event.target.value, 10) || 4)),
+                        })
                       }
                     />
                   </div>
@@ -367,14 +393,18 @@ export function FootballManagerTeamPickerMain() {
                     label="Same Country Only"
                     description="All picked teams will be from the same country"
                     checked={options.sameCountry}
-                    onChange={(checked) => setOption({ sameCountry: checked, sameLeague: checked ? false : options.sameLeague })}
+                    onChange={(checked) =>
+                      setOption({ sameCountry: checked, sameLeague: checked ? false : options.sameLeague })
+                    }
                   />
                   <Toggle
                     id="same-league"
                     label="Same League Only"
                     description="All picked teams will be from the same league"
                     checked={options.sameLeague}
-                    onChange={(checked) => setOption({ sameLeague: checked, sameCountry: checked ? false : options.sameCountry })}
+                    onChange={(checked) =>
+                      setOption({ sameLeague: checked, sameCountry: checked ? false : options.sameCountry })
+                    }
                   />
                 </div>
               )}
@@ -489,7 +519,10 @@ export function FootballManagerTeamPickerMain() {
 
         <TabsContent value="history" className="space-y-4">
           {!account ? (
-            signInPrompt(<History className="h-12 w-12 text-muted-foreground" />, "Please sign in to view your pick history")
+            signInPrompt(
+              <History className="h-12 w-12 text-muted-foreground" />,
+              "Please sign in to view your pick history"
+            )
           ) : history.length === 0 ? (
             <Card>
               <CardContent className="py-12 text-center">
@@ -514,7 +547,10 @@ export function FootballManagerTeamPickerMain() {
 
         <TabsContent value="favorites" className="space-y-4">
           {!account ? (
-            signInPrompt(<Heart className="h-12 w-12 text-muted-foreground" />, "Please sign in to use favorites")
+            signInPrompt(
+              <Heart className="h-12 w-12 text-muted-foreground" />,
+              "Please sign in to use favorites"
+            )
           ) : favorites.size === 0 ? (
             <Card>
               <CardContent className="py-12 text-center">
@@ -607,7 +643,9 @@ function TeamCard({
             aria-pressed={favorite}
             aria-label={favorite ? `Remove ${team.name} from favorites` : `Add ${team.name} to favorites`}
           >
-            <Heart className={`h-4 w-4 ${favorite ? "fill-red-500 text-red-500" : "text-muted-foreground"}`} />
+            <Heart
+              className={`h-4 w-4 ${favorite ? "fill-red-500 text-red-500" : "text-muted-foreground"}`}
+            />
           </Button>
         </div>
       </CardHeader>
@@ -623,7 +661,9 @@ function TeamCard({
             {team.capacity && <span className="text-xs">({team.capacity.toLocaleString()} capacity)</span>}
           </div>
         )}
-        {team.established && <div className="text-xs text-muted-foreground">Established: {team.established}</div>}
+        {team.established && (
+          <div className="text-xs text-muted-foreground">Established: {team.established}</div>
+        )}
         {team.rivalry && team.rivalry.length > 0 && (
           <div className="flex flex-wrap gap-1 pt-2">
             <span className="text-xs text-muted-foreground">Rivalries:</span>

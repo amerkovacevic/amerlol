@@ -4,11 +4,14 @@ import * as codecs from "../lib/apps/codecs"
 const reversible = [codecs.base64, codecs.url, codecs.hex, codecs.binary, codecs.characterCodes]
 
 describe("text codecs", () => {
-  it.each(reversible.map((codec) => [codec.name, codec] as const))("%s round-trips Unicode text", (_name, codec) => {
-    for (const text of ["hello", "Café ünïcode", "emoji 👋🏽 and 漢字", ""]) {
-      expect(codec(codec(text, "encode"), "decode")).toBe(text)
+  it.each(reversible.map((codec) => [codec.name, codec] as const))(
+    "%s round-trips Unicode text",
+    (_name, codec) => {
+      for (const text of ["hello", "Café ünïcode", "emoji 👋🏽 and 漢字", ""]) {
+        expect(codec(codec(text, "encode"), "decode")).toBe(text)
+      }
     }
-  })
+  )
 
   it("encodes UTF-8 bytes rather than UTF-16 code units", () => {
     expect(codecs.base64("é", "encode")).toBe("w6k=")
@@ -40,6 +43,8 @@ describe("text codecs", () => {
 
   it("produces standard hash digests", async () => {
     expect(codecs.md5Hash("abc")).toBe("900150983cd24fb0d6963f7d28e17f72")
-    expect(await codecs.sha256Hash("abc")).toBe("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad")
+    expect(await codecs.sha256Hash("abc")).toBe(
+      "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    )
   })
 })

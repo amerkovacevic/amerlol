@@ -39,7 +39,10 @@ describe("Amer Gauntlet rules", () => {
   it("restarts the streak after a missed day and keeps the best", () => {
     let stats = nextStats(undefined, result({ date: "2026-03-01" }))
     stats = nextStats(stats, result({ date: "2026-03-02" }))
-    stats = nextStats(stats, result({ date: "2026-03-05", completed: false, score: 0, time: 200, attempts: 6 }))
+    stats = nextStats(
+      stats,
+      result({ date: "2026-03-05", completed: false, score: 0, time: 200, attempts: 6 })
+    )
     expect(stats).toMatchObject({ totalGames: 3, wins: 2, currentStreak: 0, bestStreak: 2, fastestTime: 95 })
   })
 })

@@ -15,18 +15,19 @@ export function AboutContent() {
         transition={{ duration: 0.5 }}
         className="max-w-3xl mx-auto"
       >
-        <h1 className="font-space-grotesk text-4xl md:text-5xl font-bold mb-6">
-          About amer.lol
-        </h1>
+        <h1 className="font-space-grotesk text-4xl md:text-5xl font-bold mb-6">About amer.lol</h1>
 
         <div className="prose prose-lg dark:prose-invert max-w-none mb-16">
           <p className="text-muted-foreground text-lg leading-relaxed">
-            I'm Amer, a platform engineer and amateur developer. I'm a big fan of the web and love to build things that are useful and fun.
-            I am slowly building things that I find useful in my daily life and share them here.
+            I'm Amer, a platform engineer and amateur developer. I'm a big fan of the web and love to build
+            things that are useful and fun. I am slowly building things that I find useful in my daily life
+            and share them here.
           </p>
         </div>
 
-        <div className="mb-10"><SignInReminder /></div>
+        <div className="mb-10">
+          <SignInReminder />
+        </div>
 
         <h2 className="font-space-grotesk text-3xl font-bold mb-8">Build Log</h2>
         <div className="space-y-4">

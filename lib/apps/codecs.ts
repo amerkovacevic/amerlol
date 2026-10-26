@@ -19,7 +19,8 @@ function bytesFromDigits(input: string, radix: 2 | 16): Uint8Array {
   const width = radix === 16 ? 2 : 8
   const valid = radix === 16 ? /^[0-9a-f]*$/i : /^[01]*$/
   const name = radix === 16 ? "Hex" : "Binary"
-  if (!valid.test(digits)) throw new Error(`${name} input may only contain ${radix === 16 ? "0-9 and A-F" : "0 and 1"}`)
+  if (!valid.test(digits))
+    throw new Error(`${name} input may only contain ${radix === 16 ? "0-9 and A-F" : "0 and 1"}`)
   if (digits.length % width) throw new Error(`${name} input must be whole bytes (${width} digits each)`)
   const bytes = new Uint8Array(digits.length / width)
   for (let index = 0; index < bytes.length; index++) {
@@ -40,7 +41,10 @@ export function base64(input: string, mode: CodecMode): string {
   } catch {
     throw new Error("That is not valid Base64")
   }
-  return decodeUtf8(Uint8Array.from(binary, (character) => character.charCodeAt(0)), "Base64")
+  return decodeUtf8(
+    Uint8Array.from(binary, (character) => character.charCodeAt(0)),
+    "Base64"
+  )
 }
 
 export function url(input: string, mode: CodecMode): string {
@@ -53,12 +57,14 @@ export function url(input: string, mode: CodecMode): string {
 }
 
 export function hex(input: string, mode: CodecMode): string {
-  if (mode === "encode") return Array.from(encoder.encode(input), (byte) => byte.toString(16).padStart(2, "0")).join("")
+  if (mode === "encode")
+    return Array.from(encoder.encode(input), (byte) => byte.toString(16).padStart(2, "0")).join("")
   return decodeUtf8(bytesFromDigits(input, 16), "Hex")
 }
 
 export function binary(input: string, mode: CodecMode): string {
-  if (mode === "encode") return Array.from(encoder.encode(input), (byte) => byte.toString(2).padStart(8, "0")).join(" ")
+  if (mode === "encode")
+    return Array.from(encoder.encode(input), (byte) => byte.toString(2).padStart(8, "0")).join(" ")
   return decodeUtf8(bytesFromDigits(input, 2), "Binary")
 }
 
@@ -86,14 +92,60 @@ export function caesar(input: string, mode: CodecMode, shift: number): string {
 export const rot13 = (input: string) => caesar(input, "encode", 13)
 
 const MORSE_CODE: Record<string, string> = {
-  A: ".-", B: "-...", C: "-.-.", D: "-..", E: ".", F: "..-.", G: "--.", H: "....", I: "..", J: ".---",
-  K: "-.-", L: ".-..", M: "--", N: "-.", O: "---", P: ".--.", Q: "--.-", R: ".-.", S: "...", T: "-",
-  U: "..-", V: "...-", W: ".--", X: "-..-", Y: "-.--", Z: "--..",
-  "0": "-----", "1": ".----", "2": "..---", "3": "...--", "4": "....-",
-  "5": ".....", "6": "-....", "7": "--...", "8": "---..", "9": "----.",
-  ".": ".-.-.-", ",": "--..--", "?": "..--..", "'": ".----.", "!": "-.-.--", "/": "-..-.", "(": "-.--.",
-  ")": "-.--.-", "&": ".-...", ":": "---...", ";": "-.-.-.", "=": "-...-", "+": ".-.-.", "-": "-....-",
-  _: "..--.-", '"': ".-..-.", $: "...-..-", "@": ".--.-.",
+  A: ".-",
+  B: "-...",
+  C: "-.-.",
+  D: "-..",
+  E: ".",
+  F: "..-.",
+  G: "--.",
+  H: "....",
+  I: "..",
+  J: ".---",
+  K: "-.-",
+  L: ".-..",
+  M: "--",
+  N: "-.",
+  O: "---",
+  P: ".--.",
+  Q: "--.-",
+  R: ".-.",
+  S: "...",
+  T: "-",
+  U: "..-",
+  V: "...-",
+  W: ".--",
+  X: "-..-",
+  Y: "-.--",
+  Z: "--..",
+  "0": "-----",
+  "1": ".----",
+  "2": "..---",
+  "3": "...--",
+  "4": "....-",
+  "5": ".....",
+  "6": "-....",
+  "7": "--...",
+  "8": "---..",
+  "9": "----.",
+  ".": ".-.-.-",
+  ",": "--..--",
+  "?": "..--..",
+  "'": ".----.",
+  "!": "-.-.--",
+  "/": "-..-.",
+  "(": "-.--.",
+  ")": "-.--.-",
+  "&": ".-...",
+  ":": "---...",
+  ";": "-.-.-.",
+  "=": "-...-",
+  "+": ".-.-.",
+  "-": "-....-",
+  _: "..--.-",
+  '"': ".-..-.",
+  $: "...-..-",
+  "@": ".--.-.",
 }
 const MORSE_REVERSE = Object.fromEntries(Object.entries(MORSE_CODE).map(([letter, code]) => [code, letter]))
 
@@ -109,7 +161,12 @@ export function morse(input: string, mode: CodecMode): string {
   return input
     .trim()
     .split(/\s*\/\s*/)
-    .map((word) => word.split(/\s+/).map((code) => MORSE_REVERSE[code] ?? code).join(""))
+    .map((word) =>
+      word
+        .split(/\s+/)
+        .map((code) => MORSE_REVERSE[code] ?? code)
+        .join("")
+    )
     .join(" ")
 }
 

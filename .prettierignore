@@ -1,6 +1,9 @@
 .next
 out
 node_modules
+coverage
+public
 package-lock.json
-public/data
 firestore.rules
+firestore.indexes.json
+*.md

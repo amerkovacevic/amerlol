@@ -33,19 +33,25 @@ interface AppComponents {
 // Every app must be registered here; a missing entry fails type checking.
 const APP_COMPONENTS: Record<AppId, AppComponents> = {
   "football-deepcuts": {
-    Main: lazy(() => import("@/components/apps/football-deepcuts/football-deepcuts-main").then((m) => m.FootballDeepcutsMain)),
+    Main: lazy(() =>
+      import("@/components/apps/football-deepcuts/football-deepcuts-main").then((m) => m.FootballDeepcutsMain)
+    ),
     additionalTabs: [
       {
         value: "leaderboard",
         label: "Leaderboard",
         Component: lazy(() =>
-          import("@/components/apps/football-deepcuts/football-deepcuts-leaderboard").then((m) => m.FootballDeepcutsLeaderboard)
+          import("@/components/apps/football-deepcuts/football-deepcuts-leaderboard").then(
+            (m) => m.FootballDeepcutsLeaderboard
+          )
         ),
       },
     ],
   },
   "atlas-sprint": {
-    Main: lazy(() => import("@/components/apps/atlas-sprint/atlas-sprint-main").then((m) => m.AtlasSprintMain)),
+    Main: lazy(() =>
+      import("@/components/apps/atlas-sprint/atlas-sprint-main").then((m) => m.AtlasSprintMain)
+    ),
   },
   "next-watch": {
     Main: lazy(() => import("@/components/apps/next-watch/next-watch-main").then((m) => m.NextWatchMain)),
@@ -57,13 +63,19 @@ const APP_COMPONENTS: Record<AppId, AppComponents> = {
     Main: lazy(() => import("@/components/apps/diffchecker/diff-checker").then((m) => m.DiffChecker)),
   },
   timezone: {
-    Main: lazy(() => import("@/components/apps/timezone/timezone-converter").then((m) => m.TimeZoneConverter)),
+    Main: lazy(() =>
+      import("@/components/apps/timezone/timezone-converter").then((m) => m.TimeZoneConverter)
+    ),
   },
   "pickup-soccer": {
-    Main: lazy(() => import("@/components/apps/pickup-soccer/pickup-soccer-main").then((m) => m.PickupSoccerMain)),
+    Main: lazy(() =>
+      import("@/components/apps/pickup-soccer/pickup-soccer-main").then((m) => m.PickupSoccerMain)
+    ),
   },
   "secret-santa": {
-    Main: lazy(() => import("@/components/apps/secret-santa/secret-santa-main").then((m) => m.SecretSantaMain)),
+    Main: lazy(() =>
+      import("@/components/apps/secret-santa/secret-santa-main").then((m) => m.SecretSantaMain)
+    ),
   },
   "football-manager-team-picker": {
     Main: lazy(() =>
@@ -74,11 +86,15 @@ const APP_COMPONENTS: Record<AppId, AppComponents> = {
   },
   "color-palette-crafter": {
     Main: lazy(() =>
-      import("@/components/apps/color-palette-crafter/color-palette-crafter-main").then((m) => m.ColorPaletteCrafterMain)
+      import("@/components/apps/color-palette-crafter/color-palette-crafter-main").then(
+        (m) => m.ColorPaletteCrafterMain
+      )
     ),
   },
   "amer-gauntlet": {
-    Main: lazy(() => import("@/components/apps/amer-gauntlet/amer-gauntlet-main").then((m) => m.AmerGauntletMain)),
+    Main: lazy(() =>
+      import("@/components/apps/amer-gauntlet/amer-gauntlet-main").then((m) => m.AmerGauntletMain)
+    ),
   },
   "stl-monitor": {
     Main: lazy(() => import("@/components/apps/stl-monitor/stl-monitor-main").then((m) => m.STLMonitorMain)),
@@ -102,7 +118,11 @@ export function HubApp({ appId }: { appId: AppId }) {
     <AppShellLayout
       app={app}
       settingsContent={<Settings />}
-      additionalTabs={additionalTabs.map(({ value, label, Component }) => ({ value, label, content: <Component /> }))}
+      additionalTabs={additionalTabs.map(({ value, label, Component }) => ({
+        value,
+        label,
+        content: <Component />,
+      }))}
     >
       <Main />
     </AppShellLayout>

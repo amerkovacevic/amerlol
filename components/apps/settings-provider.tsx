@@ -1,12 +1,7 @@
 "use client"
 
 import * as React from "react"
-import {
-  doc,
-  onSnapshot,
-  runTransaction,
-  serverTimestamp,
-} from "firebase/firestore"
+import { doc, onSnapshot, runTransaction, serverTimestamp } from "firebase/firestore"
 import { useAuth } from "@/components/auth/auth-provider"
 import { db } from "@/lib/firebase/config"
 import {
@@ -36,9 +31,7 @@ function localSettings(appId: SettingsAppId, key: string, legacy: boolean) {
   const definition = settingsDefinition(appId)
   const raw =
     localStorage.getItem(key) ??
-    (legacy && definition.legacyKey
-      ? localStorage.getItem(definition.legacyKey)
-      : null)
+    (legacy && definition.legacyKey ? localStorage.getItem(definition.legacyKey) : null)
   return readSettings(appId, raw ? JSON.parse(raw) : null)
 }
 
@@ -99,9 +92,7 @@ function SettingsSession({
       return onSnapshot(
         doc(db, "users", uid, definition.collection, "default"),
         (snapshot) => {
-          setValues(
-            readSettings(appId, snapshot.exists() ? snapshot.data() : null)
-          )
+          setValues(readSettings(appId, snapshot.exists() ? snapshot.data() : null))
           setLoading(false)
         },
         () => {
@@ -115,33 +106,17 @@ function SettingsSession({
         setValues(localSettings(appId, key, true))
         setError("")
       } catch {
-        setError(
-          "Stored settings could not be read. Your existing data has been left untouched."
-        )
+        setError("Stored settings could not be read. Your existing data has been left untouched.")
       }
       setLoading(false)
     }
     load()
     const changed = (event: StorageEvent) => {
-      if (
-        event.key === key ||
-        event.key === definition.legacyKey ||
-        event.key === null
-      )
-        load()
+      if (event.key === key || event.key === definition.legacyKey || event.key === null) load()
     }
     window.addEventListener("storage", changed)
     return () => window.removeEventListener("storage", changed)
-  }, [
-    appId,
-    attempt,
-    cloud,
-    definition.collection,
-    definition.legacyKey,
-    key,
-    uid,
-    waiting,
-  ])
+  }, [appId, attempt, cloud, definition.collection, definition.legacyKey, key, uid, waiting])
 
   const save = async (draft: SettingsValues, baseline: SettingsValues) => {
     if (waiting || loading || error || saving)
@@ -149,8 +124,7 @@ function SettingsSession({
     const validated = validateSettings(appId, draft)
     const changes = Object.fromEntries(
       Object.entries(validated).filter(
-        ([field, value]) =>
-          JSON.stringify(value) !== JSON.stringify(baseline[field])
+        ([field, value]) => JSON.stringify(value) !== JSON.stringify(baseline[field])
       )
     )
     if (!Object.keys(changes).length) return
@@ -160,14 +134,9 @@ function SettingsSession({
         const ref = doc(db, "users", uid, definition.collection, "default")
         await runTransaction(db, async (transaction) => {
           const snapshot = await transaction.get(ref)
-          const current = readSettings(
-            appId,
-            snapshot.exists() ? snapshot.data() : null
-          )
+          const current = readSettings(appId, snapshot.exists() ? snapshot.data() : null)
           for (const field of Object.keys(changes)) {
-            if (
-              JSON.stringify(current[field]) !== JSON.stringify(baseline[field])
-            )
+            if (JSON.stringify(current[field]) !== JSON.stringify(baseline[field]))
               throw new Error(
                 "These settings changed on another device. Cancel your draft to reload, then try again."
               )
@@ -186,20 +155,13 @@ function SettingsSession({
         // Preserve unknown fields in existing local documents, just as merge writes do remotely.
         const saved =
           localStorage.getItem(key) ??
-          (definition.legacyKey
-            ? localStorage.getItem(definition.legacyKey)
-            : null)
+          (definition.legacyKey ? localStorage.getItem(definition.legacyKey) : null)
         const raw: unknown = saved ? JSON.parse(saved) : {}
         const current = readSettings(appId, raw)
         for (const field of Object.keys(changes)) {
           // Legacy keys are read-only fallbacks until the first explicit save.
-          if (
-            saved &&
-            JSON.stringify(current[field]) !== JSON.stringify(baseline[field])
-          )
-            throw new Error(
-              "Settings changed in another tab. Cancel your draft and try again."
-            )
+          if (saved && JSON.stringify(current[field]) !== JSON.stringify(baseline[field]))
+            throw new Error("Settings changed in another tab. Cancel your draft and try again.")
         }
         const merged = {
           ...(raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {}),
@@ -240,11 +202,8 @@ export function useSettingsContext() {
   return context
 }
 
-export function useAppSettings<K extends SettingsAppId>(
-  appId: K
-): AppSettings<K> {
+export function useAppSettings<K extends SettingsAppId>(appId: K): AppSettings<K> {
   const context = useSettingsContext()
-  if (context.appId !== appId)
-    throw new Error(`Wrong settings provider for ${appId}`)
+  if (context.appId !== appId) throw new Error(`Wrong settings provider for ${appId}`)
   return context.values as AppSettings<K>
 }

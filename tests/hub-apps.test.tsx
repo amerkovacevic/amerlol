@@ -1,13 +1,6 @@
 import * as React from "react"
 import { beforeEach, afterEach, expect, it, vi } from "vitest"
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-  within,
-} from "@testing-library/react"
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { APP_REGISTRY } from "../lib/apps/registry"
 import { HubApp } from "../lib/apps/components"
@@ -43,9 +36,7 @@ vi.mock("@/components/apps/atlas-sprint/country-map", () => ({
   ),
 }))
 vi.mock("@/components/apps/stl-monitor/map-component", () => ({
-  default: (props: { mapStyle: string }) => (
-    <div data-testid="incident-map" data-style={props.mapStyle} />
-  ),
+  default: (props: { mapStyle: string }) => <div data-testid="incident-map" data-style={props.mapStyle} />,
 }))
 vi.mock("@/components/apps/stl-monitor/data-service", () => ({
   fetchMoDOTIncidents: mocks.incidentFetch,
@@ -77,10 +68,7 @@ vi.mock("firebase/firestore", async (original) => ({
       mocks.listeners.delete(ref)
     }
   },
-  runTransaction: async (
-    _db: unknown,
-    callback: (transaction: unknown) => Promise<void>
-  ) =>
+  runTransaction: async (_db: unknown, callback: (transaction: unknown) => Promise<void>) =>
     callback({
       get: async (ref: string) => ({
         exists: () => mocks.documents.has(ref),
@@ -186,7 +174,9 @@ async function save() {
 for (const app of APP_REGISTRY)
   it(`${app.appId}: renders a usable settings panel without writing any app data on visit`, async () => {
     await mount(app.appId)
-    expect(screen.getAllByRole("heading", { level: 1 }).map((heading) => heading.textContent)).toEqual([app.name])
+    expect(screen.getAllByRole("heading", { level: 1 }).map((heading) => heading.textContent)).toEqual([
+      app.name,
+    ])
     await openSettings()
     if (app.appId === "stickr") await screen.findByText("Stickr Settings")
     else {
@@ -206,9 +196,7 @@ it("keeps text in memory when switching tabs and applies diff preferences to the
     target: { value: "hello" },
   })
   await openSettings()
-  await userEvent.click(
-    screen.getByRole("checkbox", { name: "Ignore letter case" })
-  )
+  await userEvent.click(screen.getByRole("checkbox", { name: "Ignore letter case" }))
   await userEvent.click(
     screen.getByRole("checkbox", {
       name: "Ignore leading and trailing whitespace",
@@ -219,17 +207,11 @@ it("keeps text in memory when switching tabs and applies diff preferences to the
   })
   await save()
   await overview()
-  expect(
-    (
-      screen.getByPlaceholderText(
-        "Enter original text here..."
-      ) as HTMLTextAreaElement
-    ).value
-  ).toBe(" Hello ")
-  await userEvent.click(screen.getByRole("button", { name: "Find Difference" }))
-  expect(screen.getByText("Hello").parentElement?.className).toContain(
-    "bg-transparent"
+  expect((screen.getByPlaceholderText("Enter original text here...") as HTMLTextAreaElement).value).toBe(
+    " Hello "
   )
+  await userEvent.click(screen.getByRole("button", { name: "Find Difference" }))
+  expect(screen.getByText("Hello").parentElement?.className).toContain("bg-transparent")
   expect(document.querySelector("pre")?.style.fontSize).toBe("20px")
 })
 
@@ -243,12 +225,8 @@ it("applies time zone defaults and display preferences", async () => {
     target: { value: "24" },
   })
   await userEvent.click(screen.getByRole("checkbox", { name: "Show seconds" }))
-  await userEvent.click(
-    screen.getByRole("checkbox", { name: "Show day/night indicator" })
-  )
-  await userEvent.click(
-    screen.getByRole("checkbox", { name: "Refresh automatically" })
-  )
+  await userEvent.click(screen.getByRole("checkbox", { name: "Show day/night indicator" }))
+  await userEvent.click(screen.getByRole("checkbox", { name: "Refresh automatically" }))
   await save()
   await overview()
   expect(screen.getByText("Kolkata")).toBeTruthy()
@@ -266,9 +244,7 @@ it("applies encoding tool defaults and preserves input across hub settings tabs"
   })
   await save()
   await overview()
-  expect(
-    screen.getByRole("tab", { name: "Hex" }).getAttribute("data-state")
-  ).toBe("active")
+  expect(screen.getByRole("tab", { name: "Hex" }).getAttribute("data-state")).toBe("active")
 })
 
 it("embeds playback settings in generated search links and accepts literal percent characters", async () => {
@@ -277,20 +253,13 @@ it("embeds playback settings in generated search links and accepts literal perce
   fireEvent.change(screen.getByLabelText("Animation speed"), {
     target: { value: "2" },
   })
-  fireEvent.change(
-    screen.getByLabelText("Delay before search (milliseconds)"),
-    { target: { value: "500" } }
-  )
-  await userEvent.click(
-    screen.getByRole("checkbox", { name: "Show query during animation" })
-  )
+  fireEvent.change(screen.getByLabelText("Delay before search (milliseconds)"), { target: { value: "500" } })
+  await userEvent.click(screen.getByRole("checkbox", { name: "Show query during animation" }))
   await save()
   await overview()
   const input = screen.getByLabelText("Search Query")
   fireEvent.change(input, { target: { value: "100% real" } })
-  await userEvent.click(
-    screen.getByRole("button", { name: "Generate Shareable Link" })
-  )
+  await userEvent.click(screen.getByRole("button", { name: "Generate Shareable Link" }))
   const url = new URL(document.querySelector("code")!.textContent!)
   expect(url.searchParams.get("q")).toBe("100% real")
   expect(url.searchParams.get("speed")).toBe("2")
@@ -302,12 +271,8 @@ it("shows the missing Deepcuts display settings and applies them", async () => {
   await mount("football-deepcuts")
   await screen.findByText("7 sourced answers in the database")
   await openSettings()
-  await userEvent.click(
-    screen.getByRole("checkbox", { name: "Show sourced answer counts" })
-  )
-  await userEvent.click(
-    screen.getByRole("checkbox", { name: "Show question mix guide" })
-  )
+  await userEvent.click(screen.getByRole("checkbox", { name: "Show sourced answer counts" }))
+  await userEvent.click(screen.getByRole("checkbox", { name: "Show question mix guide" }))
   await save()
   await overview()
   expect(screen.queryByText("7 sourced answers in the database")).toBeNull()
@@ -323,9 +288,7 @@ it("preserves an existing watchlist while changing Next Watch preferences", asyn
   await mount("next-watch")
   await screen.findByText("1999")
   await openSettings()
-  await userEvent.click(
-    screen.getByRole("checkbox", { name: "Show movie release years" })
-  )
+  await userEvent.click(screen.getByRole("checkbox", { name: "Show movie release years" }))
   await save()
   await overview()
   expect(screen.queryByText("1999")).toBeNull()
@@ -353,9 +316,7 @@ it("Stickr preference reset leaves album and both sticker lists intact", async (
   )
   await mount("stickr")
   await openSettings()
-  await userEvent.click(
-    await screen.findByRole("button", { name: "Reset display preferences" })
-  )
+  await userEvent.click(await screen.findByRole("button", { name: "Reset display preferences" }))
   const saved = JSON.parse(localStorage.getItem("stickr-v1")!)
   expect(saved.duplicates).toEqual(["1", "2"])
   expect(saved.needs).toEqual(["3"])
@@ -376,12 +337,8 @@ it("applies Pickup Soccer defaults to new forms without creating a game", async 
   await save()
   await overview()
   await userEvent.click(screen.getByRole("button", { name: "Create Game" }))
-  expect(
-    (screen.getByLabelText("Max Players *") as HTMLInputElement).value
-  ).toBe("16")
-  expect((screen.getByLabelText("Location *") as HTMLInputElement).value).toBe(
-    "Forest Park"
-  )
+  expect((screen.getByLabelText("Max Players *") as HTMLInputElement).value).toBe("16")
+  expect((screen.getByLabelText("Location *") as HTMLInputElement).value).toBe("Forest Park")
   expect(mocks.writes).not.toHaveBeenCalled()
 })
 
@@ -394,9 +351,7 @@ it("applies Secret Santa's budget only to a new exchange form", async () => {
   await save()
   await overview()
   await userEvent.click(screen.getByRole("button", { name: "Create Exchange" }))
-  expect((screen.getByLabelText(/Budget/) as HTMLInputElement).value).toBe(
-    "$50"
-  )
+  expect((screen.getByLabelText(/Budget/) as HTMLInputElement).value).toBe("$50")
   expect(mocks.writes).not.toHaveBeenCalled()
 })
 
@@ -431,37 +386,25 @@ it("applies Football Manager picking defaults to the active controls", async () 
 it("updates Atlas Sprint's map focus preference during an active game", async () => {
   await mount("atlas-sprint")
   await userEvent.click(screen.getByRole("button", { name: /Start/i }))
-  expect(screen.getByTestId("country-map").getAttribute("data-focus")).toBe(
-    "true"
-  )
+  expect(screen.getByTestId("country-map").getAttribute("data-focus")).toBe("true")
   await openSettings()
-  await userEvent.click(
-    screen.getByRole("checkbox", { name: "Focus map on correct answers" })
-  )
+  await userEvent.click(screen.getByRole("checkbox", { name: "Focus map on correct answers" }))
   await save()
   await overview()
-  expect(screen.getByTestId("country-map").getAttribute("data-focus")).toBe(
-    "false"
-  )
+  expect(screen.getByTestId("country-map").getAttribute("data-focus")).toBe("false")
   expect(screen.getByLabelText("Country")).toBeTruthy()
 })
 
 it("applies Gauntlet hint visibility without resetting a running game", async () => {
   mocks.user = { uid: "player" }
   await mount("amer-gauntlet")
-  await userEvent.click(
-    await screen.findByRole("button", { name: "Start Challenge" })
-  )
-  expect(
-    screen.getByRole("button", { name: "Use Hint (-100 pts)" })
-  ).toBeTruthy()
+  await userEvent.click(await screen.findByRole("button", { name: "Start Challenge" }))
+  expect(screen.getByRole("button", { name: "Use Hint (-100 pts)" })).toBeTruthy()
   await openSettings()
   await userEvent.click(screen.getByRole("checkbox", { name: "Enable hints" }))
   await save()
   await overview()
-  expect(
-    screen.queryByRole("button", { name: "Use Hint (-100 pts)" })
-  ).toBeNull()
+  expect(screen.queryByRole("button", { name: "Use Hint (-100 pts)" })).toBeNull()
   expect(screen.queryByRole("button", { name: "Start Challenge" })).toBeNull()
 })
 
@@ -474,9 +417,7 @@ it("applies STL Monitor's map appearance preference", async () => {
   })
   await save()
   await overview()
-  expect(screen.getByTestId("incident-map").getAttribute("data-style")).toBe(
-    "light"
-  )
+  expect(screen.getByTestId("incident-map").getAttribute("data-style")).toBe("light")
 })
 
 it("generates a Let Me Google That link straight from an example query", async () => {

@@ -21,7 +21,11 @@ export function buildPlayerSearchIndex(players: readonly FootballPlayer[]): Play
 }
 
 /** Searches the general player index. It has no access to question answers. */
-export function searchPlayers(index: readonly PlayerSearchEntry[], query: string, limit = 8): PlayerSearchEntry[] {
+export function searchPlayers(
+  index: readonly PlayerSearchEntry[],
+  query: string,
+  limit = 8
+): PlayerSearchEntry[] {
   const normalized = normalizeSearchText(query)
   if (normalized.length < 2 || !Number.isInteger(limit) || limit < 1) return []
   return index

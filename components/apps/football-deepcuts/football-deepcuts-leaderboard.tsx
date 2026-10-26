@@ -43,7 +43,9 @@ export function FootballDeepcutsLeaderboard() {
       </div>
       {Boolean(error) && (
         <Card>
-          <CardContent className="p-6 text-sm text-destructive">The leaderboard could not be loaded.</CardContent>
+          <CardContent className="p-6 text-sm text-destructive">
+            The leaderboard could not be loaded.
+          </CardContent>
         </Card>
       )}
       <Card>

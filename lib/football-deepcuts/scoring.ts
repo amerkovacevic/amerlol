@@ -20,7 +20,7 @@ export const DEFAULT_SCORING_TIERS: readonly ScoringTier[] = [
 export function scoreClubPair(
   clubAAppearances: number | undefined,
   clubBAppearances: number | undefined,
-  tiers: readonly ScoringTier[] = DEFAULT_SCORING_TIERS,
+  tiers: readonly ScoringTier[] = DEFAULT_SCORING_TIERS
 ): RarityPoints {
   if (!Number.isInteger(clubAAppearances) || !Number.isInteger(clubBAppearances)) {
     throw new Error("Verified appearance counts are required for both clubs")
@@ -32,7 +32,7 @@ export function scoreClubPair(
   const minimum = Math.min(clubAAppearances!, clubBAppearances!)
   const tier = tiers.find(
     ({ minAppearances, maxAppearances }) =>
-      minimum >= minAppearances && (maxAppearances === null || minimum <= maxAppearances),
+      minimum >= minAppearances && (maxAppearances === null || minimum <= maxAppearances)
   )
   if (!tier) throw new Error(`No scoring tier covers ${minimum} appearances`)
   return tier.points

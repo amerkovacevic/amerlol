@@ -15,10 +15,18 @@ function seededValue(seed: string, value: string): number {
   return hash >>> 0
 }
 
-export function selectDailyQuestions(candidates: readonly QuestionBankEntry[], options: SelectionOptions): QuestionBankEntry[] {
+export function selectDailyQuestions(
+  candidates: readonly QuestionBankEntry[],
+  options: SelectionOptions
+): QuestionBankEntry[] {
   const count = options.count ?? 5
   if (!Number.isInteger(count) || count < 1) throw new Error("Question count must be a positive integer")
-  const eligible = candidates.filter((candidate) => candidate.status === "approved" && !candidate.hasIdentityConflicts && !options.recentPairIds?.has(candidate.id))
+  const eligible = candidates.filter(
+    (candidate) =>
+      candidate.status === "approved" &&
+      !candidate.hasIdentityConflicts &&
+      !options.recentPairIds?.has(candidate.id)
+  )
   const ordered = [...eligible].sort((a, b) => {
     const aPreferred = a.answerCount >= 15 && a.answerCount <= 40 ? 1 : 0
     const bPreferred = b.answerCount >= 15 && b.answerCount <= 40 ? 1 : 0
@@ -27,7 +35,8 @@ export function selectDailyQuestions(candidates: readonly QuestionBankEntry[], o
     if (tierDifference) return tierDifference
     return seededValue(options.seed, a.id) - seededValue(options.seed, b.id)
   })
-  if (ordered.length < count) throw new Error(`Only ${ordered.length} eligible questions are available; ${count} required`)
+  if (ordered.length < count)
+    throw new Error(`Only ${ordered.length} eligible questions are available; ${count} required`)
 
   const selected: QuestionBankEntry[] = []
   const clubUse = new Map<string, number>()

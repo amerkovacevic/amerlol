@@ -47,7 +47,9 @@ function getAllZones(): Zone[] {
 }
 
 const isDaytime = (zone: string, date: Date) => {
-  const hour = Number(new Intl.DateTimeFormat("en-US", { timeZone: zone, hour: "numeric", hourCycle: "h23" }).format(date))
+  const hour = Number(
+    new Intl.DateTimeFormat("en-US", { timeZone: zone, hour: "numeric", hourCycle: "h23" }).format(date)
+  )
   return hour >= 6 && hour < 18
 }
 
@@ -68,7 +70,8 @@ export function TimeZoneConverter() {
   const settings = useAppSettings("timezone")
   const zoneDefaultsKey = settings.defaultTimeZones.join(",")
   const defaultZones = React.useMemo(
-    () => zoneDefaultsKey.split(",").map((id) => POPULAR_ZONES.find((zone) => zone.id === id) ?? zoneFromId(id)),
+    () =>
+      zoneDefaultsKey.split(",").map((id) => POPULAR_ZONES.find((zone) => zone.id === id) ?? zoneFromId(id)),
     [zoneDefaultsKey]
   )
   // Saved defaults replace the list; additions and removals last until they change.
@@ -124,17 +127,29 @@ export function TimeZoneConverter() {
             <Calendar className="h-5 w-5" />
             Select Date & Time
           </CardTitle>
-          <CardDescription>Choose a specific date and time to convert, or leave empty to use current time</CardDescription>
+          <CardDescription>
+            Choose a specific date and time to convert, or leave empty to use current time
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col gap-4 sm:flex-row">
             <div className="flex-1 space-y-2">
               <Label htmlFor="date">Date</Label>
-              <Input id="date" type="date" value={selectedDate} onChange={(event) => setSelectedDate(event.target.value)} />
+              <Input
+                id="date"
+                type="date"
+                value={selectedDate}
+                onChange={(event) => setSelectedDate(event.target.value)}
+              />
             </div>
             <div className="flex-1 space-y-2">
               <Label htmlFor="time">Time</Label>
-              <Input id="time" type="time" value={selectedTime} onChange={(event) => setSelectedTime(event.target.value)} />
+              <Input
+                id="time"
+                type="time"
+                value={selectedTime}
+                onChange={(event) => setSelectedTime(event.target.value)}
+              />
             </div>
             {(selectedDate || selectedTime) && (
               <div className="flex items-end">
@@ -175,13 +190,20 @@ export function TimeZoneConverter() {
             </div>
             <div className="max-h-60 space-y-2 overflow-y-auto">
               {searchResults.map((zone) => (
-                <Button key={zone.id} variant="ghost" className="h-auto w-full justify-between py-2" onClick={() => addZone(zone)}>
+                <Button
+                  key={zone.id}
+                  variant="ghost"
+                  className="h-auto w-full justify-between py-2"
+                  onClick={() => addZone(zone)}
+                >
                   <span className="text-left">
                     <span className="block font-medium">{zone.city}</span>
                     <span className="block text-sm text-muted-foreground">{zone.id}</span>
                   </span>
                   {displayDate && (
-                    <span className="text-sm text-muted-foreground">{timezoneOffset(zone.id, displayDate)}</span>
+                    <span className="text-sm text-muted-foreground">
+                      {timezoneOffset(zone.id, displayDate)}
+                    </span>
                   )}
                 </Button>
               ))}
@@ -216,24 +238,34 @@ export function TimeZoneConverter() {
                 <div className="flex items-center justify-between">
                   {settings.showDayNight && displayDate ? (
                     <span className="flex items-center gap-2 text-sm font-medium">
-                      {day ? <Sun className="h-5 w-5 text-yellow-500" /> : <Moon className="h-5 w-5 text-blue-500" />}
+                      {day ? (
+                        <Sun className="h-5 w-5 text-yellow-500" />
+                      ) : (
+                        <Moon className="h-5 w-5 text-blue-500" />
+                      )}
                       {day ? "Day" : "Night"}
                     </span>
                   ) : (
                     <span />
                   )}
                   {displayDate && (
-                    <span className="text-sm text-muted-foreground">{timezoneOffset(zone.id, displayDate)}</span>
+                    <span className="text-sm text-muted-foreground">
+                      {timezoneOffset(zone.id, displayDate)}
+                    </span>
                   )}
                 </div>
 
                 <div className="space-y-1">
                   <div className="font-mono text-2xl font-bold">
-                    {displayDate ? formatZoneTime(zone.id, displayDate, settings.timeFormat, settings.showSeconds) : "--:--"}
+                    {displayDate
+                      ? formatZoneTime(zone.id, displayDate, settings.timeFormat, settings.showSeconds)
+                      : "--:--"}
                   </div>
                   <div className="text-sm text-muted-foreground">
                     {displayDate
-                      ? new Intl.DateTimeFormat("en-US", { timeZone: zone.id, dateStyle: "medium" }).format(displayDate)
+                      ? new Intl.DateTimeFormat("en-US", { timeZone: zone.id, dateStyle: "medium" }).format(
+                          displayDate
+                        )
                       : " "}
                   </div>
                 </div>
@@ -264,7 +296,9 @@ export function TimeZoneConverter() {
         <Card>
           <CardContent className="py-12 text-center">
             <Clock className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
-            <p className="mb-4 text-muted-foreground">No time zones selected. Add a time zone to get started.</p>
+            <p className="mb-4 text-muted-foreground">
+              No time zones selected. Add a time zone to get started.
+            </p>
             <Button onClick={() => setShowSearch(true)}>
               <Plus className="mr-2 h-4 w-4" />
               Add Time Zone

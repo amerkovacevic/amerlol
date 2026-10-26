@@ -5,7 +5,12 @@ import { doc, getDoc, onSnapshot, serverTimestamp, setDoc } from "firebase/fires
 import { useAuth } from "@/components/auth/auth-provider"
 import { db } from "@/lib/firebase/config"
 import { readStorage, writeStorage } from "@/lib/storage"
-import { DEFAULT_THEME_COLOR, isThemeColor, THEME_COLOR_STORAGE_KEY, type ThemeColor } from "@/lib/theme-colors"
+import {
+  DEFAULT_THEME_COLOR,
+  isThemeColor,
+  THEME_COLOR_STORAGE_KEY,
+  type ThemeColor,
+} from "@/lib/theme-colors"
 
 interface AccentColorContextValue {
   color: ThemeColor
@@ -54,7 +59,11 @@ export function AccentColorProvider({ children }: { children: React.ReactNode })
         // Merge writes keep the rest of the profile intact.
         await setDoc(
           userRef,
-          { accentColor: next, updatedAt: serverTimestamp(), ...(exists ? {} : { createdAt: serverTimestamp() }) },
+          {
+            accentColor: next,
+            updatedAt: serverTimestamp(),
+            ...(exists ? {} : { createdAt: serverTimestamp() }),
+          },
           { merge: true }
         )
       } catch (error) {

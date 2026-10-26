@@ -48,7 +48,10 @@ export function Footer() {
             <h4 className="font-semibold mb-4">Resources</h4>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link href="/styleguide" className="text-muted-foreground hover:text-foreground transition-colors">
+                <Link
+                  href="/styleguide"
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                >
                   Styleguide
                 </Link>
               </li>

@@ -16,12 +16,8 @@ export function FeaturedApps() {
         transition={{ duration: 0.5 }}
         className="text-center mb-12"
       >
-        <h2 className="font-space-grotesk text-3xl md:text-4xl font-bold mb-4">
-          Featured Apps
-        </h2>
-        <p className="text-muted-foreground text-lg">
-          Handpicked selections from the hub
-        </p>
+        <h2 className="font-space-grotesk text-3xl md:text-4xl font-bold mb-4">Featured Apps</h2>
+        <p className="text-muted-foreground text-lg">Handpicked selections from the hub</p>
       </motion.div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

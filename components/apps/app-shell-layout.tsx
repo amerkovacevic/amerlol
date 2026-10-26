@@ -34,7 +34,10 @@ export function AppShellLayout({ app, children, settingsContent, additionalTabs 
         <SignInReminder />
       </div>
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList aria-label={`${app.name} sections`} className="h-auto min-h-10 max-w-full flex-wrap justify-start">
+        <TabsList
+          aria-label={`${app.name} sections`}
+          className="h-auto min-h-10 max-w-full flex-wrap justify-start"
+        >
           <TabsTrigger value="overview">Overview</TabsTrigger>
           {additionalTabs.map((tab) => (
             <TabsTrigger key={tab.value} value={tab.value}>

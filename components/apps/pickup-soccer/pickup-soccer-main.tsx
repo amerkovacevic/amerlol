@@ -206,8 +206,7 @@ export function PickupSoccerMain() {
   const filteredGames = React.useMemo(() => {
     let filtered = games.filter(
       (game) =>
-        !settings.showMyGamesOnly ||
-        Boolean(uid && (game.createdBy === uid || game.players.includes(uid)))
+        !settings.showMyGamesOnly || Boolean(uid && (game.createdBy === uid || game.players.includes(uid)))
     )
 
     // Filter by search query
@@ -386,7 +385,9 @@ export function PickupSoccerMain() {
                   min="2"
                   max="22"
                   value={formData.maxPlayers}
-                  onChange={(e) => setFormData({ ...formData, maxPlayers: parseInt(e.target.value, 10) || 10 })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, maxPlayers: parseInt(e.target.value, 10) || 10 })
+                  }
                   required
                 />
               </div>

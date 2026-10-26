@@ -65,7 +65,8 @@ export function AccountSettings() {
     email: user?.email || "",
     ...edits,
   }
-  const setProfile = (next: UserProfile) => setEdits({ displayName: next.displayName, username: next.username })
+  const setProfile = (next: UserProfile) =>
+    setEdits({ displayName: next.displayName, username: next.username })
   const loading = Boolean(user) && storedUsername.loading
 
   // Guests (including anonymous game players) have no account to manage.

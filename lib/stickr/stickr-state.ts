@@ -82,7 +82,8 @@ function filterQatar2022(ids: string[]): string[] {
     }
     if (parsed.kind === "team") {
       if (!findQatar2022TeamByCode(parsed.code)) continue
-      if (parsed.n >= 1 && parsed.n <= QATAR_2022_TEAM_STICKERS_PER_TEAM) out.push(`${parsed.code}-${parsed.n}`)
+      if (parsed.n >= 1 && parsed.n <= QATAR_2022_TEAM_STICKERS_PER_TEAM)
+        out.push(`${parsed.code}-${parsed.n}`)
     }
   }
   return [...new Set(out)].sort((a, b) => a.localeCompare(b))
@@ -100,15 +101,14 @@ export function normalizeState(
   const customStickerCount = clampStickerCount(
     typeof raw?.customStickerCount === "number"
       ? raw.customStickerCount
-      : presetFallback?.stickerCount ?? DEFAULT_STICKR_STATE.customStickerCount
+      : (presetFallback?.stickerCount ?? DEFAULT_STICKR_STATE.customStickerCount)
   )
 
   const base: StickrPersistedState = {
     ...DEFAULT_STICKR_STATE,
     albumPresetId,
     customStickerCount,
-    displayName:
-      typeof raw?.displayName === "string" ? raw.displayName.slice(0, 80) : "",
+    displayName: typeof raw?.displayName === "string" ? raw.displayName.slice(0, 80) : "",
     shareCardTheme:
       raw?.shareCardTheme === "light" || raw?.shareCardTheme === "dark"
         ? raw.shareCardTheme
@@ -129,10 +129,10 @@ export function normalizeState(
             duplicates: filterQatar2022(base.duplicates),
             needs: filterQatar2022(base.needs),
           }
-      : {
-          duplicates: filterNumericToAlbum(base.duplicates, max),
-          needs: filterNumericToAlbum(base.needs, max),
-        }
+        : {
+            duplicates: filterNumericToAlbum(base.duplicates, max),
+            needs: filterNumericToAlbum(base.needs, max),
+          }
 
   // Ensure no overlap between lists (prefer "needs" if both exist).
   const needSet = new Set(filtered.needs)

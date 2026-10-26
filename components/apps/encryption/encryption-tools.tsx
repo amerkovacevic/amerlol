@@ -151,7 +151,10 @@ export function EncryptionTools() {
     try {
       result = { output: input ? await tool.run(input, mode, shift) : "", error: "" }
     } catch (error) {
-      result = { output: "", error: error instanceof Error ? error.message : "That input could not be converted" }
+      result = {
+        output: "",
+        error: error instanceof Error ? error.message : "That input could not be converted",
+      }
     }
     if (latestRun.current[tool.id] === run) update(tool.id, result)
   }
@@ -249,7 +252,10 @@ export function EncryptionTools() {
                     Convert
                   </Button>
                   {state.output && (
-                    <Button variant="outline" onClick={() => copyText(state.output, `${tool.tab} output copied`)}>
+                    <Button
+                      variant="outline"
+                      onClick={() => copyText(state.output, `${tool.tab} output copied`)}
+                    >
                       <Copy className="mr-2 h-4 w-4" />
                       Copy
                     </Button>

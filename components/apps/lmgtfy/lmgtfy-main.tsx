@@ -12,15 +12,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { badgeVariants } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
-import {
-  Search,
-  Copy,
-  ExternalLink,
-  Sparkles,
-  ArrowRight,
-  Check,
-  Share2
-} from "lucide-react"
+import { Search, Copy, ExternalLink, Sparkles, ArrowRight, Check, Share2 } from "lucide-react"
 import { toast } from "sonner"
 
 // Animation steps for the LMGTFY sequence - funnier and slower
@@ -162,12 +154,12 @@ export function LMGTFYMain() {
                 <motion.div
                   animate={{
                     rotate: [0, 10, -10, 0],
-                    scale: [1, 1.1, 1]
+                    scale: [1, 1.1, 1],
                   }}
                   transition={{
                     duration: 1.5,
                     repeat: Infinity,
-                    ease: "easeInOut"
+                    ease: "easeInOut",
                   }}
                 >
                   <Search className="h-16 w-16 sm:h-20 sm:w-20 md:h-24 md:w-24 text-blue-500" />
@@ -185,13 +177,13 @@ export function LMGTFYMain() {
                 <motion.div
                   animate={{
                     rotate: [0, -10, 10, 0],
-                    scale: [1, 1.1, 1]
+                    scale: [1, 1.1, 1],
                   }}
                   transition={{
                     duration: 1.5,
                     repeat: Infinity,
                     ease: "easeInOut",
-                    delay: 0.3
+                    delay: 0.3,
                   }}
                 >
                   <Sparkles className="h-12 w-12 sm:h-16 sm:w-16 md:h-20 md:w-20 text-yellow-400" />
@@ -267,14 +259,12 @@ export function LMGTFYMain() {
 
   return (
     <div className="h-full flex flex-col">
-<div className="flex-1 space-y-6">
+      <div className="flex-1 space-y-6">
         {/* Input Section */}
         <Card>
           <CardHeader>
             <CardTitle>Enter Your Search Query</CardTitle>
-            <CardDescription>
-              Type the question or search term you want to Google
-            </CardDescription>
+            <CardDescription>Type the question or search term you want to Google</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
@@ -289,16 +279,10 @@ export function LMGTFYMain() {
                 }}
                 className="min-h-[100px] resize-none"
               />
-              <p className="text-xs text-muted-foreground">
-                Press Ctrl+Enter to generate link
-              </p>
+              <p className="text-xs text-muted-foreground">Press Ctrl+Enter to generate link</p>
             </div>
 
-            <Button
-              onClick={() => generateLink()}
-              className="w-full"
-              disabled={!query.trim()}
-            >
+            <Button onClick={() => generateLink()} className="w-full" disabled={!query.trim()}>
               <Search className="h-4 w-4 mr-2" />
               Generate Shareable Link
             </Button>
@@ -320,11 +304,7 @@ export function LMGTFYMain() {
               </div>
 
               <div className="flex gap-2">
-                <Button
-                  onClick={copyLink}
-                  variant="outline"
-                  className="flex-1"
-                >
+                <Button onClick={copyLink} variant="outline" className="flex-1">
                   {copied ? (
                     <>
                       <Check className="h-4 w-4 mr-2" />
@@ -339,20 +319,13 @@ export function LMGTFYMain() {
                 </Button>
 
                 {canShare && (
-                  <Button
-                    onClick={shareLink}
-                    variant="outline"
-                    className="flex-1"
-                  >
+                  <Button onClick={shareLink} variant="outline" className="flex-1">
                     <Share2 className="h-4 w-4 mr-2" />
                     Share
                   </Button>
                 )}
 
-                <Button
-                  onClick={() => window.open(shareableLink, "_blank", "noopener")}
-                  variant="outline"
-                >
+                <Button onClick={() => window.open(shareableLink, "_blank", "noopener")} variant="outline">
                   <ExternalLink className="h-4 w-4 mr-2" />
                   Preview
                 </Button>
@@ -365,9 +338,7 @@ export function LMGTFYMain() {
         <Card>
           <CardHeader>
             <CardTitle>Example Queries</CardTitle>
-            <CardDescription>
-              Try these examples or create your own
-            </CardDescription>
+            <CardDescription>Try these examples or create your own</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-2">
@@ -375,7 +346,10 @@ export function LMGTFYMain() {
                 <button
                   key={example}
                   type="button"
-                  className={cn(badgeVariants({ variant: "secondary" }), "hover:bg-primary hover:text-primary-foreground")}
+                  className={cn(
+                    badgeVariants({ variant: "secondary" }),
+                    "hover:bg-primary hover:text-primary-foreground"
+                  )}
                   onClick={() => {
                     setQuery(example)
                     generateLink(example)
@@ -400,9 +374,7 @@ export function LMGTFYMain() {
               </div>
               <div>
                 <p className="font-medium">Enter a search query</p>
-                <p className="text-muted-foreground">
-                  Type any question or search term that can be Googled
-                </p>
+                <p className="text-muted-foreground">Type any question or search term that can be Googled</p>
               </div>
             </div>
             <div className="flex items-start gap-3">

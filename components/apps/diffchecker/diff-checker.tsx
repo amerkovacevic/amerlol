@@ -79,9 +79,13 @@ export function DiffChecker() {
             <pre className="whitespace-pre-wrap font-mono" style={{ fontSize: settings.fontSize }}>
               {diffResult.map((line, index) => (
                 <div key={index} className={`px-2 py-1 ${LINE_STYLES[line.type].className}`}>
-                  <span className="mr-2 select-none text-muted-foreground">{LINE_STYLES[line.type].prefix}</span>
+                  <span className="mr-2 select-none text-muted-foreground">
+                    {LINE_STYLES[line.type].prefix}
+                  </span>
                   {settings.showLineNumbers && (
-                    <span className="mr-4 inline-block w-10 select-none text-muted-foreground">{line.lineNumber}</span>
+                    <span className="mr-4 inline-block w-10 select-none text-muted-foreground">
+                      {line.lineNumber}
+                    </span>
                   )}
                   <span>{line.content || " "}</span>
                 </div>

@@ -8,9 +8,14 @@ export async function getProfileName(uid: string): Promise<string | null> {
 }
 
 /** Resolves many names at once; unknown or unreadable profiles get `fallback`. */
-export async function getProfileNames(uids: Iterable<string>, fallback: string): Promise<Record<string, string>> {
+export async function getProfileNames(
+  uids: Iterable<string>,
+  fallback: string
+): Promise<Record<string, string>> {
   const entries = await Promise.all(
-    [...new Set(uids)].map(async (uid) => [uid, (await getProfileName(uid).catch(() => null)) ?? fallback] as const)
+    [...new Set(uids)].map(
+      async (uid) => [uid, (await getProfileName(uid).catch(() => null)) ?? fallback] as const
+    )
   )
   return Object.fromEntries(entries)
 }

@@ -104,7 +104,9 @@ async function loadPublicPalettes() {
 
 async function loadAccountPalettes(uid: string) {
   const [mine, favorites] = await Promise.all([
-    getDocs(query(collection(db, "colorPalettes"), where("createdBy", "==", uid), orderBy("createdAt", "desc"))),
+    getDocs(
+      query(collection(db, "colorPalettes"), where("createdBy", "==", uid), orderBy("createdAt", "desc"))
+    ),
     getDocs(collection(db, "users", uid, "colorPaletteCrafterFavorites")),
   ])
   return { mine: mine.docs.map(toPalette), favorites: favorites.docs.map((favorite) => favorite.id) }
@@ -368,7 +370,10 @@ export function ColorPaletteCrafterMain() {
 
         <TabsContent value="favorites" className="space-y-4">
           {!account ? (
-            signInPrompt(<Heart className="h-12 w-12 text-muted-foreground" />, "Please sign in to view your favorites")
+            signInPrompt(
+              <Heart className="h-12 w-12 text-muted-foreground" />,
+              "Please sign in to view your favorites"
+            )
           ) : favorites.size === 0 ? (
             <EmptyCard icon={<Heart className="h-12 w-12 text-muted-foreground" />}>
               <p className="text-muted-foreground">No favorites yet</p>
@@ -391,7 +396,9 @@ export function ColorPaletteCrafterMain() {
           <DialogHeader>
             <DialogTitle>{editor?.id ? "Edit Palette" : "Create New Palette"}</DialogTitle>
             <DialogDescription>
-              {editor?.id ? "Update your color palette" : "Create a beautiful color palette with up to 8 colors"}
+              {editor?.id
+                ? "Update your color palette"
+                : "Create a beautiful color palette with up to 8 colors"}
             </DialogDescription>
           </DialogHeader>
           {editor && (
@@ -442,7 +449,10 @@ function PaletteEditor({
   saveLabel: string
 }) {
   const setColor = (index: number, color: string) =>
-    onChange({ ...draft, colors: draft.colors.map((current, position) => (position === index ? color : current)) })
+    onChange({
+      ...draft,
+      colors: draft.colors.map((current, position) => (position === index ? color : current)),
+    })
 
   return (
     <div className="space-y-4">
@@ -569,7 +579,8 @@ function PaletteCard({
   onDelete: () => void
 }) {
   const label = palette.title || "palette"
-  const swatchClass = "group relative flex flex-1 items-center justify-center transition-[filter] hover:brightness-90"
+  const swatchClass =
+    "group relative flex flex-1 items-center justify-center transition-[filter] hover:brightness-90"
 
   return (
     <Card className="overflow-hidden">
@@ -616,11 +627,19 @@ function PaletteCard({
               aria-pressed={favorite}
               aria-label={favorite ? `Remove ${label} from favorites` : `Add ${label} to favorites`}
             >
-              <Heart className={`h-4 w-4 ${favorite ? "fill-red-500 text-red-500" : "text-muted-foreground"}`} />
+              <Heart
+                className={`h-4 w-4 ${favorite ? "fill-red-500 text-red-500" : "text-muted-foreground"}`}
+              />
             </Button>
             {owned && (
               <>
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onEdit} aria-label={`Edit ${label}`}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={onEdit}
+                  aria-label={`Edit ${label}`}
+                >
                   <Edit2 className="h-4 w-4 text-muted-foreground" />
                 </Button>
                 <Button

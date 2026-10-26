@@ -12,7 +12,12 @@ const countries: Country[] = [
       { id: "champ", name: "Championship", tier: 2, teams: [team("c")] },
     ],
   },
-  { id: "esp", name: "Spain", flag: "", leagues: [{ id: "liga", name: "La Liga", tier: 1, teams: [team("d")] }] },
+  {
+    id: "esp",
+    name: "Spain",
+    flag: "",
+    leagues: [{ id: "liga", name: "La Liga", tier: 1, teams: [team("d")] }],
+  },
 ]
 const teams = flattenTeams(countries)
 const first = () => 0

@@ -29,11 +29,16 @@ export interface QuestionBankReport {
 export function generateQuestionBank(
   appearances: readonly PlayerClubAppearance[],
   now: string,
-  config: QuestionQualityConfig = DEFAULT_QUALITY_CONFIG,
+  config: QuestionQualityConfig = DEFAULT_QUALITY_CONFIG
 ): QuestionBankReport {
   const clubsByPlayer = new Map<string, Set<string>>()
   for (const row of appearances) {
-    if (row.verificationStatus !== "verified" || row.competitiveAppearances === undefined || row.competitiveAppearances < 1) continue
+    if (
+      row.verificationStatus !== "verified" ||
+      row.competitiveAppearances === undefined ||
+      row.competitiveAppearances < 1
+    )
+      continue
     const clubs = clubsByPlayer.get(row.playerId) ?? new Set<string>()
     clubs.add(row.clubId)
     clubsByPlayer.set(row.playerId, clubs)
@@ -47,7 +52,11 @@ export function generateQuestionBank(
       }
     }
   }
-  const generated = [...pairIds.values()].map(([clubAId, clubBId]) => generateQuestionCandidate(clubAId, clubBId, appearances, now, config).candidate).filter((candidate): candidate is QuestionBankEntry => Boolean(candidate))
+  const generated = [...pairIds.values()]
+    .map(
+      ([clubAId, clubBId]) => generateQuestionCandidate(clubAId, clubBId, appearances, now, config).candidate
+    )
+    .filter((candidate): candidate is QuestionBankEntry => Boolean(candidate))
   const candidates = generated.filter(({ status }) => status === "candidate")
   const rejected = generated.filter(({ status }) => status === "rejected")
   const tierTotals: Partial<Record<RarityPoints, number>> = {}
@@ -65,18 +74,22 @@ export function generateQuestionCandidate(
   clubBId: string,
   appearances: readonly PlayerClubAppearance[],
   now: string,
-  config: QuestionQualityConfig = DEFAULT_QUALITY_CONFIG,
+  config: QuestionQualityConfig = DEFAULT_QUALITY_CONFIG
 ): CandidateResult {
   if (clubAId === clubBId) return { rejectionReasons: ["A question requires two different clubs"] }
 
   const verified = appearances.filter(
-    (row) => row.verificationStatus === "verified" && row.competitiveAppearances !== undefined && row.competitiveAppearances > 0,
+    (row) =>
+      row.verificationStatus === "verified" &&
+      row.competitiveAppearances !== undefined &&
+      row.competitiveAppearances > 0
   )
   const byPlayer = new Map<string, Map<string, PlayerClubAppearance>>()
   for (const row of verified) {
     if (row.clubId !== clubAId && row.clubId !== clubBId) continue
     const clubs = byPlayer.get(row.playerId) ?? new Map<string, PlayerClubAppearance>()
-    if (clubs.has(row.clubId)) return { rejectionReasons: [`Unresolved duplicate record for player ${row.playerId}`] }
+    if (clubs.has(row.clubId))
+      return { rejectionReasons: [`Unresolved duplicate record for player ${row.playerId}`] }
     clubs.set(row.clubId, row)
     byPlayer.set(row.playerId, clubs)
   }
@@ -97,10 +110,12 @@ export function generateQuestionCandidate(
   }
 
   const rejectionReasons: string[] = []
-  if (answers.length < config.minimumAnswers) rejectionReasons.push(`Only ${answers.length} verified answers; ${config.minimumAnswers} required`)
+  if (answers.length < config.minimumAnswers)
+    rejectionReasons.push(`Only ${answers.length} verified answers; ${config.minimumAnswers} required`)
   const tierDistribution: Partial<Record<RarityPoints, number>> = {}
   for (const answer of answers) tierDistribution[answer.points] = (tierDistribution[answer.points] ?? 0) + 1
-  if (Object.keys(tierDistribution).length < config.minimumRarityTiers) rejectionReasons.push("Insufficient rarity-tier variety")
+  if (Object.keys(tierDistribution).length < config.minimumRarityTiers)
+    rejectionReasons.push("Insufficient rarity-tier variety")
 
   return {
     rejectionReasons,

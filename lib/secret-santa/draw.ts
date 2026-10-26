@@ -16,7 +16,5 @@ export function createSecretSantaAssignments(
   // A single cycle through a random order guarantees nobody draws themselves.
   const shuffled = shuffle(participants, random)
 
-  return Object.fromEntries(
-    shuffled.map((giver, index) => [giver, shuffled[(index + 1) % shuffled.length]])
-  )
+  return Object.fromEntries(shuffled.map((giver, index) => [giver, shuffled[(index + 1) % shuffled.length]]))
 }

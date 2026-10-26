@@ -19,12 +19,8 @@ export function LatestDrops() {
         transition={{ duration: 0.5 }}
         className="text-center mb-12"
       >
-        <h2 className="font-space-grotesk text-3xl md:text-4xl font-bold mb-4">
-          Latest Drops
-        </h2>
-        <p className="text-muted-foreground text-lg">
-          Recent updates and new additions
-        </p>
+        <h2 className="font-space-grotesk text-3xl md:text-4xl font-bold mb-4">Latest Drops</h2>
+        <p className="text-muted-foreground text-lg">Recent updates and new additions</p>
       </motion.div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">

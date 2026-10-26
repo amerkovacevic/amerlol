@@ -38,10 +38,7 @@ export function Hero() {
         animate="visible"
         className="container mx-auto px-4 py-20 text-center relative z-10"
       >
-        <motion.div
-          variants={itemVariants}
-          className="flex justify-center mb-8"
-        >
+        <motion.div variants={itemVariants} className="flex justify-center mb-8">
           <Image
             src="/logo.png"
             alt="amer.lol"
@@ -81,7 +78,9 @@ export function Hero() {
           </Button>
         </motion.div>
 
-        <div className="mx-auto mt-8 max-w-xl text-left"><SignInReminder /></div>
+        <div className="mx-auto mt-8 max-w-xl text-left">
+          <SignInReminder />
+        </div>
       </motion.div>
     </section>
   )

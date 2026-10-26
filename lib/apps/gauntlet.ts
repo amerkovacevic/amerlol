@@ -39,10 +39,46 @@ export const EMPTY_STATS: GauntletStats = {
 
 // The order matters: existing daily words are derived from each word's index.
 const WORD_LIST = [
-  "GAUNT", "SHIELD", "SWORD", "QUEST", "KNIGHT", "DRAGON", "CASTLE", "HERO", "MAGIC", "POWER",
-  "BRAVE", "HONOR", "GLORY", "VICTOR", "CHAMP", "LEGEND", "MIGHT", "FORCE", "STORM", "FLAME",
-  "THUNDER", "LIGHT", "DARK", "SHADOW", "GUARD", "DEFEND", "ATTACK", "STRIKE", "BLADE", "ARMOR",
-  "BATTLE", "WAR", "PEACE", "HOPE", "FAITH", "TRUTH", "WISDOM", "COURAGE", "STRENGTH", "SPIRIT",
+  "GAUNT",
+  "SHIELD",
+  "SWORD",
+  "QUEST",
+  "KNIGHT",
+  "DRAGON",
+  "CASTLE",
+  "HERO",
+  "MAGIC",
+  "POWER",
+  "BRAVE",
+  "HONOR",
+  "GLORY",
+  "VICTOR",
+  "CHAMP",
+  "LEGEND",
+  "MIGHT",
+  "FORCE",
+  "STORM",
+  "FLAME",
+  "THUNDER",
+  "LIGHT",
+  "DARK",
+  "SHADOW",
+  "GUARD",
+  "DEFEND",
+  "ATTACK",
+  "STRIKE",
+  "BLADE",
+  "ARMOR",
+  "BATTLE",
+  "WAR",
+  "PEACE",
+  "HOPE",
+  "FAITH",
+  "TRUTH",
+  "WISDOM",
+  "COURAGE",
+  "STRENGTH",
+  "SPIRIT",
 ]
 
 /** The word for a UTC date (YYYY-MM-DD). Deterministic, so every player gets the same word. */
@@ -76,7 +112,17 @@ export function checkGuess(guess: string, word: string): LetterResult[] {
   return result
 }
 
-export function scoreGame({ won, seconds, attempts, hintsUsed }: { won: boolean; seconds: number; attempts: number; hintsUsed: number }) {
+export function scoreGame({
+  won,
+  seconds,
+  attempts,
+  hintsUsed,
+}: {
+  won: boolean
+  seconds: number
+  attempts: number
+  hintsUsed: number
+}) {
   if (!won) return 0
   // One point per ten seconds, 50 per extra attempt, 100 per hint.
   return Math.max(0, 1000 - Math.floor(seconds / 10) - (attempts - 1) * 50 - hintsUsed * HINT_PENALTY)

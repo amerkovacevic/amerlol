@@ -111,7 +111,10 @@ export function FootballDeepcutsMain() {
         return response.json() as Promise<StaticDatabase>
       })
       .then((data) => active && setDatabase(data))
-      .catch(() => active && setLoadError("Today's challenge could not be loaded. Check your connection and refresh."))
+      .catch(
+        () =>
+          active && setLoadError("Today's challenge could not be loaded. Check your connection and refresh.")
+      )
     return () => {
       active = false
     }
@@ -232,7 +235,10 @@ export function FootballDeepcutsMain() {
       setSelectedPlayer(null)
       setActiveSuggestion(0)
       playerInput.current?.focus()
-      writeStorage(draftKey(date), JSON.stringify({ questionIndex: answers.length, guesses: attempt.guesses }))
+      writeStorage(
+        draftKey(date),
+        JSON.stringify({ questionIndex: answers.length, guesses: attempt.guesses })
+      )
       submitting.current = false
       return
     }
