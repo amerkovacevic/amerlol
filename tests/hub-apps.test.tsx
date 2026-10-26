@@ -10,7 +10,7 @@ import {
 } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { APP_REGISTRY } from "../lib/apps/registry"
-import { getAppComponents, renderApp } from "../lib/apps/components"
+import { HubApp } from "../lib/apps/components"
 import { settingsStorageKey, type SettingsAppId } from "../lib/apps/settings"
 
 const mocks = vi.hoisted(() => ({
@@ -32,6 +32,9 @@ vi.mock("@/components/auth/auth-provider", () => ({
   }),
 }))
 vi.mock("@/components/auth/auth-dialog", () => ({ AuthDialog: () => null }))
+vi.mock("@/components/accent-color-provider", () => ({
+  useAccentColor: () => ({ color: "teal", saving: false, setColor: vi.fn() }),
+}))
 vi.mock("@/lib/firebase/config", () => ({ db: {}, auth: {} }))
 vi.mock("@/components/apps/atlas-sprint/country-map", () => ({
   CountryMap: (props: { focusOnGuess: boolean }) => (
@@ -153,9 +156,12 @@ afterEach(() => {
   cleanup()
   vi.unstubAllGlobals()
 })
-function mount(appId: string) {
+// Apps are code-split, so wait for the lazily loaded app body before interacting.
+async function mount(appId: string) {
   const app = APP_REGISTRY.find((entry) => entry.appId === appId)!
-  return render(<>{renderApp(app, getAppComponents(appId)!)}</>)
+  const view = render(<HubApp appId={app.appId} />)
+  await waitFor(() => expect(screen.queryByText("Loading app…")).toBeNull())
+  return view
 }
 async function openSettings() {
   await userEvent.click(screen.getByRole("tab", { name: "Settings" }))
@@ -178,7 +184,7 @@ async function save() {
 
 for (const app of APP_REGISTRY)
   it(`${app.appId}: renders a usable settings panel without writing any app data on visit`, async () => {
-    mount(app.appId)
+    await mount(app.appId)
     expect(screen.getAllByRole("heading", { level: 1 }).map((heading) => heading.textContent)).toEqual([app.name])
     await openSettings()
     if (app.appId === "stickr") await screen.findByText("Stickr Settings")
@@ -191,7 +197,7 @@ for (const app of APP_REGISTRY)
   })
 
 it("keeps text in memory when switching tabs and applies diff preferences to the comparison", async () => {
-  mount("diffchecker")
+  await mount("diffchecker")
   fireEvent.change(screen.getByPlaceholderText("Enter original text here..."), {
     target: { value: " Hello " },
   })
@@ -227,7 +233,7 @@ it("keeps text in memory when switching tabs and applies diff preferences to the
 })
 
 it("applies time zone defaults and display preferences", async () => {
-  mount("timezone")
+  await mount("timezone")
   await openSettings()
   fireEvent.change(screen.getByLabelText(/Default time zones/), {
     target: { value: "Asia/Kolkata" },
@@ -252,7 +258,7 @@ it("applies time zone defaults and display preferences", async () => {
 })
 
 it("applies encoding tool defaults and preserves input across hub settings tabs", async () => {
-  mount("encryption")
+  await mount("encryption")
   await openSettings()
   fireEvent.change(screen.getByLabelText("Default tool"), {
     target: { value: "hex" },
@@ -265,7 +271,7 @@ it("applies encoding tool defaults and preserves input across hub settings tabs"
 })
 
 it("embeds playback settings in generated search links and accepts literal percent characters", async () => {
-  mount("lmgtfy")
+  await mount("lmgtfy")
   await openSettings()
   fireEvent.change(screen.getByLabelText("Animation speed"), {
     target: { value: "2" },
@@ -292,7 +298,7 @@ it("embeds playback settings in generated search links and accepts literal perce
 })
 
 it("shows the missing Deepcuts display settings and applies them", async () => {
-  mount("football-deepcuts")
+  await mount("football-deepcuts")
   await screen.findByText("7 sourced answers in the database")
   await openSettings()
   await userEvent.click(
@@ -313,7 +319,7 @@ it("preserves an existing watchlist while changing Next Watch preferences", asyn
     { id: "real", name: "Another movie", year: "2000" },
   ])
   localStorage.setItem("next-watch-movies-v1", watchlist)
-  mount("next-watch")
+  await mount("next-watch")
   await screen.findByText("1999")
   await openSettings()
   await userEvent.click(
@@ -327,7 +333,7 @@ it("preserves an existing watchlist while changing Next Watch preferences", asyn
 
 it("does not overwrite a malformed watchlist on visit", async () => {
   localStorage.setItem("next-watch-movies-v1", "{broken")
-  mount("next-watch")
+  await mount("next-watch")
   await openSettings()
   expect(localStorage.getItem("next-watch-movies-v1")).toBe("{broken")
 })
@@ -344,7 +350,7 @@ it("Stickr preference reset leaves album and both sticker lists intact", async (
       needs: ["3"],
     })
   )
-  mount("stickr")
+  await mount("stickr")
   await openSettings()
   await userEvent.click(
     await screen.findByRole("button", { name: "Reset display preferences" })
@@ -358,7 +364,7 @@ it("Stickr preference reset leaves album and both sticker lists intact", async (
 })
 
 it("applies Pickup Soccer defaults to new forms without creating a game", async () => {
-  mount("pickup-soccer")
+  await mount("pickup-soccer")
   await openSettings()
   fireEvent.change(screen.getByLabelText("Default player limit"), {
     target: { value: "16" },
@@ -379,7 +385,7 @@ it("applies Pickup Soccer defaults to new forms without creating a game", async 
 })
 
 it("applies Secret Santa's budget only to a new exchange form", async () => {
-  mount("secret-santa")
+  await mount("secret-santa")
   await openSettings()
   fireEvent.change(screen.getByLabelText("Default gift budget"), {
     target: { value: "$50" },
@@ -394,7 +400,7 @@ it("applies Secret Santa's budget only to a new exchange form", async () => {
 })
 
 it("applies Color Crafter's default color count to new palettes without saving a palette", async () => {
-  mount("color-palette-crafter")
+  await mount("color-palette-crafter")
   await openSettings()
   fireEvent.change(screen.getByLabelText("Colors in new palettes"), {
     target: { value: "6" },
@@ -407,7 +413,7 @@ it("applies Color Crafter's default color count to new palettes without saving a
 })
 
 it("applies Football Manager picking defaults to the active controls", async () => {
-  mount("football-manager-team-picker")
+  await mount("football-manager-team-picker")
   await openSettings()
   fireEvent.change(screen.getByLabelText("Default picking mode"), {
     target: { value: "multiple" },
@@ -422,7 +428,7 @@ it("applies Football Manager picking defaults to the active controls", async () 
 })
 
 it("updates Atlas Sprint's map focus preference during an active game", async () => {
-  mount("atlas-sprint")
+  await mount("atlas-sprint")
   await userEvent.click(screen.getByRole("button", { name: /Start/i }))
   expect(screen.getByTestId("country-map").getAttribute("data-focus")).toBe(
     "true"
@@ -441,7 +447,7 @@ it("updates Atlas Sprint's map focus preference during an active game", async ()
 
 it("applies Gauntlet hint visibility without resetting a running game", async () => {
   mocks.user = { uid: "player" }
-  mount("amer-gauntlet")
+  await mount("amer-gauntlet")
   await userEvent.click(
     await screen.findByRole("button", { name: "Start Challenge" })
   )
@@ -459,7 +465,7 @@ it("applies Gauntlet hint visibility without resetting a running game", async ()
 })
 
 it("applies STL Monitor's map appearance preference", async () => {
-  mount("stl-monitor")
+  await mount("stl-monitor")
   await screen.findByTestId("incident-map")
   await openSettings()
   fireEvent.change(screen.getByLabelText("Map appearance"), {

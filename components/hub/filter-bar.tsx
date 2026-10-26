@@ -11,9 +11,9 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
-import { AppCategory } from "@/lib/apps/registry"
+import type { AppCategory } from "@/lib/apps/registry"
 
-type SortOption = "featured" | "name"
+export type SortOption = "featured" | "name"
 
 interface FilterBarProps {
   searchQuery: string

@@ -1,88 +1,36 @@
-import { APP_REGISTRY, getAppById } from "@/lib/apps/registry"
-import { AppPageClient } from "./app-page-client"
 import type { Metadata } from "next"
+import { notFound } from "next/navigation"
+import { APP_REGISTRY, getAppById } from "@/lib/apps/registry"
+import { HubApp } from "@/lib/apps/components"
 
-// Generate static params for all apps in the registry
-// This ensures all app routes are pre-generated at build time
-export async function generateStaticParams() {
-  try {
-    // Map all apps to their appId for static generation
-    const params = APP_REGISTRY.map((app) => ({
-    appId: app.appId,
-  }))
+type Params = Promise<{ appId: string }>
 
-    // Return empty array if registry is empty to prevent build errors
-    return params.length > 0 ? params : []
-  } catch (error) {
-    console.error("Error generating static params:", error)
-    // Return empty array on error to prevent build failure
-    return []
-  }
-}
-
-// Generate metadata for SEO and social sharing
-export async function generateMetadata(
-  { params }: {
-    params: Promise<{ appId: string }>
-  }
-): Promise<Metadata> {
-  const { appId } = await params
-  const app = getAppById(appId)
-
-  // Default metadata for apps
-  if (app) {
-    // Special default for LMGTFY
-    if (appId === "lmgtfy") {
-      return {
-        title: "Hmm, I wonder... | amer.lol",
-        description: "Let me Google that for you!",
-        openGraph: {
-          title: "Hmm, I wonder...",
-          description: "Let me Google that for you!",
-          type: "website",
-        },
-        twitter: {
-          card: "summary",
-          title: "Hmm, I wonder...",
-          description: "Let me Google that for you!",
-        },
-      }
-    }
-
-    return {
-      title: `${app.name} | amer.lol`,
-      description: app.description,
-      openGraph: {
-        title: `${app.name} | amer.lol`,
-        description: app.description,
-        type: "website",
-      },
-      twitter: {
-        card: "summary",
-        title: `${app.name} | amer.lol`,
-        description: app.description,
-      },
-    }
-  }
-
-  // Fallback metadata
-  return {
-    title: "App | amer.lol",
-    description: "A premium, playful hub website hosting multiple mini-apps",
-  }
-}
-
-// Allow dynamic params in dev mode, disable in production for static export
-// This ensures routes work in dev server while maintaining static generation for production
+// Static export: every app route is generated at build time and nothing else exists.
 export const dynamicParams = false
 
-export default async function AppPage({
-  params,
-  searchParams
-}: {
-  params: Promise<{ appId: string }>
-  searchParams: Promise<{ q?: string }>
-}) {
-  const { appId } = await params
-  return <AppPageClient appId={appId} />
+export function generateStaticParams() {
+  return APP_REGISTRY.map(({ appId }) => ({ appId }))
+}
+
+export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
+  const app = getAppById((await params).appId)
+  if (!app) return {}
+
+  // Shared LMGTFY links should not reveal the joke in their preview.
+  const isLmgtfy = app.appId === "lmgtfy"
+  const shareTitle = isLmgtfy ? "Hmm, I wonder..." : `${app.name} | amer.lol`
+  const description = isLmgtfy ? "Let me Google that for you!" : app.description
+
+  return {
+    title: isLmgtfy ? `${shareTitle} | amer.lol` : shareTitle,
+    description,
+    openGraph: { title: shareTitle, description, type: "website" },
+    twitter: { card: "summary", title: shareTitle, description },
+  }
+}
+
+export default async function AppPage({ params }: { params: Params }) {
+  const app = getAppById((await params).appId)
+  if (!app) notFound()
+  return <HubApp appId={app.appId} />
 }

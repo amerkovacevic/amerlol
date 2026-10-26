@@ -1,21 +1,3 @@
-import { 
-  Lock,
-  GitCompare,
-  Globe,
-  Users,
-  Gift,
-  Trophy,
-  CircleDot,
-  Palette,
-  Shield,
-  BarChart3,
-  Radio,
-  Search,
-  LayoutGrid,
-  Clapperboard,
-  Map,
-  type LucideIcon
-} from "lucide-react"
 import type { SettingsAppId } from "./settings"
 
 export type AppId = SettingsAppId | "stickr"
@@ -30,7 +12,6 @@ export interface AppEntry {
   category: AppCategory
   tags: string[]
   status: AppStatus
-  icon: LucideIcon
   accent: string
   featured?: boolean
 }
@@ -43,7 +24,6 @@ export const APP_REGISTRY: AppEntry[] = [
     category: "Games",
     tags: ["football", "soccer", "trivia", "daily", "players", "clubs"],
     status: "live",
-    icon: CircleDot,
     accent: "from-emerald-500 via-teal-500 to-blue-600",
     featured: true,
   },
@@ -54,7 +34,6 @@ export const APP_REGISTRY: AppEntry[] = [
     category: "Games",
     tags: ["countries", "geography", "world", "continents", "quiz", "trivia"],
     status: "live",
-    icon: Map,
     accent: "from-sky-500 via-blue-600 to-indigo-600",
     featured: true,
   },
@@ -65,7 +44,6 @@ export const APP_REGISTRY: AppEntry[] = [
     category: "Games",
     tags: ["movies", "letterboxd", "watchlist", "picker", "random", "wheel"],
     status: "live",
-    icon: Clapperboard,
     accent: "from-orange-500 via-emerald-500 to-sky-500",
     featured: true,
   },
@@ -76,7 +54,6 @@ export const APP_REGISTRY: AppEntry[] = [
     category: "Utilities",
     tags: ["encryption", "security", "cipher", "encode", "decode"],
     status: "live",
-    icon: Lock,
     accent: "from-blue-500 to-cyan-500",
   },
   {
@@ -86,7 +63,6 @@ export const APP_REGISTRY: AppEntry[] = [
     category: "Utilities",
     tags: ["diff", "compare", "text", "file", "difference"],
     status: "live",
-    icon: GitCompare,
     accent: "from-purple-500 to-pink-500",
   },
   {
@@ -96,7 +72,6 @@ export const APP_REGISTRY: AppEntry[] = [
     category: "Utilities",
     tags: ["timezone", "time", "converter", "world", "clock"],
     status: "live",
-    icon: Globe,
     accent: "from-orange-500 to-red-500",
   },
   {
@@ -106,7 +81,6 @@ export const APP_REGISTRY: AppEntry[] = [
     category: "Social",
     tags: ["soccer", "football", "sports", "pickup", "games", "scheduling"],
     status: "live",
-    icon: Users,
     accent: "from-green-500 to-emerald-500",
   },
   {
@@ -116,7 +90,6 @@ export const APP_REGISTRY: AppEntry[] = [
     category: "Social",
     tags: ["gifts", "santa", "exchange", "holiday", "social"],
     status: "live",
-    icon: Gift,
     accent: "from-red-500 to-pink-500",
   },
   {
@@ -126,7 +99,6 @@ export const APP_REGISTRY: AppEntry[] = [
     category: "Games",
     tags: ["football", "fantasy", "team", "manager", "sports", "picker", "random"],
     status: "live",
-    icon: Trophy,
     accent: "from-yellow-500 to-orange-500",
   },
   {
@@ -136,7 +108,6 @@ export const APP_REGISTRY: AppEntry[] = [
     category: "Visual",
     tags: ["color", "palette", "design", "craft", "visual", "art"],
     status: "live",
-    icon: Palette,
     accent: "from-indigo-500 to-purple-500",
   },
   {
@@ -146,7 +117,6 @@ export const APP_REGISTRY: AppEntry[] = [
     category: "Games",
     tags: ["gauntlet", "challenge", "game", "puzzle", "word", "daily", "leaderboard"],
     status: "live",
-    icon: Shield,
     accent: "from-red-500 to-orange-500",
   },
   {
@@ -156,7 +126,6 @@ export const APP_REGISTRY: AppEntry[] = [
     category: "Utilities",
     tags: ["stl", "st louis", "monitor", "traffic", "incidents", "weather", "map", "live"],
     status: "live",
-    icon: Radio,
     accent: "from-red-600 to-rose-500",
     featured: true,
   },
@@ -167,7 +136,6 @@ export const APP_REGISTRY: AppEntry[] = [
     category: "Utilities",
     tags: ["google", "search", "share", "funny", "lmgtfy", "link", "redirect"],
     status: "live",
-    icon: Search,
     accent: "from-blue-500 to-cyan-500",
     featured: true,
   },
@@ -179,59 +147,33 @@ export const APP_REGISTRY: AppEntry[] = [
     category: "Social",
     tags: ["panini", "fifa", "world cup", "stickers", "trading", "collectibles", "album"],
     status: "live",
-    icon: LayoutGrid,
     accent: "from-green-600 to-teal-500",
   },
 ]
 
 export function getAppById(appId: string): AppEntry | undefined {
-  return APP_REGISTRY.find(app => app.appId === appId)
-}
-
-export function getAllApps(): AppEntry[] {
-  return APP_REGISTRY
+  return APP_REGISTRY.find((app) => app.appId === appId)
 }
 
 export function getFeaturedApps(): AppEntry[] {
-  return APP_REGISTRY.filter(app => app.featured)
-}
-
-export function getAppsByCategory(category: AppCategory): AppEntry[] {
-  return APP_REGISTRY.filter(app => app.category === category)
+  return APP_REGISTRY.filter((app) => app.featured)
 }
 
 export function searchApps(query: string): AppEntry[] {
-  const lowerQuery = query.toLowerCase()
-  return APP_REGISTRY.filter(app => 
-    app.name.toLowerCase().includes(lowerQuery) ||
-    app.description.toLowerCase().includes(lowerQuery) ||
-    app.tags.some(tag => tag.toLowerCase().includes(lowerQuery))
+  const needle = query.trim().toLowerCase()
+  if (!needle) return APP_REGISTRY
+  return APP_REGISTRY.filter((app) =>
+    [app.name, app.description, ...app.tags].some((text) => text.toLowerCase().includes(needle))
   )
 }
 
-// Helper to validate app registry integrity
 export function validateAppRegistry(): { valid: boolean; errors: string[] } {
   const errors: string[] = []
-  const appIds = new Set<string>()
-
+  const seen = new Set<string>()
   APP_REGISTRY.forEach((app, index) => {
-    // Check for duplicate appIds
-    if (appIds.has(app.appId)) {
-      errors.push(`Duplicate appId "${app.appId}" found at index ${index}`)
-    }
-    appIds.add(app.appId)
-
-    // Validate required fields
-    if (!app.appId || app.appId.trim() === "") {
-      errors.push(`App at index ${index} has empty appId`)
-    }
-    if (!app.name || app.name.trim() === "") {
-      errors.push(`App "${app.appId}" has empty name`)
-    }
+    if (seen.has(app.appId)) errors.push(`Duplicate appId "${app.appId}" found at index ${index}`)
+    seen.add(app.appId)
+    if (!app.name.trim()) errors.push(`App "${app.appId}" has empty name`)
   })
-
-  return {
-    valid: errors.length === 0,
-    errors,
-  }
+  return { valid: errors.length === 0, errors }
 }
