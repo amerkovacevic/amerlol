@@ -49,10 +49,10 @@ Comprehensive documentation of the Firestore database structure, including:
 ### Common Tasks
 
 #### Add a New App
-→ See [Creating New Apps - Step-by-Step Guide](./creating-new-apps.md#step-by-step-guide)
+→ See [Creating a New App](./creating-new-apps.md)
 
 #### Add Settings to an App
-→ See [Creating New Apps - Step 3: Settings Component](./creating-new-apps.md#step-3-create-settings-component-optional-but-recommended)
+→ See [Creating a New App - Describe its settings](./creating-new-apps.md#1-describe-its-settings)
 
 #### Update Firestore Rules
 → See [Firestore Structure - Security Rules](./firestore-structure.md#security-rules)
@@ -68,42 +68,28 @@ Comprehensive documentation of the Firestore database structure, including:
 
 ```
 app/
-  (hub)/
-    a/
-      [appId]/
-        page.tsx              # Static route generation
-        app-page-client.tsx   # Client-side routing
+  (site)/
+    a/[appId]/page.tsx      # Statically generates one page per registered app
 
-components/
-  apps/
-    {appId}/
-      {appId}-main.tsx       # Main app component
-      {appId}-settings.tsx   # Settings component (optional)
+components/apps/
+  app-shell-layout.tsx      # Title, sign-in reminder, Overview/Settings tabs
+  app-settings-panel.tsx    # Settings tab generated from each app's schema
+  settings-provider.tsx     # Loads/saves settings (device or account)
+  {appId}/                  # The app itself
 
-lib/
-  apps/
-    registry.ts              # App metadata registry
-    components.tsx           # Component routing registry
+lib/apps/
+  registry.ts               # App metadata
+  settings.ts               # Settings schemas and labels
+  components.tsx            # appId -> lazily loaded components (HubApp)
 ```
 
 ### Data Flow
 
 ```
-User Request
-  ↓
-Static Route (/a/{appId}/)
-  ↓
-generateStaticParams() → APP_REGISTRY
-  ↓
-AppPageClient
-  ↓
-getAppById() → APP_REGISTRY
-  ↓
-getAppComponents() → APP_COMPONENTS
-  ↓
-React.lazy() → Load Component
-  ↓
-Render App
+/a/{appId}/  (static HTML generated at build time)
+  -> page.tsx: generateStaticParams() and metadata from APP_REGISTRY
+  -> <HubApp appId>: settings provider + app shell
+  -> next/dynamic loads only this app's chunk
 ```
 
 ### Firestore Structure

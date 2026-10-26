@@ -15,22 +15,25 @@ A premium, playful hub website for hosting multiple mini-apps. Built with Next.j
 
 ## 📦 Tech Stack
 
-- **Framework**: Next.js 14+ (App Router)
+- **Framework**: Next.js 16 (App Router, static export)
 - **Language**: TypeScript
+- **Backend**: Firebase Auth and Firestore
 - **Styling**: Tailwind CSS
 - **Components**: shadcn/ui (Radix UI primitives)
-- **Animations**: Framer Motion, Motion One
+- **Animations**: Framer Motion
 - **Smooth Scroll**: Lenis
-- **Animations**: Rive (placeholder), Lottie-react (placeholder)
+- **Maps**: MapLibre GL
 - **Icons**: Lucide React
 - **Theme**: next-themes
 - **Toasts**: Sonner
+- **Validation**: Zod (app settings)
+- **Testing**: Vitest, Testing Library, Firestore emulator
 
 ## 🛠️ Getting Started
 
 ### Prerequisites
 
-- Node.js 18+ 
+- Node.js 22+
 - npm, yarn, or pnpm
 
 ### Installation
@@ -57,81 +60,71 @@ npm run dev
 
 ```
 amerlol/
-├── app/                    # Next.js App Router pages
-│   ├── (marketing)/       # Marketing routes (landing page)
-│   ├── (hub)/            # Hub routes (hub, app pages)
-│   ├── about/            # About page
-│   ├── styleguide/       # Styleguide page
-│   ├── layout.tsx        # Root layout
-│   └── globals.css       # Global styles
-├── components/           # React components
-│   ├── layout/          # Layout components (header, footer, nav)
-│   ├── hub/             # Hub-specific components
-│   ├── landing/         # Landing page components
-│   ├── apps/            # App shell components
-│   ├── fx/              # Animation/effect components
-│   └── ui/              # shadcn/ui components
-├── lib/                 # Utility functions and configs
+├── app/                        # Next.js App Router
+│   ├── (marketing)/            # Landing page (smooth scroll)
+│   ├── (site)/                 # Pages sharing the background and header
+│   │   ├── a/[appId]/page.tsx  # Every hub app, statically generated
+│   │   ├── hub/                # App gallery
+│   │   ├── about/  account/  styleguide/
+│   ├── not-found.tsx           # The Lost & Found 404 page
+│   ├── layout.tsx              # Providers (theme, auth, accent colour)
+│   └── globals.css
+├── components/
+│   ├── apps/                   # One folder per app, plus the shared shell and settings panel
+│   ├── auth/  account/  hub/  landing/  layout/  not-found/
+│   └── ui/                     # shadcn/ui primitives
+├── lib/
 │   ├── apps/
-│   │   └── registry.ts  # App registry (IMPORTANT)
-│   └── utils.ts         # Utility functions
-└── public/              # Static assets
-    ├── rive/           # Rive animation files (placeholder)
-    └── lottie/         # Lottie animation files (placeholder)
+│   │   ├── registry.ts         # App metadata (name, category, tags…)
+│   │   ├── components.tsx      # appId → lazily loaded components
+│   │   ├── settings.ts         # Zod schemas for every app's preferences
+│   │   └── *.ts                # Pure, tested app logic (codecs, gauntlet, team picker…)
+│   ├── hooks/                  # useAsync, useNow, useHydrated, useResettableState
+│   ├── browser.ts  storage.ts  # Clipboard/download and safe localStorage helpers
+│   └── firebase/               # Firebase setup and user-facing error messages
+├── tests/                      # Vitest and node:test suites
+└── public/data/                # Static datasets (Deepcuts, countries, teams)
 ```
 
 ## 📝 Adding a New App
 
-To add a new mini-app to the hub:
-
-1. Open `lib/apps/registry.ts`
-
-2. Add a new entry to the `APP_REGISTRY` array:
+1. Add metadata to `APP_REGISTRY` in `lib/apps/registry.ts`:
 
 ```typescript
-{
-  appId: "your-app-id",
-  name: "Your App Name",
-  description: "A brief description of your app",
-  category: "Utilities" | "Games" | "Experiments" | "Social" | "Visual",
-  tags: ["tag1", "tag2"],
-  status: "live" | "beta" | "comingSoon",
-  icon: YourIcon, // Import from lucide-react
-  accent: "from-blue-500 to-cyan-500", // Tailwind gradient classes
-  featured: true, // Optional: feature on landing page
-}
-```
-
-3. The app will automatically appear in:
-   - The Hub page (filterable, searchable)
-   - The Featured Apps section on the landing page (if `featured: true`)
-   - Accessible via `/a/your-app-id`
-
-### Example
-
-```typescript
-import { Code2 } from "lucide-react"
-
 {
   appId: "code-editor",
   name: "Code Editor",
   description: "A minimalist code editor in the browser",
-  category: "Utilities",
+  category: "Utilities", // "Utilities" | "Games" | "Experiments" | "Social" | "Visual"
   tags: ["code", "editor", "developer"],
-  status: "live",
-  icon: Code2,
-  accent: "from-purple-500 to-pink-500",
-  featured: true,
+  status: "live", // "live" | "beta" | "comingSoon"
+  accent: "from-purple-500 to-pink-500", // Tailwind gradient classes
+  featured: true, // Optional: feature on the landing page
 }
+```
+
+2. Describe its preferences in `SETTINGS` in `lib/apps/settings.ts` (the Settings tab is generated from the
+   schema), then run `npm run generate:settings-rules` to update the Firestore rules.
+3. Build the app in `components/apps/<app-id>/` and register its main component in `lib/apps/components.tsx`.
+   Each app is its own lazily loaded chunk, so heavy libraries only load on that app's page.
+
+Type checking fails until every registry entry has components and settings. See
+[docs/creating-new-apps.md](docs/creating-new-apps.md) for the full guide.
+
+## ✅ Checks
+
+```bash
+npm run check:foundation  # settings rules, formatting, lint, types, tests, dataset validation, build
+npm run test:rules        # Firestore rules against the emulator (Java 21+)
+npm run format            # apply Prettier
 ```
 
 ## 🎨 Design System
 
 ### Colors
 
-- **Primary**: Electric sky-blue (`hsl(199, 89%, 48%)`)
-- **Background**: Clean white base (light) / Deep dark (dark mode)
-- All colors defined in `app/globals.css` using CSS variables
+- **Accent**: five selectable palettes (teal by default), chosen in Account Settings and synced to the account
+- All colors are CSS variables in `app/globals.css`, derived from the accent hue
 
 ### Typography
 
@@ -148,9 +141,8 @@ All UI components follow shadcn/ui patterns and are located in `components/ui/`.
 - **Page Transitions**: Framer Motion layout animations
 - **Micro-interactions**: Hover effects, button animations
 - **Smooth Scrolling**: Lenis (landing page only)
-- **Background Effects**: Subtle animated gradients
-- **Rive**: Placeholder component (add Rive files to `public/rive/`)
-- **Lottie**: Placeholder component (add Lottie JSON to `public/lottie/`)
+- **Background Effects**: Subtle gradients and grid
+- **Reduced motion**: respected globally through `MotionConfig` and CSS media queries
 
 ## 🌙 Dark Mode
 
@@ -172,7 +164,7 @@ Configuration in `tailwind.config.ts`. Uses CSS variables for theming.
 
 ### Next.js
 
-Configuration in `next.config.js`. No special configuration needed for basic usage.
+Configuration in `next.config.js`: static export (`out/`) with trailing slashes, deployed to Firebase Hosting.
 
 ## 📄 License
 
