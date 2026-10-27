@@ -180,3 +180,20 @@
     animation: none;
   }
 }
+
+/* Entrance animation for page content. Pure CSS, so content is visible on first paint
+   instead of waiting for JavaScript to hydrate. Stagger with style={{ "--enter-delay": "100ms" }}. */
+@keyframes enter {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+.animate-enter {
+  animation: enter 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) var(--enter-delay, 0ms) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-enter {
+    animation: none;
+  }
+}

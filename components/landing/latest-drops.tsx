@@ -1,58 +1,33 @@
-"use client"
-
-import { motion } from "framer-motion"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { Calendar } from "lucide-react"
-import { buildLog } from "@/lib/build-log"
-
-// Keep complete descriptions: splitting on periods truncates names such as St. Louis.
-const changelog = buildLog.slice(0, 4)
+import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { buildLog, formatBuildDate } from "@/lib/build-log"
 
 export function LatestDrops() {
   return (
     <section className="container mx-auto px-4 py-20">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, margin: "-200px 0px", amount: 0.3 }}
-        transition={{ duration: 0.5 }}
-        className="text-center mb-12"
-      >
-        <h2 className="font-space-grotesk text-3xl md:text-4xl font-bold mb-4">Latest Drops</h2>
-        <p className="text-muted-foreground text-lg">Recent updates and new additions</p>
-      </motion.div>
+      <div className="mb-12 text-center">
+        <h2 className="mb-4 font-space-grotesk text-3xl font-bold md:text-4xl">Latest Drops</h2>
+        <p className="text-lg text-muted-foreground">Recent updates and new additions</p>
+      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
-        {changelog.map((item, index) => (
-          <motion.div
-            key={`${item.date}-${item.title}-${index}`}
-            initial={{ opacity: 0, x: -20 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true, margin: "-200px 0px", amount: 0.3 }}
-            transition={{ duration: 0.5, delay: index * 0.1 }}
-          >
-            <Card className="h-full">
-              <CardHeader>
-                <div className="flex flex-wrap items-start justify-between gap-2 mb-2">
-                  <Badge variant="secondary">Update</Badge>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Calendar className="h-4 w-4" />
-                    {new Date(item.date + "T12:00:00-06:00").toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                      timeZone: "America/Chicago",
-                    })}
-                  </div>
+      <div className="mx-auto grid max-w-4xl grid-cols-1 gap-6 md:grid-cols-2">
+        {buildLog.slice(0, 4).map((item) => (
+          <Card key={`${item.date}-${item.title}`} className="h-full">
+            <CardHeader>
+              <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
+                <Badge variant="secondary">Update</Badge>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Calendar className="h-4 w-4" aria-hidden="true" />
+                  <time dateTime={item.date}>{formatBuildDate(item.date)}</time>
                 </div>
-                <CardTitle className="text-xl">{item.title}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">{item.description}</p>
-              </CardContent>
-            </Card>
-          </motion.div>
+              </div>
+              <CardTitle className="text-xl">{item.title}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground">{item.description}</p>
+            </CardContent>
+          </Card>
         ))}
       </div>
     </section>

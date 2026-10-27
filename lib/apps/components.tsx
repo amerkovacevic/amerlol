@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import dynamic from "next/dynamic"
+import { MotionConfig } from "framer-motion"
 import { Loader2 } from "lucide-react"
 import { AppShellLayout } from "@/components/apps/app-shell-layout"
 import { AppSettingsPanel } from "@/components/apps/app-settings-panel"
@@ -129,9 +130,13 @@ export function HubApp({ appId }: { appId: AppId }) {
   )
 
   // Stickr stores preferences alongside its collection, so it owns its persistence.
-  return app.appId === "stickr" ? (
-    <StickrProvider>{shell}</StickrProvider>
-  ) : (
-    <AppSettingsProvider appId={app.appId}>{shell}</AppSettingsProvider>
+  return (
+    <MotionConfig reducedMotion="user">
+      {app.appId === "stickr" ? (
+        <StickrProvider>{shell}</StickrProvider>
+      ) : (
+        <AppSettingsProvider appId={app.appId}>{shell}</AppSettingsProvider>
+      )}
+    </MotionConfig>
   )
 }

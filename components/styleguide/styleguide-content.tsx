@@ -1,6 +1,5 @@
 "use client"
 
-import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -10,13 +9,8 @@ import { toast } from "sonner"
 
 export function StyleguideContent() {
   return (
-    <main className="container mx-auto px-4 py-20">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="max-w-4xl mx-auto space-y-16"
-      >
+    <main id="main" className="container mx-auto px-4 py-20">
+      <div className="animate-enter max-w-4xl mx-auto space-y-16">
         <div>
           <h1 className="font-space-grotesk text-4xl md:text-5xl font-bold mb-4">Styleguide</h1>
           <p className="text-muted-foreground text-lg">Design system components and patterns</p>
@@ -155,31 +149,17 @@ export function StyleguideContent() {
           <Card>
             <CardContent className="p-6">
               <div className="space-y-4">
-                <motion.div
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="p-4 rounded-lg border bg-card cursor-pointer"
-                >
+                <div className="p-4 rounded-lg border bg-card cursor-pointer transition-transform motion-safe:hover:scale-105 motion-safe:active:scale-95">
                   Hover me (scale)
-                </motion.div>
-                <motion.div
-                  animate={{
-                    x: [0, 20, 0],
-                  }}
-                  transition={{
-                    duration: 2,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                  }}
-                  className="p-4 rounded-lg border bg-card"
-                >
-                  Animated (slide)
-                </motion.div>
+                </div>
+                <div className="animate-enter p-4 rounded-lg border bg-card">
+                  Entrance (.animate-enter, CSS only)
+                </div>
               </div>
             </CardContent>
           </Card>
         </section>
-      </motion.div>
+      </div>
     </main>
   )
 }

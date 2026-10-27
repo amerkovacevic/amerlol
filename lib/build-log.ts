@@ -4,6 +4,16 @@ export interface BuildLogEntry {
   description: string
 }
 
+/** Build log dates are calendar days in St. Louis, so format them there. */
+export function formatBuildDate(date: string) {
+  return new Date(`${date}T12:00:00-06:00`).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "America/Chicago",
+  })
+}
+
 export const buildLog: BuildLogEntry[] = [
   {
     date: "2026-10-08",

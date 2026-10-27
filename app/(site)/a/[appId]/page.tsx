@@ -22,7 +22,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   const description = isLmgtfy ? "Let me Google that for you!" : app.description
 
   return {
-    title: isLmgtfy ? `${shareTitle} | amer.lol` : shareTitle,
+    title: isLmgtfy ? shareTitle : app.name,
     description,
     openGraph: { title: shareTitle, description, type: "website" },
     twitter: { card: "summary", title: shareTitle, description },

@@ -1,37 +1,20 @@
-"use client"
-
-import { getFeaturedApps } from "@/lib/apps/registry"
 import { AppCard } from "@/components/hub/app-card"
-import { motion } from "framer-motion"
+import { getFeaturedApps } from "@/lib/apps/registry"
 
 export function FeaturedApps() {
-  const featuredApps = getFeaturedApps().slice(0, 3)
-
   return (
     <section className="container mx-auto px-4 py-20">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, margin: "-200px 0px", amount: 0.3 }}
-        transition={{ duration: 0.5 }}
-        className="text-center mb-12"
-      >
-        <h2 className="font-space-grotesk text-3xl md:text-4xl font-bold mb-4">Featured Apps</h2>
-        <p className="text-muted-foreground text-lg">Handpicked selections from the hub</p>
-      </motion.div>
+      <div className="mb-12 text-center">
+        <h2 className="mb-4 font-space-grotesk text-3xl font-bold md:text-4xl">Featured Apps</h2>
+        <p className="text-lg text-muted-foreground">Handpicked selections from the hub</p>
+      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {featuredApps.map((app, index) => (
-          <motion.div
-            key={app.appId}
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-200px 0px", amount: 0.3 }}
-            transition={{ duration: 0.5, delay: index * 0.1 }}
-          >
-            <AppCard app={app} />
-          </motion.div>
-        ))}
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {getFeaturedApps()
+          .slice(0, 3)
+          .map((app) => (
+            <AppCard key={app.appId} app={app} />
+          ))}
       </div>
     </section>
   )

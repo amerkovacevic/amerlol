@@ -17,7 +17,7 @@ interface AppShellLayoutProps {
 
 export function AppShellLayout({ app, children, settingsContent, additionalTabs = [] }: AppShellLayoutProps) {
   return (
-    <main className="container mx-auto px-4 py-8">
+    <main id="main" className="container mx-auto px-4 py-8">
       <Button asChild variant="ghost" className="mb-6">
         <Link href="/hub">
           <ArrowLeft className="mr-2 h-4 w-4" />

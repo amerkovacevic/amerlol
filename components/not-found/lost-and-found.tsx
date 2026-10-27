@@ -3,7 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
+import { AnimatePresence, MotionConfig, motion, useReducedMotion } from "framer-motion"
 import { ArrowRight, Home, Search, Shuffle, Undo2 } from "lucide-react"
 import { SiteHeader } from "@/components/layout/site-header"
 import { Button } from "@/components/ui/button"
@@ -55,6 +55,14 @@ type FalseHope = "idle" | "found" | "loading" | "lost"
 const randomCaseNumber = () => `${Math.floor(1000 + Math.random() * 9000)}-${String(Date.now()).slice(-4)}`
 
 export function LostAndFound() {
+  return (
+    <MotionConfig reducedMotion="user">
+      <LostAndFoundPage />
+    </MotionConfig>
+  )
+}
+
+function LostAndFoundPage() {
   const pathname = usePathname()
   const router = useRouter()
   const reduced = useReducedMotion()
@@ -157,7 +165,10 @@ export function LostAndFound() {
   return (
     <div className="min-h-screen overflow-hidden bg-background">
       <SiteHeader />
-      <main className="relative isolate flex min-h-[calc(100vh-4rem)] items-center justify-center px-4 py-10 sm:py-16">
+      <main
+        id="main"
+        className="relative isolate flex min-h-[calc(100vh-4rem)] items-center justify-center px-4 py-10 sm:py-16"
+      >
         <button
           aria-label="Decorative 404"
           onClick={hit404}

@@ -5,7 +5,7 @@ import { Footer } from "@/components/layout/footer"
 
 export default function HomePage() {
   return (
-    <main>
+    <main id="main">
       <Hero />
       <FeaturedApps />
       <LatestDrops />
