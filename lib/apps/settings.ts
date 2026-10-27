@@ -150,7 +150,7 @@ export const SETTINGS = {
       showQuestionMix: bool.default(true),
     }),
   },
-} satisfies Record<string, { collection?: string; legacyKey?: string; schema: z.AnyZodObject }>
+} satisfies Record<string, { collection?: string; legacyKey?: string; schema: z.ZodObject }>
 
 export type SettingsAppId = keyof typeof SETTINGS
 export type AppSettings<K extends SettingsAppId> = z.infer<(typeof SETTINGS)[K]["schema"]>
@@ -159,7 +159,7 @@ export type SettingsValues = Record<string, unknown>
 export function settingsDefinition(appId: SettingsAppId): {
   collection?: string
   legacyKey?: string
-  schema: z.AnyZodObject
+  schema: z.ZodObject
 } {
   return SETTINGS[appId]
 }
@@ -172,7 +172,7 @@ export function readSettings(appId: SettingsAppId, raw: unknown): SettingsValues
   const values = defaultSettings(appId)
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return values
   for (const [key, validator] of Object.entries(settingsDefinition(appId).schema.shape)) {
-    const parsed = (validator as z.ZodTypeAny).safeParse((raw as SettingsValues)[key])
+    const parsed = (validator as z.ZodType).safeParse((raw as SettingsValues)[key])
     if (parsed.success) values[key] = parsed.data
   }
   return values

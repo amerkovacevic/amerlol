@@ -3,8 +3,8 @@ import { z } from "zod"
 import { SETTINGS } from "../lib/apps/settings.ts"
 
 function condition(schema, path) {
-  while (schema instanceof z.ZodDefault || schema instanceof z.ZodEffects)
-    schema = schema instanceof z.ZodDefault ? schema.removeDefault() : schema.innerType()
+  // Zod 4 keeps refinements on the schema itself, so only defaults need unwrapping.
+  while (schema instanceof z.ZodDefault) schema = schema.unwrap()
   if (schema instanceof z.ZodBoolean) return `${path} is bool`
   if (schema instanceof z.ZodNumber)
     return [
@@ -27,7 +27,7 @@ function condition(schema, path) {
   if (schema instanceof z.ZodTuple)
     return (
       `${path} is list && ${path}.size() == 2 && ` +
-      schema.items.map((item, index) => `(${condition(item, `${path}[${index}]`)})`).join(" && ") +
+      schema.def.items.map((item, index) => `(${condition(item, `${path}[${index}]`)})`).join(" && ") +
       ` && ${path}[0] <= ${path}[1]`
     )
   if (schema instanceof z.ZodArray)

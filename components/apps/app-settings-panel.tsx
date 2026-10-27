@@ -100,7 +100,7 @@ export function AppSettingsPanel() {
               id={`${appId}-${key}`}
               name={key}
               value={shown[key]}
-              schema={field as z.ZodTypeAny}
+              schema={field as z.ZodType}
               onChange={(value) => edit(key, value)}
             />
           ))}
@@ -164,12 +164,11 @@ function SettingField({
   id: string
   name: string
   value: unknown
-  schema: z.ZodTypeAny
+  schema: z.ZodType
   onChange: (value: unknown) => void
 }) {
   let field = schema
-  while (field instanceof z.ZodDefault || field instanceof z.ZodEffects)
-    field = field instanceof z.ZodDefault ? field.removeDefault() : field.innerType()
+  while (field instanceof z.ZodDefault) field = field.unwrap() as z.ZodType
   const label = SETTING_LABELS[name] ?? name
   if (typeof value === "boolean")
     return (
@@ -218,7 +217,7 @@ function SettingField({
           onChange={(event) => onChange(event.target.value)}
           className="flex h-10 w-full rounded-md border bg-background px-3 text-sm"
         >
-          {field.options.map((option: string) => (
+          {field.options.map(String).map((option) => (
             <option key={option} value={option}>
               {option === "12" ? "12-hour (AM/PM)" : option === "24" ? "24-hour" : option}
             </option>
