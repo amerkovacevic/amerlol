@@ -198,6 +198,25 @@ async function recordGame(uid: string, { result, guesses }: StoredGame) {
 
 type Tab = "play" | "leaderboard" | "stats"
 
+/** One scored game per day; this tells players when the next one opens. */
+function NextWordCountdown() {
+  const now = useNow(30_000)
+  if (!now) return <p className="text-sm text-muted-foreground">A new word arrives at midnight UTC.</p>
+  const nextMidnight = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1)
+  const minutes = Math.max(1, Math.ceil((nextMidnight - now.getTime()) / 60_000))
+  const hours = Math.floor(minutes / 60)
+  return (
+    <p className="text-sm text-muted-foreground">
+      Next word in{" "}
+      <strong className="text-foreground">
+        {hours > 0 ? `${hours}h ` : ""}
+        {minutes % 60}m
+      </strong>
+      . Come back tomorrow to keep your streak.
+    </p>
+  )
+}
+
 export function AmerGauntletMain() {
   const settings = useAppSettings("amer-gauntlet")
   const { account, loading: authLoading } = useAuth()
@@ -478,7 +497,7 @@ export function AmerGauntletMain() {
                       Share Result
                     </Button>
                   )}
-                  <p className="text-sm text-muted-foreground">A new word arrives at midnight UTC.</p>
+                  <NextWordCountdown />
                 </div>
               )}
             </CardContent>
