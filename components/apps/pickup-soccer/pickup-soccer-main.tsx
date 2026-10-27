@@ -34,7 +34,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { getProfileName, getProfileNames } from "@/lib/account/profile"
 import { changeGameMembership } from "@/lib/apps/game-membership"
-import { db } from "@/lib/firebase/config"
+import { db } from "@/lib/firebase/db"
 import { getDataErrorMessage, getErrorCode, logUnexpectedError } from "@/lib/firebase/user-facing-errors"
 import { useAsync } from "@/lib/hooks/use-async"
 

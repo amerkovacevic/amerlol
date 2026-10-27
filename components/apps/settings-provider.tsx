@@ -3,7 +3,7 @@
 import * as React from "react"
 import { doc, onSnapshot, runTransaction, serverTimestamp } from "firebase/firestore"
 import { useAuth } from "@/components/auth/auth-provider"
-import { db } from "@/lib/firebase/config"
+import { db } from "@/lib/firebase/db"
 import {
   defaultSettings,
   readSettings,

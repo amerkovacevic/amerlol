@@ -31,7 +31,7 @@ import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import type { AppSettings } from "@/lib/apps/settings"
 import { copyText, downloadText } from "@/lib/browser"
-import { db } from "@/lib/firebase/config"
+import { db } from "@/lib/firebase/db"
 import { getErrorCode, logUnexpectedError } from "@/lib/firebase/user-facing-errors"
 import { useAsync } from "@/lib/hooks/use-async"
 

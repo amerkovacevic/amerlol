@@ -1,11 +1,10 @@
 "use client"
 
 import * as React from "react"
-import { useRouter } from "next/navigation"
-import { useAuth } from "@/components/auth/auth-provider"
-import { db } from "@/lib/firebase/config"
 import { updateProfile, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from "firebase/auth"
-import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore"
+import { AuthDialog } from "@/components/auth/auth-dialog"
+import { useAuth } from "@/components/auth/auth-provider"
+import { saveProfile, useProfile } from "@/components/auth/profile-provider"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -22,7 +21,6 @@ import {
   getErrorCode,
   logUnexpectedError,
 } from "@/lib/firebase/user-facing-errors"
-import { useAsync } from "@/lib/hooks/use-async"
 
 interface UserProfile {
   displayName: string
@@ -31,10 +29,6 @@ interface UserProfile {
 }
 
 const EMPTY_PASSWORDS = { currentPassword: "", newPassword: "", confirmPassword: "" }
-
-async function loadUsername(uid: string): Promise<string> {
-  return (await getDoc(doc(db, "users", uid))).data()?.username || ""
-}
 
 function passwordErrorMessage(error: unknown): string {
   switch (getErrorCode(error)) {
@@ -51,32 +45,27 @@ function passwordErrorMessage(error: unknown): string {
 
 export function AccountSettings() {
   const { account: user, loading: authLoading } = useAuth()
-  const router = useRouter()
   const { color, saving: savingColor, setColor } = useAccentColor()
   const [saving, setSaving] = React.useState(false)
   const [changingPassword, setChangingPassword] = React.useState(false)
   const [passwordData, setPasswordData] = React.useState(EMPTY_PASSWORDS)
-  const storedUsername = useAsync(user?.uid ?? null, () => loadUsername(user!.uid))
+  const stored = useProfile()
+  const [authOpen, setAuthOpen] = React.useState(false)
   // Edits are kept separately so a late profile load never overwrites typing.
   const [edits, setEdits] = React.useState<Partial<UserProfile>>({})
   const profile: UserProfile = {
     displayName: user?.displayName || "",
-    username: storedUsername.data ?? "",
+    username: stored.username ?? "",
     email: user?.email || "",
     ...edits,
   }
   const setProfile = (next: UserProfile) =>
     setEdits({ displayName: next.displayName, username: next.username })
-  const loading = Boolean(user) && storedUsername.loading
-
-  // Guests (including anonymous game players) have no account to manage.
-  React.useEffect(() => {
-    if (!authLoading && !user) router.push("/")
-  }, [user, authLoading, router])
+  const loading = Boolean(user) && stored.status === "loading"
 
   React.useEffect(() => {
-    if (storedUsername.error) toast.error(getDataErrorMessage(storedUsername.error, "load your profile"))
-  }, [storedUsername.error])
+    if (stored.status === "error") toast.error(getDataErrorMessage(null, "load your profile"))
+  }, [stored.status])
 
   const handleProfileUpdate = async (event: React.FormEvent) => {
     event.preventDefault()
@@ -93,20 +82,13 @@ export function AccountSettings() {
       if (profile.displayName !== user.displayName) {
         await updateProfile(user, { displayName: profile.displayName })
       }
-      const userRef = doc(db, "users", user.uid)
-      const exists = (await getDoc(userRef)).exists()
-      // Merge keeps other profile fields; Firestore mirrors Auth's name and email.
-      await setDoc(
-        userRef,
-        {
-          username: profile.username,
-          displayName: profile.displayName,
-          email: user.email || "",
-          updatedAt: serverTimestamp(),
-          ...(exists ? {} : { createdAt: serverTimestamp() }),
-        },
-        { merge: true }
-      )
+      // Firestore mirrors Auth's name and email so other people can see them.
+      await saveProfile(user.uid, {
+        username: profile.username,
+        displayName: profile.displayName,
+        email: user.email || "",
+      })
+      setEdits({})
       toast.success("Profile updated successfully")
     } catch (error) {
       logUnexpectedError("account:profile", error)
@@ -157,14 +139,29 @@ export function AccountSettings() {
 
   if (authLoading || loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      <div role="status" className="flex items-center justify-center gap-3 py-12 text-muted-foreground">
+        <Loader2 className="h-6 w-6 animate-spin" aria-hidden="true" />
+        Loading your account…
       </div>
     )
   }
 
+  // Guests (including anonymous game players) have no account to manage.
   if (!user) {
-    return null
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>You&apos;re not signed in</CardTitle>
+          <CardDescription>
+            Sign in to choose a username, sync your site color and keep app settings across devices.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button onClick={() => setAuthOpen(true)}>Sign in or create account</Button>
+          <AuthDialog open={authOpen} onOpenChange={setAuthOpen} />
+        </CardContent>
+      </Card>
+    )
   }
 
   // Check if user signed in with Google (can't change password)
@@ -302,6 +299,7 @@ export function AccountSettings() {
                     })
                   }
                   placeholder="Enter current password"
+                  autoComplete="current-password"
                   required
                 />
               </div>
@@ -319,6 +317,7 @@ export function AccountSettings() {
                     })
                   }
                   placeholder="Enter new password"
+                  autoComplete="new-password"
                   minLength={6}
                   required
                 />
@@ -338,6 +337,7 @@ export function AccountSettings() {
                     })
                   }
                   placeholder="Confirm new password"
+                  autoComplete="new-password"
                   minLength={6}
                   required
                 />

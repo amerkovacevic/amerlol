@@ -27,7 +27,7 @@ import { toast } from "sonner"
 import { useAppSettings } from "@/components/apps/settings-provider"
 import { useAuth } from "@/components/auth/auth-provider"
 import { AuthDialog } from "@/components/auth/auth-dialog"
-import { db } from "@/lib/firebase/config"
+import { db } from "@/lib/firebase/db"
 import {
   collection,
   query,

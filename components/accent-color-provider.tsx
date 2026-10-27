@@ -1,9 +1,8 @@
 "use client"
 
 import * as React from "react"
-import { doc, getDoc, onSnapshot, serverTimestamp, setDoc } from "firebase/firestore"
 import { useAuth } from "@/components/auth/auth-provider"
-import { db } from "@/lib/firebase/config"
+import { saveProfile, useProfile } from "@/components/auth/profile-provider"
 import { readStorage, writeStorage } from "@/lib/storage"
 import {
   DEFAULT_THEME_COLOR,
@@ -27,9 +26,17 @@ function readStoredColor(): ThemeColor {
 
 export function AccentColorProvider({ children }: { children: React.ReactNode }) {
   const { account } = useAuth()
+  const { accentColor: savedColor } = useProfile()
   const [color, setColorState] = React.useState(readStoredColor)
   const [saving, setSaving] = React.useState(false)
   const colorRef = React.useRef(color)
+
+  // A registered account's saved colour follows it across devices.
+  const [seenSavedColor, setSeenSavedColor] = React.useState(savedColor)
+  if (savedColor !== seenSavedColor) {
+    setSeenSavedColor(savedColor)
+    if (isThemeColor(savedColor)) setColorState(savedColor)
+  }
 
   // Mirror the colour onto <html> for the CSS palette and remember it on this device.
   React.useEffect(() => {
@@ -38,15 +45,6 @@ export function AccentColorProvider({ children }: { children: React.ReactNode })
     writeStorage(THEME_COLOR_STORAGE_KEY, color)
   }, [color])
 
-  // A registered account's saved colour follows it across devices.
-  React.useEffect(() => {
-    if (!account) return
-    return onSnapshot(doc(db, "users", account.uid), (snapshot) => {
-      const saved = snapshot.data()?.accentColor
-      if (isThemeColor(saved)) setColorState(saved)
-    })
-  }, [account])
-
   const setColor = React.useCallback(
     async (next: ThemeColor) => {
       const previous = colorRef.current
@@ -54,18 +52,7 @@ export function AccentColorProvider({ children }: { children: React.ReactNode })
       if (!account) return
       setSaving(true)
       try {
-        const userRef = doc(db, "users", account.uid)
-        const exists = (await getDoc(userRef)).exists()
-        // Merge writes keep the rest of the profile intact.
-        await setDoc(
-          userRef,
-          {
-            accentColor: next,
-            updatedAt: serverTimestamp(),
-            ...(exists ? {} : { createdAt: serverTimestamp() }),
-          },
-          { merge: true }
-        )
+        await saveProfile(account.uid, { accentColor: next })
       } catch (error) {
         setColorState(previous)
         throw error

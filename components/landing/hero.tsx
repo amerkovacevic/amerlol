@@ -1,71 +1,40 @@
-"use client"
-
-import { SignInReminder } from "@/components/auth/sign-in-reminder"
-import * as React from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { motion } from "framer-motion"
-import { Button } from "@/components/ui/button"
 import { ArrowRight } from "lucide-react"
-
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.2,
-    },
-  },
-}
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: {
-      duration: 0.5,
-    },
-  },
-}
+import { SignInReminder } from "@/components/auth/sign-in-reminder"
+import { Button } from "@/components/ui/button"
+import { enterDelay } from "@/lib/utils"
 
 export function Hero() {
   return (
-    <section className="relative min-h-[80vh] flex items-center justify-center overflow-hidden">
-      <motion.div
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-        className="container mx-auto px-4 py-20 text-center relative z-10"
-      >
-        <motion.div variants={itemVariants} className="flex justify-center mb-8">
-          <Image
-            src="/logo.png"
-            alt="amer.lol"
-            width={200}
-            height={200}
-            className="h-32 w-32 md:h-48 md:w-48 lg:h-64 lg:w-64 object-contain drop-shadow-2xl"
-            priority
-          />
-        </motion.div>
+    <section className="relative flex min-h-[80vh] items-center justify-center overflow-hidden">
+      <div className="container relative z-10 mx-auto px-4 py-20 text-center">
+        <Image
+          src="/logo-512.webp"
+          alt=""
+          width={256}
+          height={256}
+          className="animate-enter mx-auto mb-8 h-32 w-32 object-contain drop-shadow-2xl md:h-48 md:w-48 lg:h-64 lg:w-64"
+          priority
+        />
 
-        <motion.h1
-          variants={itemVariants}
-          className="font-space-grotesk text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent"
+        <h1
+          className="animate-enter mb-6 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text font-space-grotesk text-5xl font-bold text-transparent md:text-7xl"
+          style={enterDelay(100)}
         >
           amer.lol
-        </motion.h1>
+        </h1>
 
-        <motion.p
-          variants={itemVariants}
-          className="text-xl md:text-2xl text-muted-foreground mb-12 max-w-2xl mx-auto"
+        <p
+          className="animate-enter mx-auto mb-12 max-w-2xl text-xl text-muted-foreground md:text-2xl"
+          style={enterDelay(200)}
         >
           A premium, playful hub for mini-apps and experiments
-        </motion.p>
+        </p>
 
-        <motion.div
-          variants={itemVariants}
-          className="flex flex-col sm:flex-row gap-4 justify-center items-center"
+        <div
+          className="animate-enter flex flex-col items-center justify-center gap-4 sm:flex-row"
+          style={enterDelay(300)}
         >
           <Button asChild size="lg" className="group">
             <Link href="/hub">
@@ -76,12 +45,12 @@ export function Hero() {
           <Button asChild variant="outline" size="lg">
             <Link href="/about">About this project</Link>
           </Button>
-        </motion.div>
+        </div>
 
         <div className="mx-auto mt-8 max-w-xl text-left">
           <SignInReminder />
         </div>
-      </motion.div>
+      </div>
     </section>
   )
 }

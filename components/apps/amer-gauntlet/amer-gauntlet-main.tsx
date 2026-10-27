@@ -49,7 +49,7 @@ import {
   type LetterResult,
 } from "@/lib/apps/gauntlet"
 import { copyText } from "@/lib/browser"
-import { db } from "@/lib/firebase/config"
+import { db } from "@/lib/firebase/db"
 import { getErrorCode, logUnexpectedError } from "@/lib/firebase/user-facing-errors"
 import { utcDateString } from "@/lib/football-deepcuts/static-game"
 import { useAsync } from "@/lib/hooks/use-async"

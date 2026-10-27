@@ -11,7 +11,7 @@ import {
   where,
 } from "firebase/firestore"
 import type { User } from "firebase/auth"
-import { db } from "@/lib/firebase/config"
+import { db } from "@/lib/firebase/db"
 
 export interface LeaderboardEntry {
   userId: string

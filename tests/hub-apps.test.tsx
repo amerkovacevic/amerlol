@@ -29,7 +29,7 @@ vi.mock("@/components/auth/auth-dialog", () => ({ AuthDialog: () => null }))
 vi.mock("@/components/accent-color-provider", () => ({
   useAccentColor: () => ({ color: "teal", saving: false, setColor: vi.fn() }),
 }))
-vi.mock("@/lib/firebase/config", () => ({ db: {}, auth: {} }))
+vi.mock("@/lib/firebase/db", () => ({ db: {} }))
 vi.mock("@/components/apps/atlas-sprint/country-map", () => ({
   CountryMap: (props: { focusOnGuess: boolean }) => (
     <div data-testid="country-map" data-focus={String(props.focusOnGuess)} />

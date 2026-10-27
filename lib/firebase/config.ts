@@ -1,6 +1,5 @@
-import { initializeApp, getApps, FirebaseApp } from "firebase/app"
-import { getAuth, Auth } from "firebase/auth"
-import { getFirestore, Firestore } from "firebase/firestore"
+import { initializeApp, getApps, type FirebaseApp } from "firebase/app"
+import { getAuth, type Auth } from "firebase/auth"
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "",
@@ -13,16 +12,11 @@ const firebaseConfig = {
 
 let app: FirebaseApp
 let auth: Auth
-let db: Firestore
 
+// Firebase only runs in the browser; static rendering never touches it.
 if (typeof window !== "undefined") {
-  if (!getApps().length) {
-    app = initializeApp(firebaseConfig)
-  } else {
-    app = getApps()[0]
-  }
+  app = getApps()[0] ?? initializeApp(firebaseConfig)
   auth = getAuth(app)
-  db = getFirestore(app)
 }
 
-export { app, auth, db }
+export { app, auth }

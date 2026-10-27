@@ -31,7 +31,7 @@ const state = vi.hoisted(() => ({
 vi.mock("@/components/auth/auth-provider", () => ({
   useAuth: () => ({ user: state.user, account: state.user, loading: false }),
 }))
-vi.mock("@/lib/firebase/config", () => ({ db: {} }))
+vi.mock("@/lib/firebase/db", () => ({ db: {} }))
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 vi.mock("firebase/firestore", () => ({
   doc: (_db: unknown, ...path: string[]) => path.join("/"),
