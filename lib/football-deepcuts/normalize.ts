@@ -9,7 +9,9 @@ export function normalizeSearchText(value: string): string {
 }
 
 export function buildSearchTerms(displayName: string, alternativeNames: readonly string[]): string[] {
-  return Array.from(new Set([displayName, ...alternativeNames].map(normalizeSearchText).filter(Boolean))).sort()
+  return Array.from(
+    new Set([displayName, ...alternativeNames].map(normalizeSearchText).filter(Boolean))
+  ).sort()
 }
 
 export function canonicalClubPairId(clubAId: string, clubBId: string): string {

@@ -6,9 +6,13 @@ import { SignInReminder } from "../components/auth/sign-in-reminder"
 const auth = vi.hoisted(() => ({ loading: false, user: null as null | { isAnonymous: boolean } }))
 vi.mock("@/components/auth/auth-provider", () => ({ useAuth: () => auth }))
 vi.mock("@/components/auth/auth-dialog", () => ({
-  AuthDialog: ({ open }: { open: boolean }) => open ? <div role="dialog">Sign in form</div> : null,
+  AuthDialog: ({ open }: { open: boolean }) => (open ? <div role="dialog">Sign in form</div> : null),
 }))
-afterEach(() => { cleanup(); auth.loading = false; auth.user = null })
+afterEach(() => {
+  cleanup()
+  auth.loading = false
+  auth.user = null
+})
 
 it("opens sign-in from the guest reminder", () => {
   render(<SignInReminder />)

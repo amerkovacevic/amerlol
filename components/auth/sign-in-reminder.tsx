@@ -11,9 +11,16 @@ export function SignInReminder() {
   if (loading || (user && !user.isAnonymous)) return null
 
   return (
-    <aside aria-label="Account benefits" className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border bg-muted/40 px-4 py-3 text-sm">
-      <p className="text-muted-foreground">Better with an account: sign in to sync app settings across devices.</p>
-      <Button variant="link" className="h-auto whitespace-normal p-0 text-sm" onClick={() => setOpen(true)}>Sign in</Button>
+    <aside
+      aria-label="Account benefits"
+      className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border bg-muted/40 px-4 py-3 text-sm"
+    >
+      <p className="text-muted-foreground">
+        Better with an account: sign in to sync app settings across devices.
+      </p>
+      <Button variant="link" className="h-auto whitespace-normal p-0 text-sm" onClick={() => setOpen(true)}>
+        Sign in
+      </Button>
       <AuthDialog open={open} onOpenChange={setOpen} />
     </aside>
   )

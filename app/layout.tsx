@@ -4,10 +4,11 @@ import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/components/auth/auth-provider"
 import { IOSAppPromotion } from "@/components/layout/ios-app-banner"
-import { MotionProvider } from "@/components/fx/motion-provider"
 import { AccentColorProvider } from "@/components/accent-color-provider"
+import { ProfileProvider } from "@/components/auth/profile-provider"
 import { UsernameOnboarding } from "@/components/auth/username-onboarding"
 import { Toaster } from "sonner"
+import { ACCENT_BOOTSTRAP_SCRIPT } from "@/lib/theme-colors"
 
 const inter = Inter({
   subsets: ["latin"],
@@ -22,38 +23,31 @@ const spaceGrotesk = Space_Grotesk({
 })
 
 export const metadata: Metadata = {
-  title: "amer.lol",
-  description: "A premium, playful hub website hosting multiple mini-apps",
+  title: { default: "amer.lol", template: "%s | amer.lol" },
+  description: "A playful hub of mini-apps, games and experiments by Amer.",
   icons: {
-    icon: "/logo.png",
-    shortcut: "/logo.png",
-    apple: "/logo.png",
+    icon: "/favicon.png",
+    apple: "/apple-touch-icon.png",
   },
 }
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: ACCENT_BOOTSTRAP_SCRIPT }} />
+      </head>
       <body className={`${inter.variable} ${spaceGrotesk.variable} font-sans antialiased`}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <AuthProvider>
-            <AccentColorProvider>
-              <MotionProvider>
-                <IOSAppPromotion />
+            <ProfileProvider>
+              <AccentColorProvider>
                 {children}
+                <IOSAppPromotion />
                 <UsernameOnboarding />
                 <Toaster position="bottom-right" />
-              </MotionProvider>
-            </AccentColorProvider>
+              </AccentColorProvider>
+            </ProfileProvider>
           </AuthProvider>
         </ThemeProvider>
       </body>

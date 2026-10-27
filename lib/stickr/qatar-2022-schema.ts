@@ -76,10 +76,9 @@ export function makeQatar2022FwcStickerId(n: number): string {
   return `FWC-${n}`
 }
 
-export function parseQatar2022StickerId(id: string):
-  | { kind: "team"; code: string; n: number }
-  | { kind: "fwc"; n: number }
-  | null {
+export function parseQatar2022StickerId(
+  id: string
+): { kind: "team"; code: string; n: number } | { kind: "fwc"; n: number } | null {
   const trimmed = id.trim()
   if (!trimmed) return null
 
@@ -95,4 +94,3 @@ export function parseQatar2022StickerId(id: string):
 export function findQatar2022TeamByCode(code: string): Qatar2022Team | undefined {
   return QATAR_2022_TEAMS.find((t) => t.code === code)
 }
-

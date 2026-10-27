@@ -1,10 +1,6 @@
 import test from "node:test"
 import assert from "node:assert/strict"
-import {
-  getAuthErrorMessage,
-  getDataErrorMessage,
-  getErrorCode,
-} from "../lib/firebase/user-facing-errors.ts"
+import { getAuthErrorMessage, getDataErrorMessage, getErrorCode } from "../lib/firebase/user-facing-errors.ts"
 
 test("extracts error codes without exposing raw errors", () => {
   assert.equal(getErrorCode({ code: "permission-denied" }), "permission-denied")
@@ -21,5 +17,8 @@ test("turns authentication errors into clear next steps", () => {
 test("turns data errors into non-technical messages", () => {
   assert.match(getDataErrorMessage({ code: "permission-denied" }, "join"), /sign in again/i)
   assert.match(getDataErrorMessage({ code: "aborted" }, "join"), /updated/i)
-  assert.equal(getDataErrorMessage({}, "join the exchange"), "We could not join the exchange. Please try again.")
+  assert.equal(
+    getDataErrorMessage({}, "join the exchange"),
+    "We could not join the exchange. Please try again."
+  )
 })

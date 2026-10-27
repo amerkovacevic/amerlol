@@ -110,4 +110,3 @@ export function filterNumericToAlbum(ids: string[], stickerCount: number): strin
     })
     .sort((a, b) => parseInt(a, 10) - parseInt(b, 10))
 }
-

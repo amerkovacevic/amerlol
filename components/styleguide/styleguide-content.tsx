@@ -1,6 +1,5 @@
 "use client"
 
-import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -10,30 +9,39 @@ import { toast } from "sonner"
 
 export function StyleguideContent() {
   return (
-    <main className="container mx-auto px-4 py-20">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="max-w-4xl mx-auto space-y-16"
-      >
+    <main id="main" className="container mx-auto px-4 py-20">
+      <div className="animate-enter max-w-4xl mx-auto space-y-16">
         <div>
-          <h1 className="font-space-grotesk text-4xl md:text-5xl font-bold mb-4">
-            Styleguide
-          </h1>
-          <p className="text-muted-foreground text-lg">
-            Design system components and patterns
-          </p>
+          <h1 className="font-space-grotesk text-4xl md:text-5xl font-bold mb-4">Styleguide</h1>
+          <p className="text-muted-foreground text-lg">Design system components and patterns</p>
         </div>
 
         <section aria-labelledby="interaction-patterns">
-          <h2 id="interaction-patterns" className="font-space-grotesk text-3xl font-bold mb-6">Interaction patterns</h2>
+          <h2 id="interaction-patterns" className="font-space-grotesk text-3xl font-bold mb-6">
+            Interaction patterns
+          </h2>
           <Card>
             <CardContent className="p-6 space-y-4 text-muted-foreground">
-              <p><strong className="text-foreground">One page title.</strong> The app shell owns the app name and description. Use task-specific headings inside each app, followed by the shared Overview and Settings navigation.</p>
-              <p><strong className="text-foreground">Consistent controls.</strong> Use shared buttons, fields, cards, tabs, and semantic color tokens. Keep app accents for decoration and use text or icons alongside status colors.</p>
-              <p><strong className="text-foreground">Accessible interaction.</strong> Name every field and icon button. Preserve keyboard focus, respect reduced motion, wrap controls on narrow screens, and keep long dialogs scrollable.</p>
-              <p><strong className="text-foreground">Helpful account reminders.</strong> Show a quiet, actionable reminder to guests explaining the benefit of signing in. Hide it for signed-in accounts and keep the main task available.</p>
+              <p>
+                <strong className="text-foreground">One page title.</strong> The app shell owns the app name
+                and description. Use task-specific headings inside each app, followed by the shared Overview
+                and Settings navigation.
+              </p>
+              <p>
+                <strong className="text-foreground">Consistent controls.</strong> Use shared buttons, fields,
+                cards, tabs, and semantic color tokens. Keep app accents for decoration and use text or icons
+                alongside status colors.
+              </p>
+              <p>
+                <strong className="text-foreground">Accessible interaction.</strong> Name every field and icon
+                button. Preserve keyboard focus, respect reduced motion, wrap controls on narrow screens, and
+                keep long dialogs scrollable.
+              </p>
+              <p>
+                <strong className="text-foreground">Helpful account reminders.</strong> Show a quiet,
+                actionable reminder to guests explaining the benefit of signing in. Hide it for signed-in
+                accounts and keep the main task available.
+              </p>
             </CardContent>
           </Card>
         </section>
@@ -43,15 +51,9 @@ export function StyleguideContent() {
           <Card>
             <CardContent className="p-6 space-y-4">
               <div>
-                <p className="font-space-grotesk text-4xl font-bold mb-2">
-                  Heading 1 (Space Grotesk)
-                </p>
-                <h2 className="font-space-grotesk text-3xl font-bold mb-2">
-                  Heading 2 (Space Grotesk)
-                </h2>
-                <h3 className="font-space-grotesk text-2xl font-bold mb-2">
-                  Heading 3 (Space Grotesk)
-                </h3>
+                <p className="font-space-grotesk text-4xl font-bold mb-2">Heading 1 (Space Grotesk)</p>
+                <h2 className="font-space-grotesk text-3xl font-bold mb-2">Heading 2 (Space Grotesk)</h2>
+                <h3 className="font-space-grotesk text-2xl font-bold mb-2">Heading 3 (Space Grotesk)</h3>
                 <p className="text-base mb-2">
                   Body text (Inter) - Lorem ipsum dolor sit amet, consectetur adipiscing elit.
                 </p>
@@ -73,11 +75,7 @@ export function StyleguideContent() {
                 <Button variant="outline">Outline</Button>
                 <Button variant="ghost">Ghost</Button>
                 <Button variant="destructive">Destructive</Button>
-                <Button
-                  onClick={() => toast.success("Toast demo!")}
-                >
-                  Show Toast
-                </Button>
+                <Button onClick={() => toast.success("Toast demo!")}>Show Toast</Button>
               </div>
               <div className="flex flex-wrap gap-4 mt-4">
                 <Button size="sm">Small</Button>
@@ -111,9 +109,7 @@ export function StyleguideContent() {
                 <CardDescription>Card description goes here</CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  Card content area with some example text.
-                </p>
+                <p className="text-sm text-muted-foreground">Card content area with some example text.</p>
               </CardContent>
             </Card>
             <Card>
@@ -153,31 +149,17 @@ export function StyleguideContent() {
           <Card>
             <CardContent className="p-6">
               <div className="space-y-4">
-                <motion.div
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="p-4 rounded-lg border bg-card cursor-pointer"
-                >
+                <div className="p-4 rounded-lg border bg-card cursor-pointer transition-transform motion-safe:hover:scale-105 motion-safe:active:scale-95">
                   Hover me (scale)
-                </motion.div>
-                <motion.div
-                  animate={{
-                    x: [0, 20, 0],
-                  }}
-                  transition={{
-                    duration: 2,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                  }}
-                  className="p-4 rounded-lg border bg-card"
-                >
-                  Animated (slide)
-                </motion.div>
+                </div>
+                <div className="animate-enter p-4 rounded-lg border bg-card">
+                  Entrance (.animate-enter, CSS only)
+                </div>
               </div>
             </CardContent>
           </Card>
         </section>
-      </motion.div>
+      </div>
     </main>
   )
 }

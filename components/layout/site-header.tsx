@@ -4,56 +4,51 @@ import * as React from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
-import { Menu, X } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { ThemeToggle } from "./theme-toggle"
-import { MobileNavDrawer } from "./mobile-nav-drawer"
-import { motion } from "framer-motion"
 import { cn } from "@/lib/utils"
-
-const navItems = [
-  { href: "/", label: "Home" },
-  { href: "/hub", label: "Hub" },
-  { href: "/about", label: "About" },
-]
+import { AccountMenu } from "./account-menu"
+import { MobileNavDrawer } from "./mobile-nav-drawer"
+import { NAV_ITEMS } from "./nav-items"
+import { ThemeToggle } from "./theme-toggle"
 
 export function SiteHeader() {
   const pathname = usePathname()
   const [isScrolled, setIsScrolled] = React.useState(false)
 
   React.useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 20)
-    }
-    window.addEventListener("scroll", handleScroll)
+    const handleScroll = () => setIsScrolled(window.scrollY > 20)
+    handleScroll()
+    window.addEventListener("scroll", handleScroll, { passive: true })
     return () => window.removeEventListener("scroll", handleScroll)
   }, [])
 
   return (
-    <motion.header
-      initial={{ y: -100 }}
-      animate={{ y: 0 }}
-      transition={{ duration: 0.3 }}
+    <header
       className={cn(
-        "sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60",
+        "sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur transition-shadow supports-[backdrop-filter]:bg-background/60",
         isScrolled && "shadow-sm"
       )}
     >
+      <a
+        href="#main"
+        className="sr-only rounded-md bg-background px-3 py-2 focus:not-sr-only focus:absolute focus:left-4 focus:top-3"
+      >
+        Skip to content
+      </a>
       <div className="container flex h-16 items-center justify-between">
-        <Link href="/" className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
+        <Link href="/" className="flex items-center space-x-2 transition-opacity hover:opacity-80">
           <Image
-            src="/logo.png"
-            alt="amer.lol"
+            src="/logo-64.webp"
+            alt=""
             width={32}
             height={32}
             className="h-8 w-8 object-contain"
             priority
           />
-          <span className="font-space-grotesk text-xl font-bold hidden sm:inline">amer.lol</span>
+          <span className="font-space-grotesk text-xl font-bold">amer.lol</span>
         </Link>
 
-        <nav className="hidden md:flex items-center space-x-6">
-          {navItems.map((item) => {
+        <nav aria-label="Main" className="hidden items-center space-x-6 md:flex">
+          {NAV_ITEMS.map((item) => {
             const isActive = pathname === item.href
             return (
               <Link
@@ -71,11 +66,14 @@ export function SiteHeader() {
           })}
         </nav>
 
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center gap-2">
           <ThemeToggle />
+          <div className="hidden md:block">
+            <AccountMenu />
+          </div>
           <MobileNavDrawer />
         </div>
       </div>
-    </motion.header>
+    </header>
   )
 }

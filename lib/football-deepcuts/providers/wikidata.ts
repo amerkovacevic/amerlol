@@ -3,7 +3,9 @@ import type { FootballClub, FootballPlayer, PlayerClubAppearance, SourceReferenc
 
 const ENDPOINT = "https://query.wikidata.org/sparql"
 
-interface SparqlBindingValue { value: string }
+interface SparqlBindingValue {
+  value: string
+}
 interface SparqlRow {
   player: SparqlBindingValue
   playerLabel: SparqlBindingValue
@@ -24,8 +26,10 @@ function entityId(uri: string): string {
 }
 
 export function buildWikidataClubQuery(clubQids: readonly string[], limit = 1000): string {
-  if (!clubQids.length || clubQids.some((id) => !/^Q\d+$/.test(id))) throw new Error("Valid Wikidata club QIDs are required")
-  if (!Number.isInteger(limit) || limit < 1 || limit > 5000) throw new Error("Limit must be between 1 and 5000")
+  if (!clubQids.length || clubQids.some((id) => !/^Q\d+$/.test(id)))
+    throw new Error("Valid Wikidata club QIDs are required")
+  if (!Number.isInteger(limit) || limit < 1 || limit > 5000)
+    throw new Error("Limit must be between 1 and 5000")
   return `SELECT ?player ?playerLabel ?club ?clubLabel ?countryLabel ?dateOfBirth ?nationalityLabel ?matches ?start ?end WHERE {
   VALUES ?club { ${clubQids.map((id) => `wd:${id}`).join(" ")} }
   ?player p:P54 ?membership.
@@ -44,7 +48,8 @@ LIMIT ${limit}`
 export class WikidataProvider implements FootballDataProvider {
   readonly id = "wikidata"
   readonly attribution = "Wikidata contributors"
-  readonly licenseNotes = "Structured data is CC0. Imported membership and match-count statements remain unverified leads."
+  readonly licenseNotes =
+    "Structured data is CC0. Imported membership and match-count statements remain unverified leads."
   private readonly clubQids: readonly string[]
   private readonly fetcher: typeof fetch
 
@@ -57,10 +62,13 @@ export class WikidataProvider implements FootballDataProvider {
     if (options.cursor) throw new Error("Wikidata offset pagination is not supported by this provider")
     const query = buildWikidataClubQuery(this.clubQids, options.limit ?? 1000)
     const response = await this.fetcher(`${ENDPOINT}?query=${encodeURIComponent(query)}&format=json`, {
-      headers: { Accept: "application/sparql-results+json", "User-Agent": "amer.lol-deepcuts/0.1 (data import)" },
+      headers: {
+        Accept: "application/sparql-results+json",
+        "User-Agent": "amer.lol-deepcuts/0.1 (data import)",
+      },
     })
     if (!response.ok) throw new Error(`Wikidata query failed with status ${response.status}`)
-    const payload = await response.json() as { results?: { bindings?: SparqlRow[] } }
+    const payload = (await response.json()) as { results?: { bindings?: SparqlRow[] } }
     return mapWikidataRows(payload.results?.bindings ?? [], new Date().toISOString())
   }
 }
@@ -75,7 +83,13 @@ export function mapWikidataRows(rows: readonly SparqlRow[], retrievedAt: string)
     try {
       const playerQid = entityId(row.player.value)
       const clubQid = entityId(row.club.value)
-      const source: SourceReference = { provider: "wikidata", externalId: playerQid, url: row.player.value, retrievedAt, license: "CC0-1.0" }
+      const source: SourceReference = {
+        provider: "wikidata",
+        externalId: playerQid,
+        url: row.player.value,
+        retrievedAt,
+        license: "CC0-1.0",
+      }
       players.set(playerQid, {
         id: `wikidata-${playerQid}`,
         canonicalName: row.playerLabel.value,
@@ -106,9 +120,17 @@ export function mapWikidataRows(rows: readonly SparqlRow[], retrievedAt: string)
         source,
         verificationStatus: "pending",
       })
-      if (parsedMatches === undefined) issues.push({ code: "missing-appearances", message: "Wikidata membership has no match-count qualifier", externalId: `${playerQid}:${clubQid}` })
+      if (parsedMatches === undefined)
+        issues.push({
+          code: "missing-appearances",
+          message: "Wikidata membership has no match-count qualifier",
+          externalId: `${playerQid}:${clubQid}`,
+        })
     } catch (error) {
-      issues.push({ code: "source-error", message: error instanceof Error ? error.message : "Invalid Wikidata row" })
+      issues.push({
+        code: "source-error",
+        message: error instanceof Error ? error.message : "Invalid Wikidata row",
+      })
     }
   }
   return { clubs: [...clubs.values()], players: [...players.values()], appearances, issues }

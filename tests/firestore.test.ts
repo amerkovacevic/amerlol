@@ -40,9 +40,7 @@ afterAll(async () => {
   await environment?.cleanup()
 })
 const database = (uid?: string) =>
-  uid
-    ? environment.authenticatedContext(uid).firestore()
-    : environment.unauthenticatedContext().firestore()
+  uid ? environment.authenticatedContext(uid).firestore() : environment.unauthenticatedContext().firestore()
 async function seed(path: string, value: Record<string, unknown>) {
   await environment.withSecurityRulesDisabled(async (context) => {
     await setDoc(doc(context.firestore(), path), value)
@@ -102,12 +100,8 @@ describe("account preference access and validation", () => {
           updatedAt: serverTimestamp(),
         })
       )
-      expect(
-        (await getDoc(doc(database("alice"), path))).data()?.futureField
-      ).toBe("keep")
-      expect(
-        (await getDoc(doc(database("alice"), path))).data()?.createdAt
-      ).toBe("original")
+      expect((await getDoc(doc(database("alice"), path))).data()?.futureField).toBe("keep")
+      expect((await getDoc(doc(database("alice"), path))).data()?.createdAt).toBe("original")
     })
   }
   it("rejects invalid ranges and lengths", async () => {
@@ -181,12 +175,7 @@ describe("game membership", () => {
           snapshot = await transaction.get(ref),
           game = snapshot.data()!
         transaction.update(ref, {
-          players: changeGameMembership(
-            game.players,
-            uid,
-            game.maxPlayers,
-            true
-          ),
+          players: changeGameMembership(game.players, uid, game.maxPlayers, true),
           updatedAt: serverTimestamp(),
         })
       })
@@ -247,8 +236,6 @@ describe("private data and unknown collections", () => {
       await assertFails(getDoc(doc(database("eve"), path)))
       await assertSucceeds(getDoc(doc(database("alice"), path)))
     }
-    await assertFails(
-      setDoc(doc(database("alice"), "unknown/item"), { value: "no" })
-    )
+    await assertFails(setDoc(doc(database("alice"), "unknown/item"), { value: "no" }))
   })
 })

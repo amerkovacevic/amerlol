@@ -4,13 +4,7 @@ import * as React from "react"
 import { z } from "zod"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
@@ -24,8 +18,7 @@ import {
 import { useSettingsContext } from "./settings-provider"
 
 export function AppSettingsPanel() {
-  const { appId, values, loading, saving, error, cloud, save, retry } =
-    useSettingsContext()
+  const { appId, values, loading, saving, error, cloud, save, retry } = useSettingsContext()
   const [draft, setDraft] = React.useState<SettingsValues | null>(null)
   const [baseline, setBaseline] = React.useState<SettingsValues>(values)
   const [formError, setFormError] = React.useState("")
@@ -40,19 +33,12 @@ export function AppSettingsPanel() {
       await save(validateSettings(appId, shown), baseline)
       setDraft(null)
       setFormError("")
-      toast.success(
-        cloud
-          ? "Settings saved to your account"
-          : "Settings saved on this device"
-      )
+      toast.success(cloud ? "Settings saved to your account" : "Settings saved on this device")
     } catch (cause) {
       setFormError(
         cause instanceof z.ZodError
           ? cause.issues
-              .map(
-                (issue) =>
-                  `${SETTING_LABELS[String(issue.path[0])] ?? issue.path[0]}: ${issue.message}`
-              )
+              .map((issue) => `${SETTING_LABELS[String(issue.path[0])] ?? issue.path[0]}: ${issue.message}`)
               .join(". ")
           : cause instanceof Error
             ? cause.message
@@ -62,10 +48,9 @@ export function AppSettingsPanel() {
   }
   const exportSettings = () => {
     const url = URL.createObjectURL(
-      new Blob(
-        [JSON.stringify({ appId, version: 1, settings: shown }, null, 2)],
-        { type: "application/json" }
-      )
+      new Blob([JSON.stringify({ appId, version: 1, settings: shown }, null, 2)], {
+        type: "application/json",
+      })
     )
     const link = document.createElement("a")
     link.href = url
@@ -78,16 +63,13 @@ export function AppSettingsPanel() {
     event.target.value = ""
     if (!file) return
     try {
-      if (file.size > 64 * 1024)
-        throw new Error("Settings files must be smaller than 64 KB")
+      if (file.size > 64 * 1024) throw new Error("Settings files must be smaller than 64 KB")
       const parsed = parseSettingsImport(appId, JSON.parse(await file.text()))
       if (!draft) setBaseline(values)
       setDraft(parsed)
       setFormError("")
     } catch {
-      setFormError(
-        "That settings file is invalid for this app. Nothing was saved."
-      )
+      setFormError("That settings file is invalid for this app. Nothing was saved.")
     }
   }
   if (loading) return <p role="status">Loading settings…</p>
@@ -112,18 +94,16 @@ export function AppSettingsPanel() {
           </div>
         )}
         <fieldset disabled={saving || Boolean(error)} className="space-y-5">
-          {Object.entries(settingsDefinition(appId).schema.shape).map(
-            ([key, field]) => (
-              <SettingField
-                key={key}
-                id={`${appId}-${key}`}
-                name={key}
-                value={shown[key]}
-                schema={field as z.ZodTypeAny}
-                onChange={(value) => edit(key, value)}
-              />
-            )
-          )}
+          {Object.entries(settingsDefinition(appId).schema.shape).map(([key, field]) => (
+            <SettingField
+              key={key}
+              id={`${appId}-${key}`}
+              name={key}
+              value={shown[key]}
+              schema={field as z.ZodType}
+              onChange={(value) => edit(key, value)}
+            />
+          ))}
         </fieldset>
         {formError && (
           <p role="alert" className="text-sm text-destructive">
@@ -184,13 +164,11 @@ function SettingField({
   id: string
   name: string
   value: unknown
-  schema: z.ZodTypeAny
+  schema: z.ZodType
   onChange: (value: unknown) => void
 }) {
   let field = schema
-  while (field instanceof z.ZodDefault || field instanceof z.ZodEffects)
-    field =
-      field instanceof z.ZodDefault ? field.removeDefault() : field.innerType()
+  while (field instanceof z.ZodDefault) field = field.unwrap() as z.ZodType
   const label = SETTING_LABELS[name] ?? name
   if (typeof value === "boolean")
     return (
@@ -239,13 +217,9 @@ function SettingField({
           onChange={(event) => onChange(event.target.value)}
           className="flex h-10 w-full rounded-md border bg-background px-3 text-sm"
         >
-          {field.options.map((option: string) => (
+          {field.options.map(String).map((option) => (
             <option key={option} value={option}>
-              {option === "12"
-                ? "12-hour (AM/PM)"
-                : option === "24"
-                  ? "24-hour"
-                  : option}
+              {option === "12" ? "12-hour (AM/PM)" : option === "24" ? "24-hour" : option}
             </option>
           ))}
         </select>
@@ -272,11 +246,7 @@ function SettingField({
               : Array.isArray(value)
                 ? event.target.value
                     .split(",")
-                    .map((part) =>
-                      name === "defaultSeverityRange"
-                        ? Number(part.trim())
-                        : part.trim()
-                    )
+                    .map((part) => (name === "defaultSeverityRange" ? Number(part.trim()) : part.trim()))
                 : event.target.value
           )
         }

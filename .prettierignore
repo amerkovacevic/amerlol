@@ -1,0 +1,10 @@
+.next
+out
+node_modules
+coverage
+public
+package-lock.json
+firestore.rules
+firestore.indexes.json
+*.md
+next-env.d.ts

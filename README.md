@@ -1,187 +1,83 @@
 # amer.lol
 
-A premium, playful hub website for hosting multiple mini-apps. Built with Next.js 14+, TypeScript, Tailwind CSS, and modern web technologies.
+A playful hub of mini-apps, games and experiments. It is a statically exported Next.js 16 site on Firebase
+Hosting, with Firebase Auth for accounts and Firestore for synced data.
 
-## 🚀 Features
+## Getting started
 
-- **Modern Stack**: Next.js 14+ with App Router, TypeScript, Tailwind CSS
-- **Design System**: shadcn/ui components with custom design tokens
-- **Animations**: Framer Motion for page transitions and micro-interactions
-- **Smooth Scrolling**: Lenis for buttery smooth scroll experience
-- **Dark Mode**: System-aware dark/light mode with next-themes
-- **App Registry**: Centralized system for managing mini-apps
-- **Responsive**: Mobile-first design that works on all devices
-- **Accessible**: Built with accessibility in mind
+Requires Node.js 22+. Firebase settings come from `NEXT_PUBLIC_FIREBASE_*` variables in `.env`.
 
-## 📦 Tech Stack
-
-- **Framework**: Next.js 14+ (App Router)
-- **Language**: TypeScript
-- **Styling**: Tailwind CSS
-- **Components**: shadcn/ui (Radix UI primitives)
-- **Animations**: Framer Motion, Motion One
-- **Smooth Scroll**: Lenis
-- **Animations**: Rive (placeholder), Lottie-react (placeholder)
-- **Icons**: Lucide React
-- **Theme**: next-themes
-- **Toasts**: Sonner
-
-## 🛠️ Getting Started
-
-### Prerequisites
-
-- Node.js 18+ 
-- npm, yarn, or pnpm
-
-### Installation
-
-1. Clone the repository:
-```bash
-git clone <repository-url>
-cd amerlol
-```
-
-2. Install dependencies:
 ```bash
 npm install
+npm run dev     # http://localhost:3000
+npm run build   # static site in out/
 ```
 
-3. Run the development server:
+## Project structure
+
+```
+app/
+  (site)/                  Pages that share the header and background
+    page.tsx               Landing page
+    hub/                   App gallery with search and filters
+    a/[appId]/page.tsx     Every hub app, statically generated from the registry
+    about/  account/  styleguide/
+  not-found.tsx            The Lost & Found 404 page
+  layout.tsx               Providers: theme, auth, profile, accent colour
+components/
+  apps/                    One folder per app, plus the shared shell and settings panel
+  auth/                    Auth and profile providers, sign-in dialog, username onboarding
+  hub/  landing/  layout/  not-found/  account/  styleguide/
+  ui/                      shadcn/ui primitives
+lib/
+  apps/                    Registry, settings schemas, lazy component map, pure app logic
+  hooks/                   useAsync, useNow, useHydrated, useResettableState
+  firebase/                config.ts (app + auth), db.ts (Firestore), user-facing errors
+  account/  football-deepcuts/  secret-santa/  stickr/
+scripts/                   Data generation and Firestore rules generation
+tests/                     Vitest and node:test suites
+public/data/               Static datasets (Deepcuts, countries, teams)
+docs/                      Guides and known issues
+```
+
+To add an app, follow [docs/creating-new-apps.md](docs/creating-new-apps.md). Open problems are tracked in
+[docs/known-issues.md](docs/known-issues.md), and Deepcuts' data pipeline is described in
+[docs/football-deepcuts.md](docs/football-deepcuts.md).
+
+## Performance notes
+
+- Each app page downloads only its own app. Large libraries (MapLibre, html2canvas, crypto-js) stay in
+  that app's chunk.
+- The Firestore SDK is not part of the shared bundle. Site-wide code loads it on demand once someone signs
+  in, and app chunks import it from `lib/firebase/db`.
+- Page entrance animations are CSS (`.animate-enter` in `app/globals.css`), so content is visible before
+  JavaScript loads. Framer Motion is only used inside apps and the 404 page.
+
+## Data
+
+`firestore.rules` is the source of truth for the data model. Per-user data lives under `users/{uid}`
+(profile fields plus one subcollection per app); shared data lives in top-level collections such as
+`games`, `colorPalettes`, `secretSantaExchanges` and the leaderboards. Settings validators in the rules are
+generated from `lib/apps/settings.ts` with `npm run generate:settings-rules`.
+
+## Checks
+
 ```bash
-npm run dev
+npm run check:foundation  # settings rules, formatting, lint, types, tests, dataset validation, build
+npm run test:rules        # Firestore rules against the emulator (needs Java 21+)
+npm run format            # apply Prettier
 ```
 
-4. Open [http://localhost:3000](http://localhost:3000) in your browser.
+CI runs the same checks on pushes and pull requests (`.github/workflows/validate.yml`).
 
-## 📁 Project Structure
+## Design system
 
-```
-amerlol/
-├── app/                    # Next.js App Router pages
-│   ├── (marketing)/       # Marketing routes (landing page)
-│   ├── (hub)/            # Hub routes (hub, app pages)
-│   ├── about/            # About page
-│   ├── styleguide/       # Styleguide page
-│   ├── layout.tsx        # Root layout
-│   └── globals.css       # Global styles
-├── components/           # React components
-│   ├── layout/          # Layout components (header, footer, nav)
-│   ├── hub/             # Hub-specific components
-│   ├── landing/         # Landing page components
-│   ├── apps/            # App shell components
-│   ├── fx/              # Animation/effect components
-│   └── ui/              # shadcn/ui components
-├── lib/                 # Utility functions and configs
-│   ├── apps/
-│   │   └── registry.ts  # App registry (IMPORTANT)
-│   └── utils.ts         # Utility functions
-└── public/              # Static assets
-    ├── rive/           # Rive animation files (placeholder)
-    └── lottie/         # Lottie animation files (placeholder)
-```
+- Colors are CSS variables in `app/globals.css`, derived from one of five accent palettes that users choose
+  in Account Settings (synced to their account).
+- Headings use Space Grotesk and body text Inter, loaded with `next/font`.
+- Light and dark mode follow the system and can be toggled in the header.
+- `/styleguide` shows the components and interaction rules.
 
-## 📝 Adding a New App
+## License
 
-To add a new mini-app to the hub:
-
-1. Open `lib/apps/registry.ts`
-
-2. Add a new entry to the `APP_REGISTRY` array:
-
-```typescript
-{
-  appId: "your-app-id",
-  name: "Your App Name",
-  description: "A brief description of your app",
-  category: "Utilities" | "Games" | "Experiments" | "Social" | "Visual",
-  tags: ["tag1", "tag2"],
-  status: "live" | "beta" | "comingSoon",
-  icon: YourIcon, // Import from lucide-react
-  accent: "from-blue-500 to-cyan-500", // Tailwind gradient classes
-  featured: true, // Optional: feature on landing page
-}
-```
-
-3. The app will automatically appear in:
-   - The Hub page (filterable, searchable)
-   - The Featured Apps section on the landing page (if `featured: true`)
-   - Accessible via `/a/your-app-id`
-
-### Example
-
-```typescript
-import { Code2 } from "lucide-react"
-
-{
-  appId: "code-editor",
-  name: "Code Editor",
-  description: "A minimalist code editor in the browser",
-  category: "Utilities",
-  tags: ["code", "editor", "developer"],
-  status: "live",
-  icon: Code2,
-  accent: "from-purple-500 to-pink-500",
-  featured: true,
-}
-```
-
-## 🎨 Design System
-
-### Colors
-
-- **Primary**: Electric sky-blue (`hsl(199, 89%, 48%)`)
-- **Background**: Clean white base (light) / Deep dark (dark mode)
-- All colors defined in `app/globals.css` using CSS variables
-
-### Typography
-
-- **Display Font**: Space Grotesk (headings)
-- **Body Font**: Inter (paragraphs)
-- Configured via `next/font` in `app/layout.tsx`
-
-### Components
-
-All UI components follow shadcn/ui patterns and are located in `components/ui/`. Custom components extend these base components.
-
-## 🎭 Animations
-
-- **Page Transitions**: Framer Motion layout animations
-- **Micro-interactions**: Hover effects, button animations
-- **Smooth Scrolling**: Lenis (landing page only)
-- **Background Effects**: Subtle animated gradients
-- **Rive**: Placeholder component (add Rive files to `public/rive/`)
-- **Lottie**: Placeholder component (add Lottie JSON to `public/lottie/`)
-
-## 🌙 Dark Mode
-
-Dark mode is enabled by default and follows system preferences. Users can toggle it via the theme toggle in the header.
-
-## 📱 Routes
-
-- `/` - Landing page with hero, featured apps, and sections
-- `/hub` - App gallery with filtering and search
-- `/a/[appId]` - Dynamic app shell pages
-- `/about` - About page with build log
-- `/styleguide` - Design system showcase
-
-## 🔧 Configuration
-
-### Tailwind CSS
-
-Configuration in `tailwind.config.ts`. Uses CSS variables for theming.
-
-### Next.js
-
-Configuration in `next.config.js`. No special configuration needed for basic usage.
-
-## 📄 License
-
-See LICENSE file for details.
-
-## 🤝 Contributing
-
-This is a personal project, but suggestions and improvements are welcome!
-
----
-
-Built with ❤️ using Next.js and modern web technologies.
+See [LICENSE](LICENSE).

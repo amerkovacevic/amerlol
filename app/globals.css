@@ -29,10 +29,26 @@
     --radius: 0.5rem;
   }
 
-  :root[data-accent="ocean"] { --palette-hue: 201; --palette-saturation: 94%; --palette-primary-lightness: 32%; }
-  :root[data-accent="violet"] { --palette-hue: 263; --palette-saturation: 70%; --palette-primary-lightness: 50%; }
-  :root[data-accent="rose"] { --palette-hue: 347; --palette-saturation: 77%; --palette-primary-lightness: 41%; }
-  :root[data-accent="amber"] { --palette-hue: 32; --palette-saturation: 87%; --palette-primary-lightness: 33%; }
+  :root[data-accent="ocean"] {
+    --palette-hue: 201;
+    --palette-saturation: 94%;
+    --palette-primary-lightness: 32%;
+  }
+  :root[data-accent="violet"] {
+    --palette-hue: 263;
+    --palette-saturation: 70%;
+    --palette-primary-lightness: 50%;
+  }
+  :root[data-accent="rose"] {
+    --palette-hue: 347;
+    --palette-saturation: 77%;
+    --palette-primary-lightness: 41%;
+  }
+  :root[data-accent="amber"] {
+    --palette-hue: 32;
+    --palette-saturation: 87%;
+    --palette-primary-lightness: 33%;
+  }
 
   .dark {
     color-scheme: dark;
@@ -72,7 +88,12 @@
     @apply bg-background text-foreground;
     font-family: var(--font-inter), system-ui, sans-serif;
   }
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     font-family: var(--font-space-grotesk), system-ui, sans-serif;
   }
 }
@@ -81,19 +102,98 @@
   .glass {
     @apply backdrop-blur-md bg-background/80 border border-border/50;
   }
-  
+
   .glass-dark {
     @apply dark:backdrop-blur-md dark:bg-card/50 dark:border-border/30;
   }
 }
 
-@keyframes nf-fall { 15% { transform: translate(-48%,-50%) rotate(3deg) } 45% { transform: translate(-42%,-20%) rotate(18deg) } 100% { transform: translate(-20%,110vh) rotate(92deg) } }
-.nf-fall { animation: nf-fall 1.35s cubic-bezier(.45,.02,.65,1) forwards; }
-@keyframes nf-snake { from { left:-8rem } to { left:calc(100% + 8rem) } }
-.nf-snake { animation:nf-snake 13s linear infinite; }
-.nf-snake i { display:block;width:10px;height:10px;border-radius:2px;background:hsl(var(--primary)); }
-.nf-snake i:first-child { transform:translateY(-3px); }
-@keyframes nf-glitch { 0%,95%,100% { filter:none } 96% { filter:hue-rotate(80deg);transform:translateX(2px) } 98% { transform:translateX(-2px) } }
-.nf-glitch { animation:nf-glitch 2.7s steps(1) infinite; }
-@media (max-width:639px) { button[aria-label="Decorative 404"] { top:78%;z-index:20;font-size:58vw;color:hsl(var(--foreground)/.05); } }
-@media (prefers-reduced-motion:reduce) { .nf-fall { animation-duration:.01ms; } .nf-snake { animation:none;left:1rem; } .nf-glitch { animation:none; } }
+@keyframes nf-fall {
+  15% {
+    transform: translate(-48%, -50%) rotate(3deg);
+  }
+  45% {
+    transform: translate(-42%, -20%) rotate(18deg);
+  }
+  100% {
+    transform: translate(-20%, 110vh) rotate(92deg);
+  }
+}
+.nf-fall {
+  animation: nf-fall 1.35s cubic-bezier(0.45, 0.02, 0.65, 1) forwards;
+}
+@keyframes nf-snake {
+  from {
+    left: -8rem;
+  }
+  to {
+    left: calc(100% + 8rem);
+  }
+}
+.nf-snake {
+  animation: nf-snake 13s linear infinite;
+}
+.nf-snake i {
+  display: block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  background: hsl(var(--primary));
+}
+.nf-snake i:first-child {
+  transform: translateY(-3px);
+}
+@keyframes nf-glitch {
+  0%,
+  95%,
+  100% {
+    filter: none;
+  }
+  96% {
+    filter: hue-rotate(80deg);
+    transform: translateX(2px);
+  }
+  98% {
+    transform: translateX(-2px);
+  }
+}
+.nf-glitch {
+  animation: nf-glitch 2.7s steps(1) infinite;
+}
+@media (max-width: 639px) {
+  .nf-backdrop {
+    top: 78%;
+    z-index: 20;
+    font-size: 58vw;
+    color: hsl(var(--foreground) / 0.05);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nf-fall {
+    animation-duration: 0.01ms;
+  }
+  .nf-snake {
+    animation: none;
+    left: 1rem;
+  }
+  .nf-glitch {
+    animation: none;
+  }
+}
+
+/* Entrance animation for page content. Pure CSS, so content is visible on first paint
+   instead of waiting for JavaScript to hydrate. Stagger with style={{ "--enter-delay": "100ms" }}. */
+@keyframes enter {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+.animate-enter {
+  animation: enter 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) var(--enter-delay, 0ms) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-enter {
+    animation: none;
+  }
+}

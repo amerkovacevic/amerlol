@@ -1,16 +1,10 @@
 "use client"
 
 import * as React from "react"
-import { useRouter } from "next/navigation"
+import { updateProfile, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from "firebase/auth"
+import { AuthDialog } from "@/components/auth/auth-dialog"
 import { useAuth } from "@/components/auth/auth-provider"
-import { db } from "@/lib/firebase/config"
-import { 
-  updateProfile, 
-  updatePassword, 
-  reauthenticateWithCredential,
-  EmailAuthProvider
-} from "firebase/auth"
-import { doc, getDoc, setDoc, updateDoc, serverTimestamp, Timestamp } from "firebase/firestore"
+import { saveProfile, useProfile } from "@/components/auth/profile-provider"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -21,6 +15,12 @@ import { Loader2, User as UserIcon, AtSign, Lock, Palette, Save } from "lucide-r
 import { useAccentColor } from "@/components/accent-color-provider"
 import { THEME_COLORS, type ThemeColor } from "@/lib/theme-colors"
 import { getUsernameError, USERNAME_MAX_LENGTH } from "@/lib/account/username"
+import {
+  getAuthErrorMessage,
+  getDataErrorMessage,
+  getErrorCode,
+  logUnexpectedError,
+} from "@/lib/firebase/user-facing-errors"
 
 interface UserProfile {
   displayName: string
@@ -28,81 +28,49 @@ interface UserProfile {
   email: string
 }
 
+const EMPTY_PASSWORDS = { currentPassword: "", newPassword: "", confirmPassword: "" }
+
+function passwordErrorMessage(error: unknown): string {
+  switch (getErrorCode(error)) {
+    // Current Firebase reports a wrong password as invalid-credential.
+    case "auth/invalid-credential":
+    case "auth/wrong-password":
+      return "Current password is incorrect"
+    case "auth/weak-password":
+      return "New password is too weak"
+    default:
+      return getAuthErrorMessage(error)
+  }
+}
+
 export function AccountSettings() {
-  const { user, loading: authLoading } = useAuth()
-  const router = useRouter()
+  const { account: user, loading: authLoading } = useAuth()
   const { color, saving: savingColor, setColor } = useAccentColor()
-  const [loading, setLoading] = React.useState(true)
   const [saving, setSaving] = React.useState(false)
   const [changingPassword, setChangingPassword] = React.useState(false)
-  
-  const [profile, setProfile] = React.useState<UserProfile>({
-    displayName: "",
-    username: "",
-    email: "",
-  })
-  
-  const [passwordData, setPasswordData] = React.useState({
-    currentPassword: "",
-    newPassword: "",
-    confirmPassword: "",
-  })
+  const [passwordData, setPasswordData] = React.useState(EMPTY_PASSWORDS)
+  const stored = useProfile()
+  const [authOpen, setAuthOpen] = React.useState(false)
+  // Edits are kept separately so a late profile load never overwrites typing.
+  const [edits, setEdits] = React.useState<Partial<UserProfile>>({})
+  const profile: UserProfile = {
+    displayName: user?.displayName || "",
+    username: stored.username ?? "",
+    email: user?.email || "",
+    ...edits,
+  }
+  const setProfile = (next: UserProfile) =>
+    setEdits({ displayName: next.displayName, username: next.username })
+  const loading = Boolean(user) && stored.status === "loading"
 
-  // Redirect if not authenticated
   React.useEffect(() => {
-    if (!authLoading && !user) {
-      router.push("/")
-    }
-  }, [user, authLoading, router])
+    if (stored.status === "error") toast.error(getDataErrorMessage(null, "load your profile"))
+  }, [stored.status])
 
-  // Load user profile data
-  React.useEffect(() => {
-    const loadProfile = async () => {
-      if (!user) {
-        setLoading(false)
-        return
-      }
-
-      try {
-        // Get display name and email from Firebase Auth
-        const displayName = user.displayName || ""
-        const email = user.email || ""
-
-        // Get username from Firestore - using user.uid matches Firestore rules
-        let username = ""
-        const userDocRef = doc(db, "users", user.uid)
-        const userDoc = await getDoc(userDocRef)
-        
-        if (userDoc.exists()) {
-          const data = userDoc.data()
-          username = data.username || ""
-        }
-
-        setProfile({
-          displayName,
-          username,
-          email,
-        })
-      } catch (error: any) {
-        console.error("Failed to load profile:", error)
-        if (error.code === "permission-denied") {
-          toast.error("Permission denied. Please check your authentication.")
-        } else {
-          toast.error("Failed to load profile data")
-        }
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    loadProfile()
-  }, [user])
-
-  const handleProfileUpdate = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleProfileUpdate = async (event: React.FormEvent) => {
+    event.preventDefault()
     if (!user) return
 
-    // Validate username format
     const usernameError = getUsernameError(profile.username)
     if (usernameError) {
       toast.error(usernameError)
@@ -111,62 +79,33 @@ export function AccountSettings() {
 
     setSaving(true)
     try {
-      // Update display name in Firebase Auth
       if (profile.displayName !== user.displayName) {
-        await updateProfile(user, {
-          displayName: profile.displayName,
-        })
+        await updateProfile(user, { displayName: profile.displayName })
       }
-
-      // Update username in Firestore
-      // Using user.uid ensures it matches Firestore rules: request.auth.uid == userId
-      // This validates against: match /users/{userId} { allow read, write: if request.auth != null && request.auth.uid == userId; }
-      const userDocRef = doc(db, "users", user.uid)
-      const userDoc = await getDoc(userDocRef)
-      
-      if (userDoc.exists()) {
-        // Update existing document - preserve createdAt and other existing fields
-        await updateDoc(userDocRef, {
-          username: profile.username || "",
-          displayName: profile.displayName || "", // Keep Firestore in sync with Auth
-          email: user.email || "", // Keep email in sync
-          updatedAt: serverTimestamp(),
-        })
-      } else {
-        // Create new document with initial data
-        await setDoc(userDocRef, {
-          username: profile.username || "",
-          email: user.email || "",
-          displayName: profile.displayName || "",
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        })
-      }
-
+      // Firestore mirrors Auth's name and email so other people can see them.
+      await saveProfile(user.uid, {
+        username: profile.username,
+        displayName: profile.displayName,
+        email: user.email || "",
+      })
+      setEdits({})
       toast.success("Profile updated successfully")
-    } catch (error: any) {
-      console.error("Failed to update profile:", error)
-      if (error.code === "permission-denied") {
-        toast.error("Permission denied. You can only update your own profile.")
-      } else if (error.code === "unavailable") {
-        toast.error("Service temporarily unavailable. Please try again later.")
-      } else {
-        toast.error(error.message || "Failed to update profile")
-      }
+    } catch (error) {
+      logUnexpectedError("account:profile", error)
+      toast.error(getDataErrorMessage(error, "update your profile"))
     } finally {
       setSaving(false)
     }
   }
 
-  const handlePasswordChange = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!user || !user.email) return
+  const handlePasswordChange = async (event: React.FormEvent) => {
+    event.preventDefault()
+    if (!user?.email) return
 
     if (passwordData.newPassword !== passwordData.confirmPassword) {
       toast.error("New passwords do not match")
       return
     }
-
     if (passwordData.newPassword.length < 6) {
       toast.error("Password must be at least 6 characters")
       return
@@ -174,31 +113,16 @@ export function AccountSettings() {
 
     setChangingPassword(true)
     try {
-      // Reauthenticate user
-      const credential = EmailAuthProvider.credential(
-        user.email,
-        passwordData.currentPassword
+      await reauthenticateWithCredential(
+        user,
+        EmailAuthProvider.credential(user.email, passwordData.currentPassword)
       )
-      await reauthenticateWithCredential(user, credential)
-
-      // Update password
       await updatePassword(user, passwordData.newPassword)
-
       toast.success("Password changed successfully")
-      setPasswordData({
-        currentPassword: "",
-        newPassword: "",
-        confirmPassword: "",
-      })
-    } catch (error: any) {
-      console.error("Failed to change password:", error)
-      if (error.code === "auth/wrong-password") {
-        toast.error("Current password is incorrect")
-      } else if (error.code === "auth/weak-password") {
-        toast.error("New password is too weak")
-      } else {
-        toast.error(error.message || "Failed to change password")
-      }
+      setPasswordData(EMPTY_PASSWORDS)
+    } catch (error) {
+      logUnexpectedError("account:password", error)
+      toast.error(passwordErrorMessage(error))
     } finally {
       setChangingPassword(false)
     }
@@ -215,20 +139,33 @@ export function AccountSettings() {
 
   if (authLoading || loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      <div role="status" className="flex items-center justify-center gap-3 py-12 text-muted-foreground">
+        <Loader2 className="h-6 w-6 animate-spin" aria-hidden="true" />
+        Loading your account…
       </div>
     )
   }
 
+  // Guests (including anonymous game players) have no account to manage.
   if (!user) {
-    return null
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>You&apos;re not signed in</CardTitle>
+          <CardDescription>
+            Sign in to choose a username, sync your site color and keep app settings across devices.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button onClick={() => setAuthOpen(true)}>Sign in or create account</Button>
+          <AuthDialog open={authOpen} onOpenChange={setAuthOpen} />
+        </CardContent>
+      </Card>
+    )
   }
 
   // Check if user signed in with Google (can't change password)
-  const isGoogleUser = user.providerData.some(
-    (provider) => provider.providerId === "google.com"
-  )
+  const isGoogleUser = user.providerData.some((provider) => provider.providerId === "google.com")
 
   return (
     <div className="space-y-6">
@@ -238,9 +175,7 @@ export function AccountSettings() {
             <Palette className="h-5 w-5" />
             Appearance
           </CardTitle>
-          <CardDescription>
-            Choose the color used across both light and dark mode
-          </CardDescription>
+          <CardDescription>Choose the color used across both light and dark mode</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="max-w-sm space-y-2">
@@ -268,9 +203,7 @@ export function AccountSettings() {
                 ))}
               </SelectContent>
             </Select>
-            <p className="text-xs text-muted-foreground">
-              Applied instantly and synced to your account.
-            </p>
+            <p className="text-xs text-muted-foreground">Applied instantly and synced to your account.</p>
           </div>
         </CardContent>
       </Card>
@@ -282,24 +215,14 @@ export function AccountSettings() {
             <UserIcon className="h-5 w-5" />
             Profile Information
           </CardTitle>
-          <CardDescription>
-            Update your display name and username
-          </CardDescription>
+          <CardDescription>Update your display name and username</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleProfileUpdate} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={profile.email}
-                disabled
-                className="bg-muted"
-              />
-              <p className="text-xs text-muted-foreground">
-                Email cannot be changed
-              </p>
+              <Input id="email" type="email" value={profile.email} disabled className="bg-muted" />
+              <p className="text-xs text-muted-foreground">Email cannot be changed</p>
             </div>
 
             <div className="space-y-2">
@@ -308,9 +231,7 @@ export function AccountSettings() {
                 id="displayName"
                 type="text"
                 value={profile.displayName}
-                onChange={(e) =>
-                  setProfile({ ...profile, displayName: e.target.value })
-                }
+                onChange={(e) => setProfile({ ...profile, displayName: e.target.value })}
                 placeholder="Enter your display name"
               />
             </div>
@@ -324,9 +245,7 @@ export function AccountSettings() {
                 id="username"
                 type="text"
                 value={profile.username}
-                onChange={(e) =>
-                  setProfile({ ...profile, username: e.target.value })
-                }
+                onChange={(e) => setProfile({ ...profile, username: e.target.value })}
                 placeholder="Enter your username"
                 pattern="[a-zA-Z0-9_]+"
                 minLength={3}
@@ -363,9 +282,7 @@ export function AccountSettings() {
               <Lock className="h-5 w-5" />
               Change Password
             </CardTitle>
-            <CardDescription>
-              Update your password to keep your account secure
-            </CardDescription>
+            <CardDescription>Update your password to keep your account secure</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handlePasswordChange} className="space-y-4">
@@ -382,6 +299,7 @@ export function AccountSettings() {
                     })
                   }
                   placeholder="Enter current password"
+                  autoComplete="current-password"
                   required
                 />
               </div>
@@ -399,12 +317,11 @@ export function AccountSettings() {
                     })
                   }
                   placeholder="Enter new password"
+                  autoComplete="new-password"
                   minLength={6}
                   required
                 />
-                <p className="text-xs text-muted-foreground">
-                  Password must be at least 6 characters
-                </p>
+                <p className="text-xs text-muted-foreground">Password must be at least 6 characters</p>
               </div>
 
               <div className="space-y-2">
@@ -420,6 +337,7 @@ export function AccountSettings() {
                     })
                   }
                   placeholder="Confirm new password"
+                  autoComplete="new-password"
                   minLength={6}
                   required
                 />

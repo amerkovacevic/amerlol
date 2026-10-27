@@ -10,8 +10,7 @@ export function safeMovieUrl(value: unknown): string | undefined {
   try {
     const url = new URL(value)
     return url.protocol === "https:" &&
-      (url.hostname === "letterboxd.com" ||
-        url.hostname.endsWith(".letterboxd.com")) &&
+      (url.hostname === "letterboxd.com" || url.hostname.endsWith(".letterboxd.com")) &&
       !url.username &&
       !url.password
       ? url.href
@@ -36,8 +35,7 @@ export function isMovieList(value: unknown): value is Movie[] {
 }
 
 export function parseLetterboxdCsv(text: string): Movie[] {
-  if (text.length > 5_000_000)
-    throw new Error("Watchlists must be smaller than 5 MB")
+  if (text.length > 5_000_000) throw new Error("Watchlists must be smaller than 5 MB")
   const rows: string[][] = []
   let row: string[] = [],
     value = "",
@@ -84,9 +82,7 @@ export function parseLetterboxdCsv(text: string): Movie[] {
       id: `import-${Date.now()}-${movies.length}`,
       name,
       ...(year ? { year } : {}),
-      ...(safeMovieUrl(fields[uriAt])
-        ? { uri: safeMovieUrl(fields[uriAt]) }
-        : {}),
+      ...(safeMovieUrl(fields[uriAt]) ? { uri: safeMovieUrl(fields[uriAt]) } : {}),
     })
   }
   return movies

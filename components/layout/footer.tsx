@@ -9,14 +9,8 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="space-y-4">
             <Link href="/" className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
-              <Image
-                src="/logo.png"
-                alt="amer.lol"
-                width={32}
-                height={32}
-                className="h-8 w-8 object-contain"
-              />
-              <h3 className="font-space-grotesk text-lg font-bold">amer.lol</h3>
+              <Image src="/logo-64.webp" alt="" width={32} height={32} className="h-8 w-8 object-contain" />
+              <span className="font-space-grotesk text-lg font-bold">amer.lol</span>
             </Link>
             <p className="text-sm text-muted-foreground">
               A premium, playful hub for mini-apps and experiments
@@ -24,7 +18,7 @@ export function Footer() {
           </div>
 
           <div>
-            <h4 className="font-semibold mb-4">Navigation</h4>
+            <h2 className="font-semibold mb-4">Navigation</h2>
             <ul className="space-y-2 text-sm">
               <li>
                 <Link href="/" className="text-muted-foreground hover:text-foreground transition-colors">
@@ -45,10 +39,13 @@ export function Footer() {
           </div>
 
           <div>
-            <h4 className="font-semibold mb-4">Resources</h4>
+            <h2 className="font-semibold mb-4">Resources</h2>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link href="/styleguide" className="text-muted-foreground hover:text-foreground transition-colors">
+                <Link
+                  href="/styleguide"
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                >
                   Styleguide
                 </Link>
               </li>
@@ -56,7 +53,7 @@ export function Footer() {
           </div>
 
           <div>
-            <h4 className="font-semibold mb-4">Connect</h4>
+            <h2 className="font-semibold mb-4">Connect</h2>
             <div className="flex gap-4">
               <a
                 href="https://github.com/amerkovacevic"

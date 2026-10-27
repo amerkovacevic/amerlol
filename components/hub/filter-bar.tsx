@@ -3,17 +3,11 @@
 import * as React from "react"
 import { Search } from "lucide-react"
 import { Input } from "@/components/ui/input"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
-import { AppCategory } from "@/lib/apps/registry"
+import type { AppCategory } from "@/lib/apps/registry"
 
-type SortOption = "featured" | "name"
+export type SortOption = "featured" | "name"
 
 interface FilterBarProps {
   searchQuery: string
@@ -24,14 +18,7 @@ interface FilterBarProps {
   onSortChange: (sort: SortOption) => void
 }
 
-const categories: (AppCategory | "all")[] = [
-  "all",
-  "Utilities",
-  "Games",
-  "Experiments",
-  "Social",
-  "Visual",
-]
+const categories: (AppCategory | "all")[] = ["all", "Utilities", "Games", "Experiments", "Social", "Visual"]
 
 const sortOptions: { value: SortOption; label: string }[] = [
   { value: "featured", label: "Featured" },

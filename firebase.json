@@ -7,17 +7,7 @@
   },
   "hosting": {
     "public": "out",
-    "ignore": [
-      "firebase.json",
-      "**/.*",
-      "**/node_modules/**"
-    ],
-    "rewrites": [
-      {
-        "source": "**",
-        "destination": "/index.html"
-      }
-    ],
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
     "headers": [
       {
         "source": "/data/deepcuts/database.json",
@@ -36,7 +26,17 @@
             "value": "max-age=604800"
           }
         ]
+      },
+      {
+        "source": "/_next/static/**",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=31536000, immutable"
+          }
+        ]
       }
-    ]
+    ],
+    "trailingSlash": true
   }
 }

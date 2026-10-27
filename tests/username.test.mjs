@@ -1,9 +1,6 @@
 import test from "node:test"
 import assert from "node:assert/strict"
-import {
-  getUsernameError,
-  normalizeUsernameInput,
-} from "../lib/account/username.ts"
+import { getUsernameError, normalizeUsernameInput } from "../lib/account/username.ts"
 
 test("username input removes an @ prefix and unsupported characters", () => {
   assert.equal(normalizeUsernameInput("@@Amer Person!"), "AmerPerson")

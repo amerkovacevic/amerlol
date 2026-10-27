@@ -7,26 +7,16 @@ import { LogIn, Menu, UserRound } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/components/auth/auth-provider"
 import { AuthDialog } from "@/components/auth/auth-dialog"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
-
-const navItems = [
-  { href: "/", label: "Home" },
-  { href: "/hub", label: "Hub" },
-  { href: "/about", label: "About" },
-]
+import { NAV_ITEMS } from "./nav-items"
 
 export function MobileNavDrawer() {
   const [open, setOpen] = React.useState(false)
   const [authOpen, setAuthOpen] = React.useState(false)
   const pathname = usePathname()
-  const { user, loading } = useAuth()
-  const hasAccount = Boolean(user && !user.isAnonymous)
+  const { account, loading } = useAuth()
+  const hasAccount = Boolean(account)
 
   return (
     <>
@@ -45,7 +35,7 @@ export function MobileNavDrawer() {
             <DialogTitle>Navigation</DialogTitle>
           </DialogHeader>
           <nav className="flex flex-col space-y-4 mt-4">
-            {navItems.map((item) => {
+            {NAV_ITEMS.map((item) => {
               const isActive = pathname === item.href
               return (
                 <Link

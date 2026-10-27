@@ -1,13 +1,6 @@
 import * as React from "react"
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest"
-import {
-  act,
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from "@testing-library/react"
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import {
   SETTINGS,
@@ -18,24 +11,14 @@ import {
   parseSettingsImport,
   type SettingsAppId,
 } from "../lib/apps/settings"
-import {
-  AppSettingsProvider,
-  useSettingsContext,
-} from "../components/apps/settings-provider"
+import { AppSettingsProvider, useSettingsContext } from "../components/apps/settings-provider"
 import { AppSettingsPanel } from "../components/apps/app-settings-panel"
 import { calculateTextDiff } from "../lib/apps/text-diff"
 import { changeGameMembership } from "../lib/apps/game-membership"
 import { formatZoneTime, timezoneOffset } from "../lib/apps/timezone"
 import { APP_REGISTRY, validateAppRegistry } from "../lib/apps/registry"
-import {
-  parseLetterboxdCsv,
-  safeMovieUrl,
-  isMovieList,
-} from "../lib/apps/watchlist"
-import {
-  StickrProvider,
-  useStickr,
-} from "../components/apps/stickr/stickr-provider"
+import { parseLetterboxdCsv, safeMovieUrl, isMovieList } from "../lib/apps/watchlist"
+import { StickrProvider, useStickr } from "../components/apps/stickr/stickr-provider"
 
 const state = vi.hoisted(() => ({
   user: null as null | { uid: string },
@@ -46,18 +29,14 @@ const state = vi.hoisted(() => ({
   listeners: new Map<string, (snapshot: unknown) => void>(),
 }))
 vi.mock("@/components/auth/auth-provider", () => ({
-  useAuth: () => ({ user: state.user, loading: false }),
+  useAuth: () => ({ user: state.user, account: state.user, loading: false }),
 }))
-vi.mock("@/lib/firebase/config", () => ({ db: {} }))
+vi.mock("@/lib/firebase/db", () => ({ db: {} }))
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 vi.mock("firebase/firestore", () => ({
   doc: (_db: unknown, ...path: string[]) => path.join("/"),
   serverTimestamp: () => "server-time",
-  onSnapshot: (
-    path: string,
-    next: (snapshot: unknown) => void,
-    fail: () => void
-  ) => {
+  onSnapshot: (path: string, next: (snapshot: unknown) => void, fail: () => void) => {
     if (state.failRead) {
       fail()
       return () => {}
@@ -71,21 +50,14 @@ vi.mock("firebase/firestore", () => ({
       state.listeners.delete(path)
     }
   },
-  runTransaction: async (
-    _db: unknown,
-    callback: (transaction: unknown) => Promise<void>
-  ) => {
+  runTransaction: async (_db: unknown, callback: (transaction: unknown) => Promise<void>) => {
     if (state.failWrite) throw new Error("Network unavailable")
     return await callback({
       get: async (path: string) => ({
         exists: () => state.documents.has(path),
         data: () => state.documents.get(path),
       }),
-      set: (
-        path: string,
-        values: Record<string, unknown>,
-        options: { merge: boolean }
-      ) => {
+      set: (path: string, values: Record<string, unknown>, options: { merge: boolean }) => {
         state.writes(path, values, options)
         state.documents.set(path, {
           ...(options.merge ? state.documents.get(path) : {}),
@@ -133,9 +105,7 @@ describe("all app settings", () => {
         settings: { fontSize: 18 },
       }).fontSize
     ).toBe(18)
-    expect(parseSettingsImport("encryption", { fontSize: 20 }).fontSize).toBe(
-      20
-    )
+    expect(parseSettingsImport("encryption", { fontSize: 20 }).fontSize).toBe(20)
     expect(() =>
       parseSettingsImport("encryption", {
         appId: "diffchecker",
@@ -143,15 +113,11 @@ describe("all app settings", () => {
         settings: { fontSize: 18 },
       })
     ).toThrow()
-    expect(() =>
-      parseSettingsImport("encryption", { unrelated: true })
-    ).toThrow()
+    expect(() => parseSettingsImport("encryption", { unrelated: true })).toThrow()
   })
   it("covers every registered app, keeping Stickr's combined list/settings provider separate", () => {
     expect(validateAppRegistry()).toEqual({ valid: true, errors: [] })
-    expect(APP_REGISTRY.map((app) => app.appId).sort()).toEqual(
-      [...Object.keys(SETTINGS), "stickr"].sort()
-    )
+    expect(APP_REGISTRY.map((app) => app.appId).sort()).toEqual([...Object.keys(SETTINGS), "stickr"].sort())
   })
   for (const appId of Object.keys(SETTINGS) as SettingsAppId[]) {
     it(`${appId}: loads without writes, saves validated preferences, cancels drafts and resets without touching data`, async () => {
@@ -174,18 +140,12 @@ describe("all app settings", () => {
       await user.click(checkbox)
       expect(values()).toEqual(defaultSettings(appId))
       await user.click(screen.getByRole("button", { name: "Cancel changes" }))
-      expect(
-        (screen.getAllByRole("checkbox")[0] as HTMLInputElement).checked
-      ).toBe(initialChecked)
+      expect((screen.getAllByRole("checkbox")[0] as HTMLInputElement).checked).toBe(initialChecked)
       await user.click(screen.getAllByRole("checkbox")[0])
       await user.click(screen.getByRole("button", { name: "Save settings" }))
-      await waitFor(() =>
-        expect(localStorage.getItem(settingsStorageKey(appId))).not.toBeNull()
-      )
+      await waitFor(() => expect(localStorage.getItem(settingsStorageKey(appId))).not.toBeNull())
       expect(values()).not.toEqual(defaultSettings(appId))
-      await user.click(
-        screen.getByRole("button", { name: "Reset preferences" })
-      )
+      await user.click(screen.getByRole("button", { name: "Reset preferences" }))
       expect(values()).not.toEqual(defaultSettings(appId))
       await user.click(screen.getByRole("button", { name: "Save settings" }))
       await waitFor(() => expect(values()).toEqual(defaultSettings(appId)))
@@ -208,18 +168,10 @@ describe("all app settings", () => {
       ignoreCase: true,
     })
     expect(JSON.stringify(raw)).toBe(before)
-    expect(() =>
-      validateSettings("timezone", { defaultTimeZones: ["invalid-zone"] })
-    ).toThrow()
-    expect(() =>
-      validateSettings("stl-monitor", { defaultSeverityRange: [90, 10] })
-    ).toThrow()
-    expect(() =>
-      validateSettings("lmgtfy", { defaultAnimationSpeed: "2" })
-    ).toThrow()
-    expect(() =>
-      validateSettings("encryption", { defaultTab: "missing" })
-    ).toThrow()
+    expect(() => validateSettings("timezone", { defaultTimeZones: ["invalid-zone"] })).toThrow()
+    expect(() => validateSettings("stl-monitor", { defaultSeverityRange: [90, 10] })).toThrow()
+    expect(() => validateSettings("lmgtfy", { defaultAnimationSpeed: "2" })).toThrow()
+    expect(() => validateSettings("encryption", { defaultTab: "missing" })).toThrow()
   })
   it("preserves legacy local settings without migrating on read", async () => {
     const raw = JSON.stringify({
@@ -240,10 +192,7 @@ describe("all app settings", () => {
     })
     await userEvent.click(screen.getByRole("checkbox"))
     await userEvent.click(screen.getByRole("button", { name: "Save settings" }))
-    expect(await screen.findByRole("alert")).toHaveProperty(
-      "textContent",
-      "Storage is full"
-    )
+    expect(await screen.findByRole("alert")).toHaveProperty("textContent", "Storage is full")
     expect(values().focusOnCorrectAnswer).toBe(true)
   })
   it("blocks saves after corrupt local data is detected and leaves that data intact", async () => {
@@ -278,18 +227,12 @@ describe("all app settings", () => {
 describe("account settings persistence", () => {
   it("merges local edits without overwriting unrelated preferences changed in another tab", async () => {
     const key = settingsStorageKey("diffchecker")
-    localStorage.setItem(
-      key,
-      JSON.stringify({ fontSize: 14, ignoreCase: false, futureField: "keep" })
-    )
+    localStorage.setItem(key, JSON.stringify({ fontSize: 14, ignoreCase: false, futureField: "keep" }))
     render(panel("diffchecker"))
     fireEvent.change(await screen.findByLabelText("Text size (px)"), {
       target: { value: "18" },
     })
-    localStorage.setItem(
-      key,
-      JSON.stringify({ fontSize: 14, ignoreCase: true, futureField: "keep" })
-    )
+    localStorage.setItem(key, JSON.stringify({ fontSize: 14, ignoreCase: true, futureField: "keep" }))
     await userEvent.click(screen.getByRole("button", { name: "Save settings" }))
     await waitFor(() => expect(values().fontSize).toBe(18))
     expect(JSON.parse(localStorage.getItem(key)!)).toEqual({
@@ -308,9 +251,7 @@ describe("account settings persistence", () => {
     })
     render(panel("encryption"))
     await waitFor(() => expect(values().fontSize).toBe(18))
-    await userEvent.click(
-      screen.getByRole("checkbox", { name: "Convert as you type" })
-    )
+    await userEvent.click(screen.getByRole("checkbox", { name: "Convert as you type" }))
     await userEvent.click(screen.getByRole("button", { name: "Save settings" }))
     await waitFor(() => expect(state.writes).toHaveBeenCalledTimes(1))
     expect(state.documents.get(path)).toEqual({
@@ -329,9 +270,7 @@ describe("account settings persistence", () => {
     fireEvent.change(input, { target: { value: "18" } })
     state.documents.set(path, { fontSize: 20 })
     await userEvent.click(screen.getByRole("button", { name: "Save settings" }))
-    expect((await screen.findByRole("alert")).textContent).toContain(
-      "changed on another device"
-    )
+    expect((await screen.findByRole("alert")).textContent).toContain("changed on another device")
     expect(state.writes).not.toHaveBeenCalled()
   })
   it("clears the previous account's draft on account change", async () => {
@@ -345,9 +284,7 @@ describe("account settings persistence", () => {
     state.user = { uid: "bob" }
     view.rerender(panel("encryption"))
     await waitFor(() => expect(values().fontSize).toBe(14))
-    expect(
-      (screen.getByLabelText("Text size (px)") as HTMLInputElement).value
-    ).toBe("14")
+    expect((screen.getByLabelText("Text size (px)") as HTMLInputElement).value).toBe("14")
     expect(state.writes).not.toHaveBeenCalled()
     expect(state.documents.get(path)).toEqual({ fontSize: 20 })
   })
@@ -358,22 +295,16 @@ describe("account settings persistence", () => {
     await screen.findByRole("alert")
     expect(state.writes).not.toHaveBeenCalled()
     state.failRead = false
-    await userEvent.click(
-      screen.getByRole("button", { name: "Retry loading settings" })
-    )
+    await userEvent.click(screen.getByRole("button", { name: "Retry loading settings" }))
     await waitFor(() => expect(screen.queryByRole("alert")).toBeNull())
   })
   it("reports remote write failures and keeps the editable draft", async () => {
     state.user = { uid: "alice" }
     state.failWrite = true
     render(panel("encryption"))
-    await userEvent.click(
-      await screen.findByRole("checkbox", { name: "Convert as you type" })
-    )
+    await userEvent.click(await screen.findByRole("checkbox", { name: "Convert as you type" }))
     await userEvent.click(screen.getByRole("button", { name: "Save settings" }))
-    expect((await screen.findByRole("alert")).textContent).toBe(
-      "Network unavailable"
-    )
+    expect((await screen.findByRole("alert")).textContent).toBe("Network unavailable")
     expect(
       (
         screen.getByRole("checkbox", {
@@ -394,12 +325,8 @@ describe("settings behavior and safeguards", () => {
     expect(movies[1].name).toBe("Movie\nTwo")
     expect(movies[1].uri).toBeUndefined()
     expect(() => parseLetterboxdCsv('Name\n"unclosed')).toThrow()
-    expect(
-      safeMovieUrl("https://letterboxd.com.evil.example/film/test")
-    ).toBeUndefined()
-    expect(
-      safeMovieUrl("https://attacker@letterboxd.com/film/test")
-    ).toBeUndefined()
+    expect(safeMovieUrl("https://letterboxd.com.evil.example/film/test")).toBeUndefined()
+    expect(safeMovieUrl("https://attacker@letterboxd.com/film/test")).toBeUndefined()
     expect(isMovieList([{ id: "1", name: "Movie", year: {} }])).toBe(false)
   })
   it("diff comparison honors case and whitespace preferences while preserving original output", () => {
@@ -433,20 +360,11 @@ describe("settings behavior and safeguards", () => {
   })
   it("joins and leaves without mutating existing players and enforces capacity", () => {
     const players = ["alice"]
-    expect(changeGameMembership(players, "bob", 2, true)).toEqual([
-      "alice",
-      "bob",
-    ])
+    expect(changeGameMembership(players, "bob", 2, true)).toEqual(["alice", "bob"])
     expect(players).toEqual(["alice"])
-    expect(() =>
-      changeGameMembership(["alice", "bob"], "eve", 2, true)
-    ).toThrow("full")
-    expect(() => changeGameMembership(players, "alice", 2, true)).toThrow(
-      "already"
-    )
-    expect(changeGameMembership(["alice", "bob"], "bob", 2, false)).toEqual([
-      "alice",
-    ])
+    expect(() => changeGameMembership(["alice", "bob"], "eve", 2, true)).toThrow("full")
+    expect(() => changeGameMembership(players, "alice", 2, true)).toThrow("already")
+    expect(changeGameMembership(["alice", "bob"], "bob", 2, false)).toEqual(["alice"])
   })
 })
 
@@ -487,13 +405,9 @@ describe("sticker data preservation", () => {
         <StickerProbe />
       </StickrProvider>
     )
-    await waitFor(() =>
-      expect(screen.getByTestId("stickers").textContent).toContain("Original")
-    )
+    await waitFor(() => expect(screen.getByTestId("stickers").textContent).toContain("Original"))
     expect(state.writes).not.toHaveBeenCalled()
-    await userEvent.click(
-      screen.getByRole("button", { name: "Edit display name" })
-    )
+    await userEvent.click(screen.getByRole("button", { name: "Edit display name" }))
     await waitFor(() => expect(state.writes).toHaveBeenCalledTimes(1))
     expect(state.writes.mock.calls[0][1]).toEqual({
       displayName: "Changed name",
@@ -527,9 +441,7 @@ describe("sticker data preservation", () => {
       </StickrProvider>
     )
     await waitFor(() =>
-      expect(
-        JSON.parse(screen.getByTestId("stickers").textContent!).duplicates
-      ).toEqual(["1"])
+      expect(JSON.parse(screen.getByTestId("stickers").textContent!).duplicates).toEqual(["1"])
     )
     state.user = { uid: "bob" }
     view.rerender(
@@ -538,9 +450,7 @@ describe("sticker data preservation", () => {
       </StickrProvider>
     )
     await waitFor(() =>
-      expect(
-        JSON.parse(screen.getByTestId("stickers").textContent!).duplicates
-      ).toEqual([])
+      expect(JSON.parse(screen.getByTestId("stickers").textContent!).duplicates).toEqual([])
     )
     expect(state.writes).not.toHaveBeenCalled()
     expect(localStorage.getItem("stickr-v1")).toBe(guest)

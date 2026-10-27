@@ -31,13 +31,34 @@ const NAME_OVERRIDES: Record<string, string> = {
 }
 
 const REGION_BOUNDS: Record<Region, [[number, number], [number, number]]> = {
-  World: [[-179, -58], [179, 82]],
-  Africa: [[-20, -36], [55, 38]],
-  Asia: [[24, -12], [180, 82]],
-  Europe: [[-26, 34], [46, 72]],
-  "North America": [[-171, 5], [-50, 84]],
-  "South America": [[-83, -57], [-33, 14]],
-  Oceania: [[108, -50], [180, 10]],
+  World: [
+    [-179, -58],
+    [179, 82],
+  ],
+  Africa: [
+    [-20, -36],
+    [55, 38],
+  ],
+  Asia: [
+    [24, -12],
+    [180, 82],
+  ],
+  Europe: [
+    [-26, 34],
+    [46, 72],
+  ],
+  "North America": [
+    [-171, 5],
+    [-50, 84],
+  ],
+  "South America": [
+    [-83, -57],
+    [-33, 14],
+  ],
+  Oceania: [
+    [108, -50],
+    [180, 10],
+  ],
 }
 
 const quizCountryByName = new Map(COUNTRIES.map((country) => [normalizeCountry(country.name), country]))
@@ -47,7 +68,12 @@ function quizNameForMapName(mapName: string) {
   return quizCountryByName.get(normalizeCountry(mapped))?.name
 }
 
-export function CountryMap({ region, guessed, revealRemaining = false, focusOnGuess = false }: CountryMapProps) {
+export function CountryMap({
+  region,
+  guessed,
+  revealRemaining = false,
+  focusOnGuess = false,
+}: CountryMapProps) {
   const containerRef = React.useRef<HTMLDivElement>(null)
   const mapRef = React.useRef<maplibregl.Map | null>(null)
   const dataRef = React.useRef<FeatureCollection | null>(null)
@@ -57,16 +83,32 @@ export function CountryMap({ region, guessed, revealRemaining = false, focusOnGu
   const { resolvedTheme } = useTheme()
   const { color: accentColor } = useAccentColor()
   const palette = THEME_COLORS.find((option) => option.id === accentColor) ?? THEME_COLORS[0]
+  // The map is rebuilt only when its colours change; quiz state is read from here
+  // so the asynchronous load always applies the latest guesses.
+  const latestQuiz = React.useRef({ region, guessed, revealRemaining })
+  React.useLayoutEffect(() => {
+    latestQuiz.current = { region, guessed, revealRemaining }
+  })
 
   React.useEffect(() => {
     if (!containerRef.current) return
+    let removed = false
     const dark = resolvedTheme === "dark"
+    const { region } = latestQuiz.current
     const map = new maplibregl.Map({
       container: containerRef.current,
       style: {
         version: 8,
         sources: {},
-        layers: [{ id: "background", type: "background", paint: { "background-color": dark ? `hsl(${palette.hue} 59% 5%)` : `hsl(${palette.hue} 30% 98%)` } }],
+        layers: [
+          {
+            id: "background",
+            type: "background",
+            paint: {
+              "background-color": dark ? `hsl(${palette.hue} 59% 5%)` : `hsl(${palette.hue} 30% 98%)`,
+            },
+          },
+        ],
       },
       bounds: REGION_BOUNDS[region],
       fitBoundsOptions: { padding: 16 },
@@ -81,20 +123,44 @@ export function CountryMap({ region, guessed, revealRemaining = false, focusOnGu
 
     const popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 8 })
     map.on("load", async () => {
-      const response = await fetch("/data/countries.geojson")
-      const data = await response.json() as FeatureCollection
+      let data: FeatureCollection
+      try {
+        const response = await fetch("/data/countries.geojson")
+        if (!response.ok) return
+        data = (await response.json()) as FeatureCollection
+      } catch {
+        return
+      }
+      if (removed) return
       dataRef.current = data
+      const { region, guessed, revealRemaining } = latestQuiz.current
       map.addSource("countries", { type: "geojson", data })
       map.addLayer({
         id: "countries-fill",
         type: "fill",
         source: "countries",
         paint: {
-          "fill-color": ["match", ["get", "quizStatus"], "guessed", palette.hex, "remaining", dark ? `hsl(${palette.hue} 38% 13%)` : `hsl(${palette.hue} 28% 90%)`, dark ? `hsl(${palette.hue} 48% 7%)` : `hsl(${palette.hue} 25% 96%)`],
+          "fill-color": [
+            "match",
+            ["get", "quizStatus"],
+            "guessed",
+            palette.hex,
+            "remaining",
+            dark ? `hsl(${palette.hue} 38% 13%)` : `hsl(${palette.hue} 28% 90%)`,
+            dark ? `hsl(${palette.hue} 48% 7%)` : `hsl(${palette.hue} 25% 96%)`,
+          ],
           "fill-opacity": ["match", ["get", "quizStatus"], "outside", 0.35, 0.9],
         },
       })
-      map.addLayer({ id: "countries-line", type: "line", source: "countries", paint: { "line-color": dark ? `hsl(${palette.hue} 24% 36%)` : `hsl(${palette.hue} 18% 62%)`, "line-width": 0.7 } })
+      map.addLayer({
+        id: "countries-line",
+        type: "line",
+        source: "countries",
+        paint: {
+          "line-color": dark ? `hsl(${palette.hue} 24% 36%)` : `hsl(${palette.hue} 18% 62%)`,
+          "line-width": 0.7,
+        },
+      })
       updateMapData(map, data, region, guessed, revealRemaining)
       updateMapLabels(map, data, region, guessed, revealRemaining, labelMarkersRef.current)
     })
@@ -105,19 +171,31 @@ export function CountryMap({ region, guessed, revealRemaining = false, focusOnGu
       const quizName = mapName ? quizNameForMapName(mapName) : undefined
       if (!feature || !event.lngLat || !quizName) return
       const isVisible = feature.properties?.quizStatus === "guessed" || feature.properties?.revealRemaining
-      popup.setLngLat(event.lngLat).setText(isVisible ? quizName : "Not guessed yet").addTo(map)
+      popup
+        .setLngLat(event.lngLat)
+        .setText(isVisible ? quizName : "Not guessed yet")
+        .addTo(map)
     }
-    map.on("mousemove", "countries-fill", (event) => { map.getCanvas().style.cursor = "pointer"; showCountryStatus(event) })
+    map.on("mousemove", "countries-fill", (event) => {
+      map.getCanvas().style.cursor = "pointer"
+      showCountryStatus(event)
+    })
     map.on("click", "countries-fill", showCountryStatus)
-    map.on("mouseleave", "countries-fill", () => { map.getCanvas().style.cursor = ""; popup.remove() })
+    map.on("mouseleave", "countries-fill", () => {
+      map.getCanvas().style.cursor = ""
+      popup.remove()
+    })
 
     return () => {
+      removed = true
       if (returnTimerRef.current) window.clearTimeout(returnTimerRef.current)
       labelMarkersRef.current.forEach((marker) => marker.remove())
       labelMarkersRef.current = []
-      popup.remove(); map.remove(); mapRef.current = null
+      popup.remove()
+      map.remove()
+      mapRef.current = null
     }
-  }, [accentColor, palette.hex, palette.hue, resolvedTheme])
+  }, [palette.hex, palette.hue, resolvedTheme])
 
   React.useEffect(() => {
     const map = mapRef.current
@@ -141,7 +219,9 @@ export function CountryMap({ region, guessed, revealRemaining = false, focusOnGu
     const data = dataRef.current
     const newestGuess = guessed[guessed.length - 1]
     if (!map || !data || !newestGuess) return
-    const feature = data.features.find((item) => quizNameForMapName(String(item.properties?.name ?? "")) === newestGuess)
+    const feature = data.features.find(
+      (item) => quizNameForMapName(String(item.properties?.name ?? "")) === newestGuess
+    )
     const center = feature ? getFeatureCenter(feature) : null
     if (!center) return
     if (returnTimerRef.current) window.clearTimeout(returnTimerRef.current)
@@ -151,28 +231,42 @@ export function CountryMap({ region, guessed, revealRemaining = false, focusOnGu
     }, 1250)
   }, [focusOnGuess, guessed, region])
 
-  return <div ref={containerRef} className="mx-auto h-[300px] w-full max-w-5xl overflow-hidden rounded-md border sm:h-auto sm:aspect-[2/1]" role="img" aria-label={`Interactive map of ${region}. Guessed countries are highlighted.`} />
+  return (
+    <div
+      ref={containerRef}
+      className="mx-auto h-[300px] w-full max-w-5xl overflow-hidden rounded-md border sm:h-auto sm:aspect-[2/1]"
+      role="img"
+      aria-label={`Interactive map of ${region}. Guessed countries are highlighted.`}
+    />
+  )
 }
 
 function getFeatureCenter(feature: FeatureCollection["features"][number]): [number, number] | null {
   if (!feature.geometry) return null
-  const rings = feature.geometry.type === "Polygon"
-    ? [feature.geometry.coordinates[0]]
-    : feature.geometry.type === "MultiPolygon"
-      ? feature.geometry.coordinates.map((polygon) => polygon[0])
-      : []
+  const rings =
+    feature.geometry.type === "Polygon"
+      ? [feature.geometry.coordinates[0]]
+      : feature.geometry.type === "MultiPolygon"
+        ? feature.geometry.coordinates.map((polygon) => polygon[0])
+        : []
   if (!rings.length) return null
 
-  const candidates = rings.map(getRingCentroid).filter((candidate): candidate is { center: [number, number]; area: number } => candidate !== null)
+  const candidates = rings
+    .map(getRingCentroid)
+    .filter((candidate): candidate is { center: [number, number]; area: number } => candidate !== null)
   if (!candidates.length) return null
-  return candidates.reduce((largest, candidate) => candidate.area > largest.area ? candidate : largest).center
+  return candidates.reduce((largest, candidate) => (candidate.area > largest.area ? candidate : largest))
+    .center
 }
 
 function getRingCentroid(ring: number[][]): { center: [number, number]; area: number } | null {
   if (ring.length < 3) return null
   const rawLongitudes = ring.map(([longitude]) => longitude)
   const crossesDateLine = Math.max(...rawLongitudes) - Math.min(...rawLongitudes) > 180
-  const points = ring.map(([longitude, latitude]) => [crossesDateLine && longitude < 0 ? longitude + 360 : longitude, latitude] as [number, number])
+  const points = ring.map(
+    ([longitude, latitude]) =>
+      [crossesDateLine && longitude < 0 ? longitude + 360 : longitude, latitude] as [number, number]
+  )
   let signedArea = 0
   let longitudeTotal = 0
   let latitudeTotal = 0
@@ -193,7 +287,13 @@ function getRingCentroid(ring: number[][]): { center: [number, number]; area: nu
   return { center: [longitude, latitudeTotal / (6 * signedArea)], area: Math.abs(signedArea) }
 }
 
-function updateMapData(map: maplibregl.Map, original: FeatureCollection, region: Region, guessed: string[], revealRemaining: boolean) {
+function updateMapData(
+  map: maplibregl.Map,
+  original: FeatureCollection,
+  region: Region,
+  guessed: string[],
+  revealRemaining: boolean
+) {
   const guessedSet = new Set(guessed)
   const data = structuredClone(original)
   for (const feature of data.features) {
@@ -211,7 +311,14 @@ function updateMapData(map: maplibregl.Map, original: FeatureCollection, region:
   source?.setData(data)
 }
 
-function updateMapLabels(map: maplibregl.Map, data: FeatureCollection, region: Region, guessed: string[], revealRemaining: boolean, markers: maplibregl.Marker[]) {
+function updateMapLabels(
+  map: maplibregl.Map,
+  data: FeatureCollection,
+  region: Region,
+  guessed: string[],
+  revealRemaining: boolean,
+  markers: maplibregl.Marker[]
+) {
   markers.forEach((marker) => marker.remove())
   markers.length = 0
   const guessedSet = new Set(guessed)
@@ -228,7 +335,8 @@ function updateMapLabels(map: maplibregl.Map, data: FeatureCollection, region: R
     const element = document.createElement("div")
     if (showName) {
       element.textContent = quizName
-      element.className = "max-w-24 truncate whitespace-nowrap rounded border bg-background/90 px-1.5 py-0.5 text-[10px] font-medium leading-none text-foreground shadow-sm"
+      element.className =
+        "max-w-24 truncate whitespace-nowrap rounded border bg-background/90 px-1.5 py-0.5 text-[10px] font-medium leading-none text-foreground shadow-sm"
       element.setAttribute("aria-label", quizName)
     } else {
       element.className = "h-2.5 w-5 rounded-sm border border-muted-foreground bg-background/80 shadow-sm"

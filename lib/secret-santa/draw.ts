@@ -1,3 +1,5 @@
+import { shuffle } from "../random.ts"
+
 export function createSecretSantaAssignments(
   participants: readonly string[],
   random: () => number = Math.random
@@ -11,13 +13,8 @@ export function createSecretSantaAssignments(
     throw new Error("At least two participants are required")
   }
 
-  const shuffled = [...participants]
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(random() * (i + 1))
-    ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
-  }
+  // A single cycle through a random order guarantees nobody draws themselves.
+  const shuffled = shuffle(participants, random)
 
-  return Object.fromEntries(
-    shuffled.map((giver, index) => [giver, shuffled[(index + 1) % shuffled.length]])
-  )
+  return Object.fromEntries(shuffled.map((giver, index) => [giver, shuffled[(index + 1) % shuffled.length]]))
 }

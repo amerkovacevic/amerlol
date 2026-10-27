@@ -1,22 +1,13 @@
 "use client"
 
 import * as React from "react"
-import html2canvas from "html2canvas"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
-import {
-  Download,
-  Image as ImageIcon,
-  LayoutGrid,
-  Trash2,
-  Copy,
-  Loader2,
-  CheckSquare,
-} from "lucide-react"
+import { Download, Image as ImageIcon, LayoutGrid, Trash2, Copy, Loader2, CheckSquare } from "lucide-react"
 import { toast } from "sonner"
 import { useAccentColor } from "@/components/accent-color-provider"
 import { THEME_COLORS } from "@/lib/theme-colors"
@@ -43,6 +34,8 @@ import {
   makeQatar2022FwcStickerId,
   makeQatar2022TeamStickerId,
 } from "@/lib/stickr/qatar-2022-schema"
+import { copyText, downloadBlob } from "@/lib/browser"
+import { logUnexpectedError } from "@/lib/firebase/user-facing-errors"
 import { useStickr } from "./stickr-provider"
 
 type EditMode = "duplicates" | "needs"
@@ -55,7 +48,7 @@ export function StickrMain() {
   const [search, setSearch] = React.useState("")
   const [rangeStart, setRangeStart] = React.useState("")
   const [rangeEnd, setRangeEnd] = React.useState("")
-  const [activeTeam, setActiveTeam] = React.useState("USA")
+  const [selectedTeam, setActiveTeam] = React.useState("USA")
   const [activePanel, setActivePanel] = React.useState<"team" | "fwc">("team")
   const shareRef = React.useRef<HTMLDivElement>(null)
   const [downloading, setDownloading] = React.useState(false)
@@ -92,21 +85,13 @@ export function StickrMain() {
     return null
   }, [state.albumPresetId])
 
-  React.useEffect(() => {
-    if (!teamAlbum) return
-    const exists = teamAlbum.findTeam(activeTeam)
-    if (!exists) {
-      setActiveTeam(teamAlbum.defaultTeam)
-    }
-  }, [teamAlbum, activeTeam])
+  // Fall back to the album's default team when the selection isn't in this album.
+  const activeTeam = teamAlbum && !teamAlbum.findTeam(selectedTeam) ? teamAlbum.defaultTeam : selectedTeam
 
   const dupSet = React.useMemo(() => new Set(state.duplicates), [state.duplicates])
   const needSet = React.useMemo(() => new Set(state.needs), [state.needs])
 
-  const numbers = React.useMemo(
-    () => Array.from({ length: stickerCount }, (_, i) => i + 1),
-    [stickerCount]
-  )
+  const numbers = React.useMemo(() => Array.from({ length: stickerCount }, (_, i) => i + 1), [stickerCount])
 
   const filteredNumbers = React.useMemo(() => {
     const q = search.trim()
@@ -142,11 +127,7 @@ export function StickrMain() {
   const clearCurrentList = () => {
     const label = mode === "duplicates" ? "duplicates" : "needs"
     if (!confirm(`Clear all ${label}?`)) return
-    setState((prev) =>
-      mode === "duplicates"
-        ? { ...prev, duplicates: [] }
-        : { ...prev, needs: [] }
-    )
+    setState((prev) => (mode === "duplicates" ? { ...prev, duplicates: [] } : { ...prev, needs: [] }))
   }
 
   const applyRange = () => {
@@ -178,8 +159,12 @@ export function StickrMain() {
       }
       return {
         ...prev,
-        duplicates: teamAlbum ? [...dup].sort((x, y) => x.localeCompare(y)) : filterNumericToAlbum([...dup], stickerCount),
-        needs: teamAlbum ? [...need].sort((x, y) => x.localeCompare(y)) : filterNumericToAlbum([...need], stickerCount),
+        duplicates: teamAlbum
+          ? [...dup].sort((x, y) => x.localeCompare(y))
+          : filterNumericToAlbum([...dup], stickerCount),
+        needs: teamAlbum
+          ? [...need].sort((x, y) => x.localeCompare(y))
+          : filterNumericToAlbum([...need], stickerCount),
       }
     })
     setRangeStart("")
@@ -217,12 +202,18 @@ export function StickrMain() {
 
       return {
         ...prev,
-        duplicates: teamAlbum ? [...dup].sort((a, b) => a.localeCompare(b)) : filterNumericToAlbum([...dup], stickerCount),
-        needs: teamAlbum ? [...need].sort((a, b) => a.localeCompare(b)) : filterNumericToAlbum([...need], stickerCount),
+        duplicates: teamAlbum
+          ? [...dup].sort((a, b) => a.localeCompare(b))
+          : filterNumericToAlbum([...dup], stickerCount),
+        needs: teamAlbum
+          ? [...need].sort((a, b) => a.localeCompare(b))
+          : filterNumericToAlbum([...need], stickerCount),
       }
     })
     if (teamAlbum) {
-      toast.success(activePanel === "fwc" ? "Selected all FWC specials" : "Selected all stickers for this team")
+      toast.success(
+        activePanel === "fwc" ? "Selected all FWC specials" : "Selected all stickers for this team"
+      )
     } else {
       toast.success("Selected all visible stickers")
     }
@@ -230,22 +221,19 @@ export function StickrMain() {
 
   const copyListsText = async () => {
     const lookingFor = teamAlbum ? teamAlbum.formatList(state.needs) : formatNumericStickerList(state.needs)
-    const duplicatesForTrade = teamAlbum ? teamAlbum.formatList(state.duplicates) : formatNumericStickerList(state.duplicates)
+    const duplicatesForTrade = teamAlbum
+      ? teamAlbum.formatList(state.duplicates)
+      : formatNumericStickerList(state.duplicates)
     const lines = [
       `Album: ${albumLabel}`,
-      state.displayName ? `Collector: ${state.displayName}` : "",
+      ...(state.displayName ? [`Collector: ${state.displayName}`] : []),
       "",
       `Looking for: ${lookingFor}`,
       `Duplicates for trade: ${duplicatesForTrade}`,
       "",
       "Made with Stickr — amer.lol",
-    ].filter(Boolean)
-    try {
-      await navigator.clipboard.writeText(lines.join("\n"))
-      toast.success("Copied to clipboard")
-    } catch {
-      toast.error("Could not copy")
-    }
+    ]
+    await copyText(lines.join("\n"))
   }
 
   const downloadPng = async () => {
@@ -253,20 +241,21 @@ export function StickrMain() {
     if (!el) return
     setDownloading(true)
     try {
+      // Loaded on demand: it is large and only needed for this button.
+      const { default: html2canvas } = await import("html2canvas")
       const canvas = await html2canvas(el, {
         scale: 2,
-        backgroundColor: state.shareCardTheme === "dark" ? `hsl(${palette.hue} 59% 5%)` : `hsl(${palette.hue} 30% 98%)`,
+        backgroundColor:
+          state.shareCardTheme === "dark" ? `hsl(${palette.hue} 59% 5%)` : `hsl(${palette.hue} 30% 98%)`,
         useCORS: true,
         logging: false,
       })
-      const url = canvas.toDataURL("image/png")
-      const a = document.createElement("a")
-      a.href = url
-      a.download = `stickr-${state.displayName?.replace(/\s+/g, "-") || "trade"}.png`
-      a.click()
+      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"))
+      if (!blob) throw new Error("Canvas export failed")
+      downloadBlob(blob, `stickr-${state.displayName?.replace(/\s+/g, "-") || "trade"}.png`)
       toast.success("Image downloaded")
-    } catch (e) {
-      console.error(e)
+    } catch (error) {
+      logUnexpectedError("stickr:share-card", error)
       toast.error("Could not create image — try another browser")
     } finally {
       setDownloading(false)
@@ -280,10 +269,12 @@ export function StickrMain() {
     if (!teamAlbum) return []
     const q = search.trim().toLowerCase()
     if (!q) return teamAlbum.groups
-    return teamAlbum.groups.map((g) => ({
-      ...g,
-      teams: g.teams.filter((t) => t.code.toLowerCase().includes(q) || t.name.toLowerCase().includes(q)),
-    })).filter((g) => g.teams.length > 0)
+    return teamAlbum.groups
+      .map((g) => ({
+        ...g,
+        teams: g.teams.filter((t) => t.code.toLowerCase().includes(q) || t.name.toLowerCase().includes(q)),
+      }))
+      .filter((g) => g.teams.length > 0)
   }, [teamAlbum, search])
 
   if (!hydrated) {
@@ -305,8 +296,8 @@ export function StickrMain() {
           </CardTitle>
           <CardDescription>
             Tap numbers you have <strong>extras</strong> of (duplicates) and stickers you still{" "}
-            <strong>need</strong>. A sticker can only be on one list — picking it for one side removes it from the
-            other.
+            <strong>need</strong>. A sticker can only be on one list — picking it for one side removes it from
+            the other.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -315,7 +306,10 @@ export function StickrMain() {
               <Badge variant="secondary">{albumLabel}</Badge>
               {isTeamAlbum ? (
                 <>
-                  <Badge variant="outline">{teamAlbum?.groups.reduce((acc, g) => acc + g.teams.length, 0) ?? 0} teams × {teamAlbum?.teamPerTeam ?? 20}</Badge>
+                  <Badge variant="outline">
+                    {teamAlbum?.groups.reduce((acc, g) => acc + g.teams.length, 0) ?? 0} teams ×{" "}
+                    {teamAlbum?.teamPerTeam ?? 20}
+                  </Badge>
                   <Badge variant="outline">FWC specials: {teamAlbum?.fwcCount}</Badge>
                 </>
               ) : (
@@ -324,7 +318,10 @@ export function StickrMain() {
               <Badge variant="outline" className="border-amber-500/50 text-amber-700 dark:text-amber-400">
                 Needs: {state.needs.length}
               </Badge>
-              <Badge variant="outline" className="border-emerald-500/50 text-emerald-700 dark:text-emerald-400">
+              <Badge
+                variant="outline"
+                className="border-emerald-500/50 text-emerald-700 dark:text-emerald-400"
+              >
                 Duplicates: {state.duplicates.length}
               </Badge>
             </div>
@@ -378,7 +375,12 @@ export function StickrMain() {
                   />
                 </div>
               </div>
-              <Button type="button" variant="secondary" onClick={applyRange} disabled={isTeamAlbum && !activeTeamMeta}>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={applyRange}
+                disabled={isTeamAlbum && !activeTeamMeta}
+              >
                 Apply range
               </Button>
               <Button
@@ -504,7 +506,9 @@ export function StickrMain() {
                     <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
                       <div>
                         <p className="text-sm font-semibold">
-                          {activeTeamMeta ? `${activeTeamMeta.name} (${activeTeamMeta.code})` : `Team ${activeTeam}`}
+                          {activeTeamMeta
+                            ? `${activeTeamMeta.name} (${activeTeamMeta.code})`
+                            : `Team ${activeTeam}`}
                         </p>
                         <p className="text-xs text-muted-foreground">Select 1–20 for this team</p>
                       </div>
@@ -582,8 +586,8 @@ export function StickrMain() {
             Share card
           </CardTitle>
           <CardDescription>
-            Screenshot-friendly layout for Instagram, group chats, or marketplace posts. Download a PNG or copy plain
-            text.
+            Screenshot-friendly layout for Instagram, group chats, or marketplace posts. Download a PNG or
+            copy plain text.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -653,7 +657,9 @@ export function StickrMain() {
                       isDark ? "text-slate-100" : "text-slate-800"
                     }`}
                   >
-                    {teamAlbum ? teamAlbum.formatList(state.duplicates) : formatNumericStickerList(state.duplicates)}
+                    {teamAlbum
+                      ? teamAlbum.formatList(state.duplicates)
+                      : formatNumericStickerList(state.duplicates)}
                   </p>
                 </div>
               </div>

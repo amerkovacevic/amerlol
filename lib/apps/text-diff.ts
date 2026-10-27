@@ -12,9 +12,7 @@ export function calculateTextDiff(
   const left = original.split("\n"),
     right = changed.split("\n")
   if ((left.length + 1) * (right.length + 1) > 2_000_000)
-    throw new Error(
-      "This comparison is too large. Compare smaller sections (up to two million line pairs)."
-    )
+    throw new Error("This comparison is too large. Compare smaller sections (up to two million line pairs).")
   const normalize = (line: string) => {
     let value = line.replace(/\r$/, "")
     if (options.ignoreWhitespace) value = value.trim()
@@ -22,16 +20,11 @@ export function calculateTextDiff(
   }
   const a = left.map(normalize),
     b = right.map(normalize)
-  const table = Array.from(
-    { length: left.length + 1 },
-    () => new Uint32Array(right.length + 1)
-  )
+  const table = Array.from({ length: left.length + 1 }, () => new Uint32Array(right.length + 1))
   for (let i = 1; i <= left.length; i++)
     for (let j = 1; j <= right.length; j++)
       table[i][j] =
-        a[i - 1] === b[j - 1]
-          ? table[i - 1][j - 1] + 1
-          : Math.max(table[i - 1][j], table[i][j - 1])
+        a[i - 1] === b[j - 1] ? table[i - 1][j - 1] + 1 : Math.max(table[i - 1][j], table[i][j - 1])
   const result: DiffLine[] = []
   let i = left.length,
     j = right.length

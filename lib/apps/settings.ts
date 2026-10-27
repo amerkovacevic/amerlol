@@ -20,18 +20,7 @@ export const SETTINGS = {
       autoConvert: bool.default(true),
       clearOnTabChange: bool.default(false),
       defaultTab: z
-        .enum([
-          "base64",
-          "url",
-          "hex",
-          "binary",
-          "ascii",
-          "caesar",
-          "rot13",
-          "morse",
-          "md5",
-          "sha256",
-        ])
+        .enum(["base64", "url", "hex", "binary", "ascii", "caesar", "rot13", "morse", "md5", "sha256"])
         .default("base64"),
       fontSize: integer(10, 24).default(14),
     }),
@@ -129,10 +118,7 @@ export const SETTINGS = {
       }),
       defaultSeverityRange: z
         .tuple([integer(0, 100), integer(0, 100)])
-        .refine(
-          ([min, max]) => min <= max,
-          "Minimum severity must not exceed maximum"
-        )
+        .refine(([min, max]) => min <= max, "Minimum severity must not exceed maximum")
         .default([0, 100]),
       defaultTimeWindow: z.enum(["15m", "1h", "6h", "24h"]).default("1h"),
       autoRefresh: bool.default(true),
@@ -164,21 +150,16 @@ export const SETTINGS = {
       showQuestionMix: bool.default(true),
     }),
   },
-} satisfies Record<
-  string,
-  { collection?: string; legacyKey?: string; schema: z.AnyZodObject }
->
+} satisfies Record<string, { collection?: string; legacyKey?: string; schema: z.ZodObject }>
 
 export type SettingsAppId = keyof typeof SETTINGS
-export type AppSettings<K extends SettingsAppId> = z.infer<
-  (typeof SETTINGS)[K]["schema"]
->
+export type AppSettings<K extends SettingsAppId> = z.infer<(typeof SETTINGS)[K]["schema"]>
 export type SettingsValues = Record<string, unknown>
 
 export function settingsDefinition(appId: SettingsAppId): {
   collection?: string
   legacyKey?: string
-  schema: z.AnyZodObject
+  schema: z.ZodObject
 } {
   return SETTINGS[appId]
 }
@@ -187,36 +168,22 @@ export function defaultSettings(appId: SettingsAppId): SettingsValues {
 }
 
 // Recover valid fields independently from malformed legacy documents, without writing repairs.
-export function readSettings(
-  appId: SettingsAppId,
-  raw: unknown
-): SettingsValues {
+export function readSettings(appId: SettingsAppId, raw: unknown): SettingsValues {
   const values = defaultSettings(appId)
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return values
-  for (const [key, validator] of Object.entries(
-    settingsDefinition(appId).schema.shape
-  )) {
-    const parsed = (validator as z.ZodTypeAny).safeParse(
-      (raw as SettingsValues)[key]
-    )
+  for (const [key, validator] of Object.entries(settingsDefinition(appId).schema.shape)) {
+    const parsed = (validator as z.ZodType).safeParse((raw as SettingsValues)[key])
     if (parsed.success) values[key] = parsed.data
   }
   return values
 }
 
-export function validateSettings(
-  appId: SettingsAppId,
-  raw: unknown
-): SettingsValues {
+export function validateSettings(appId: SettingsAppId, raw: unknown): SettingsValues {
   return settingsDefinition(appId).schema.parse(raw)
 }
 
-export function parseSettingsImport(
-  appId: SettingsAppId,
-  raw: unknown
-): SettingsValues {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw))
-    throw new Error("Invalid settings file")
+export function parseSettingsImport(appId: SettingsAppId, raw: unknown): SettingsValues {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new Error("Invalid settings file")
   const document = raw as SettingsValues
   let settings: unknown = document
   if ("appId" in document || "version" in document || "settings" in document) {
@@ -228,9 +195,7 @@ export function parseSettingsImport(
     !settings ||
     typeof settings !== "object" ||
     Array.isArray(settings) ||
-    !Object.keys(settings).some((key) =>
-      Object.hasOwn(settingsDefinition(appId).schema.shape, key)
-    )
+    !Object.keys(settings).some((key) => Object.hasOwn(settingsDefinition(appId).schema.shape, key))
   )
     throw new Error("No preferences for this app were found")
   return validateSettings(appId, settings)

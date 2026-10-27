@@ -1,632 +1,321 @@
 "use client"
 
 import * as React from "react"
-import { useAppSettings } from "@/components/apps/settings-provider"
-
-import { motion, AnimatePresence } from "framer-motion"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import {
-  Trophy,
-  Clock,
-  Target,
-  Zap,
-  Share2,
-  History,
-  Lightbulb,
-  Timer,
-  Flame,
-  TrendingUp,
-  CheckCircle2,
-  XCircle,
-  Minus,
-  RefreshCw,
-  Award,
-  Star
-} from "lucide-react"
-import { toast } from "sonner"
-import { useAuth } from "@/components/auth/auth-provider"
-import { AuthDialog } from "@/components/auth/auth-dialog"
-import { db } from "@/lib/firebase/config"
 import {
   collection,
   doc,
   getDoc,
   getDocs,
-  setDoc,
-  updateDoc,
-  query,
-  where,
-  orderBy,
   limit,
+  orderBy,
+  query,
+  runTransaction,
   serverTimestamp,
-  Timestamp,
+  where,
 } from "firebase/firestore"
+import { motion } from "framer-motion"
+import {
+  CheckCircle2,
+  Flame,
+  History,
+  Lightbulb,
+  Share2,
+  Timer,
+  TrendingUp,
+  Trophy,
+  XCircle,
+} from "lucide-react"
+import { toast } from "sonner"
+import { useAppSettings } from "@/components/apps/settings-provider"
+import { AuthDialog } from "@/components/auth/auth-dialog"
+import { useAuth } from "@/components/auth/auth-provider"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-
-// Word list for daily puzzles (deterministic based on date)
-const WORD_LIST = [
-  "GAUNT", "SHIELD", "SWORD", "QUEST", "KNIGHT", "DRAGON", "CASTLE", "HERO",
-  "MAGIC", "POWER", "BRAVE", "HONOR", "GLORY", "VICTOR", "CHAMP", "LEGEND",
-  "MIGHT", "FORCE", "STORM", "FLAME", "THUNDER", "LIGHT", "DARK", "SHADOW",
-  "GUARD", "DEFEND", "ATTACK", "STRIKE", "BLADE", "ARMOR", "BATTLE", "WAR",
-  "PEACE", "HOPE", "FAITH", "TRUTH", "WISDOM", "COURAGE", "STRENGTH", "SPIRIT"
-]
-
-// Generate daily word based on date (deterministic)
-function getDailyWord(date: Date): string {
-  const dateStr = date.toISOString().split('T')[0] // YYYY-MM-DD
-  const seed = dateStr.split('-').join('')
-  let hash = 0
-  for (let i = 0; i < seed.length; i++) {
-    hash = ((hash << 5) - hash) + seed.charCodeAt(i)
-    hash = hash & hash
-  }
-  const index = Math.abs(hash) % WORD_LIST.length
-  return WORD_LIST[index]
-}
-
-// Check guess against word
-function checkGuess(guess: string, word: string): Array<'correct' | 'present' | 'absent'> {
-  const result: Array<'correct' | 'present' | 'absent'> = []
-  const wordArray = word.split('')
-  const guessArray = guess.split('')
-  const used = new Array(word.length).fill(false)
-
-  // First pass: mark correct positions
-  for (let i = 0; i < guessArray.length; i++) {
-    if (guessArray[i] === wordArray[i]) {
-      result[i] = 'correct'
-      used[i] = true
-    }
-  }
-
-  // Second pass: mark present letters
-  for (let i = 0; i < guessArray.length; i++) {
-    if (result[i] === 'correct') continue
-    const letter = guessArray[i]
-    const index = wordArray.findIndex((w, idx) => w === letter && !used[idx])
-    if (index !== -1) {
-      result[i] = 'present'
-      used[index] = true
-    } else {
-      result[i] = 'absent'
-    }
-  }
-
-  return result
-}
-
-interface GameResult {
-  date: string
-  word: string
-  attempts: number
-  time: number
-  completed: boolean
-  score: number
-  hintsUsed: number
-}
+import { getProfileName } from "@/lib/account/profile"
+import {
+  checkGuess,
+  EMPTY_STATS,
+  formatDuration,
+  getDailyWord,
+  MAX_ATTEMPTS,
+  nextStats,
+  scoreGame,
+  shareText,
+  type GameResult,
+  type GauntletStats,
+  type LetterResult,
+} from "@/lib/apps/gauntlet"
+import { copyText } from "@/lib/browser"
+import { db } from "@/lib/firebase/db"
+import { getErrorCode, logUnexpectedError } from "@/lib/firebase/user-facing-errors"
+import { utcDateString } from "@/lib/football-deepcuts/static-game"
+import { useAsync } from "@/lib/hooks/use-async"
+import { useHydrated } from "@/lib/hooks/use-hydrated"
+import { useNow } from "@/lib/hooks/use-now"
 
 interface LeaderboardEntry {
   userId: string
   displayName: string
   score: number
-  attempts: number
-  time: number
-  date: string
-  rank?: number
+  detail?: string
 }
 
-interface UserStats {
-  totalGames: number
-  wins: number
-  currentStreak: number
-  bestStreak: number
-  averageScore: number
-  totalScore: number
-  fastestTime: number
-  perfectGames: number
+interface StoredGame {
+  result: GameResult
+  guesses: string[]
+}
+
+const LEADERBOARD_LIMIT = 100
+const HISTORY_LIMIT = 30
+const ALREADY_PLAYED = "already-played"
+
+async function loadDailyLeaderboard(date: string): Promise<LeaderboardEntry[]> {
+  const ref = collection(db, "amerGauntletDailyLeaderboard")
+  let snapshot
+  try {
+    snapshot = await getDocs(
+      query(
+        ref,
+        where("date", "==", date),
+        orderBy("score", "desc"),
+        orderBy("time", "asc"),
+        limit(LEADERBOARD_LIMIT)
+      )
+    )
+  } catch (error) {
+    // Without the composite index, rank on the client instead.
+    if (getErrorCode(error) !== "failed-precondition") throw error
+    snapshot = await getDocs(query(ref, where("date", "==", date), limit(LEADERBOARD_LIMIT)))
+  }
+  return snapshot.docs
+    .map((entry) => entry.data())
+    .sort((a, b) => b.score - a.score || a.time - b.time)
+    .map((data) => ({
+      userId: data.userId,
+      displayName: data.displayName || "Anonymous",
+      score: data.score,
+      detail: `${data.attempts} attempts • ${formatDuration(data.time)}`,
+    }))
+}
+
+async function loadAllTimeLeaderboard(): Promise<LeaderboardEntry[]> {
+  const snapshot = await getDocs(
+    query(
+      collection(db, "amerGauntletAllTimeLeaderboard"),
+      orderBy("totalScore", "desc"),
+      limit(LEADERBOARD_LIMIT)
+    )
+  )
+  return snapshot.docs.map((entry) => {
+    const data = entry.data()
+    return { userId: data.userId, displayName: data.displayName || "Anonymous", score: data.totalScore }
+  })
+}
+
+function toResult(data: Record<string, unknown>): GameResult {
+  return {
+    date: String(data.date),
+    word: String(data.word),
+    attempts: Number(data.attempts) || 0,
+    time: Number(data.time) || 0,
+    completed: data.completed === true,
+    score: Number(data.score) || 0,
+    hintsUsed: Number(data.hintsUsed) || 0,
+  }
+}
+
+async function loadAccountData(uid: string, date: string) {
+  const [today, stats, history] = await Promise.all([
+    getDoc(doc(db, "users", uid, "amerGauntletResults", date)),
+    getDoc(doc(db, "users", uid, "amerGauntletStats", "default")),
+    getDocs(
+      query(
+        collection(db, "users", uid, "amerGauntletResults"),
+        orderBy("date", "desc"),
+        limit(HISTORY_LIMIT)
+      )
+    ),
+  ])
+  const todayData = today.data()
+  const todayGame: StoredGame | null = todayData
+    ? { result: toResult(todayData), guesses: Array.isArray(todayData.guesses) ? todayData.guesses : [] }
+    : null
+  return {
+    today: todayGame,
+    stats: { ...EMPTY_STATS, ...(stats.data() as Partial<GauntletStats> | undefined) },
+    history: history.docs.map((entry) => toResult(entry.data())),
+  }
+}
+
+/**
+ * Records a finished game atomically. Each day can be scored once: a second
+ * attempt (another tab or device) is rejected instead of double counting.
+ */
+async function recordGame(uid: string, { result, guesses }: StoredGame) {
+  const displayName = (await getProfileName(uid).catch(() => null)) || "Anonymous"
+  const resultRef = doc(db, "users", uid, "amerGauntletResults", result.date)
+  const statsRef = doc(db, "users", uid, "amerGauntletStats", "default")
+  const allTimeRef = doc(db, "amerGauntletAllTimeLeaderboard", uid)
+  const dailyRef = doc(db, "amerGauntletDailyLeaderboard", `${result.date}_${uid}`)
+
+  await runTransaction(db, async (transaction) => {
+    const [existing, stats, allTime] = await Promise.all([
+      transaction.get(resultRef),
+      transaction.get(statsRef),
+      transaction.get(allTimeRef),
+    ])
+    if (existing.exists()) throw new Error(ALREADY_PLAYED)
+
+    // Per-letter results are derived from the guesses: Firestore cannot store nested arrays.
+    transaction.set(resultRef, { ...result, guesses, createdAt: serverTimestamp() })
+    transaction.set(statsRef, {
+      ...nextStats(stats.data() as GauntletStats | undefined, result),
+      updatedAt: serverTimestamp(),
+      ...(stats.exists() ? {} : { createdAt: serverTimestamp() }),
+    })
+    transaction.set(dailyRef, {
+      userId: uid,
+      displayName,
+      date: result.date,
+      score: result.score,
+      attempts: result.attempts,
+      time: result.time,
+      word: result.word,
+      createdAt: serverTimestamp(),
+    })
+    transaction.set(allTimeRef, {
+      userId: uid,
+      displayName,
+      totalScore: (allTime.data()?.totalScore || 0) + result.score,
+      updatedAt: serverTimestamp(),
+      createdAt: allTime.data()?.createdAt ?? serverTimestamp(),
+    })
+  })
+}
+
+type Tab = "play" | "leaderboard" | "stats"
+
+/** One scored game per day; this tells players when the next one opens. */
+function NextWordCountdown() {
+  const now = useNow(30_000)
+  if (!now) return <p className="text-sm text-muted-foreground">A new word arrives at midnight UTC.</p>
+  const nextMidnight = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1)
+  const minutes = Math.max(1, Math.ceil((nextMidnight - now.getTime()) / 60_000))
+  const hours = Math.floor(minutes / 60)
+  return (
+    <p className="text-sm text-muted-foreground">
+      Next word in{" "}
+      <strong className="text-foreground">
+        {hours > 0 ? `${hours}h ` : ""}
+        {minutes % 60}m
+      </strong>
+      . Come back tomorrow to keep your streak.
+    </p>
+  )
 }
 
 export function AmerGauntletMain() {
-  const { user, loading: authLoading } = useAuth()
-  const [authDialogOpen, setAuthDialogOpen] = React.useState(false)
-  const [loading, setLoading] = React.useState(true)
-  const [activeTab, setActiveTab] = React.useState<"play" | "leaderboard" | "stats">("play")
-
-  // Game state
-  const [dailyWord, setDailyWord] = React.useState("")
-  const [currentGuess, setCurrentGuess] = React.useState("")
-  const [guesses, setGuesses] = React.useState<string[]>([])
-  const [results, setResults] = React.useState<Array<Array<'correct' | 'present' | 'absent'>>>([])
-  const [gameStarted, setGameStarted] = React.useState(false)
-  const [gameCompleted, setGameCompleted] = React.useState(false)
-  const [startTime, setStartTime] = React.useState<number | null>(null)
-  const [elapsedTime, setElapsedTime] = React.useState(0)
-  const [hintsUsed, setHintsUsed] = React.useState(0)
-  const [hintRevealed, setHintRevealed] = React.useState(false)
-  const [showHint, setShowHint] = React.useState(false)
-  const [todayResult, setTodayResult] = React.useState<GameResult | null>(null)
-
-  // Leaderboard state
-  const [dailyLeaderboard, setDailyLeaderboard] = React.useState<LeaderboardEntry[]>([])
-  const [allTimeLeaderboard, setAllTimeLeaderboard] = React.useState<LeaderboardEntry[]>([])
-  const [userStats, setUserStats] = React.useState<UserStats | null>(null)
-  const [history, setHistory] = React.useState<GameResult[]>([])
   const settings = useAppSettings("amer-gauntlet")
+  const { account, loading: authLoading } = useAuth()
+  const hydrated = useHydrated()
+  // Fixed for the session so a game in progress keeps its word across UTC midnight.
+  const [today] = React.useState(utcDateString)
+  const word = getDailyWord(today)
+  const uid = account?.uid ?? null
 
-  const today = new Date()
-  const todayStr = today.toISOString().split('T')[0]
+  const dailyLeaderboard = useAsync(today, () => loadDailyLeaderboard(today))
+  const allTimeLeaderboard = useAsync("all-time", loadAllTimeLeaderboard)
+  const accountData = useAsync(uid && `${uid}:${today}`, () => loadAccountData(uid!, today))
 
-  // Initialize game
-  React.useEffect(() => {
-    const word = getDailyWord(today)
-    setDailyWord(word)
-    loadTodayResult()
-    loadLeaderboards()
-    if (user) {
-      loadUserStats()
-      loadHistory()
-    }
-    setLoading(false)
-  }, [user, todayStr])
+  const [authDialogOpen, setAuthDialogOpen] = React.useState(false)
+  const [activeTab, setActiveTab] = React.useState<Tab>("play")
+  const [startedAt, setStartedAt] = React.useState<number | null>(null)
+  const [guesses, setGuesses] = React.useState<string[]>([])
+  const [currentGuess, setCurrentGuess] = React.useState("")
+  const [hintsUsed, setHintsUsed] = React.useState(0)
+  const [finished, setFinished] = React.useState<StoredGame | null>(null)
 
-  // Timer
-  React.useEffect(() => {
-    if (gameStarted && !gameCompleted && startTime) {
-      const interval = setInterval(() => {
-        setElapsedTime(Math.floor((Date.now() - startTime) / 1000))
-      }, 1000)
-      return () => clearInterval(interval)
-    }
-  }, [gameStarted, gameCompleted, startTime])
-
-  const loadTodayResult = async () => {
-    if (!user) return
-
-    try {
-      const resultRef = doc(db, "users", user.uid, "amerGauntletResults", todayStr)
-      const resultDoc = await getDoc(resultRef)
-      if (resultDoc.exists()) {
-        const data = resultDoc.data()
-        setTodayResult({
-          date: data.date,
-          word: data.word,
-          attempts: data.attempts,
-          time: data.time,
-          completed: data.completed,
-          score: data.score,
-          hintsUsed: data.hintsUsed || 0,
-        })
-        setGameCompleted(data.completed)
-        if (data.completed) {
-          setGuesses(data.guesses || [])
-          setResults(data.results || [])
-        }
-      }
-    } catch (error) {
-      console.error("Failed to load today's result:", error)
-    }
-  }
-
-  const loadLeaderboards = async () => {
-    try {
-      // Daily leaderboard
-      const dailyRef = collection(db, "amerGauntletDailyLeaderboard")
-      try {
-        const dailyQuery = query(
-          dailyRef,
-          where("date", "==", todayStr),
-          orderBy("score", "desc"),
-          orderBy("time", "asc"),
-          limit(100)
-        )
-        const dailySnapshot = await getDocs(dailyQuery)
-        const dailyEntries: LeaderboardEntry[] = []
-        dailySnapshot.forEach((doc) => {
-          const data = doc.data()
-          dailyEntries.push({
-            userId: data.userId,
-            displayName: data.displayName || "Anonymous",
-            score: data.score,
-            attempts: data.attempts,
-            time: data.time,
-            date: data.date,
-          })
-        })
-        setDailyLeaderboard(dailyEntries.map((entry, idx) => ({ ...entry, rank: idx + 1 })))
-      } catch (dailyError: any) {
-        // If composite index doesn't exist, try simpler query
-        if (dailyError.code === 'failed-precondition') {
-          console.warn("Composite index may be missing. Loading without time ordering.")
-          const simpleQuery = query(
-            dailyRef,
-            where("date", "==", todayStr),
-            orderBy("score", "desc"),
-            limit(100)
-          )
-          const dailySnapshot = await getDocs(simpleQuery)
-          const dailyEntries: LeaderboardEntry[] = []
-          dailySnapshot.forEach((doc) => {
-            const data = doc.data()
-            dailyEntries.push({
-              userId: data.userId,
-              displayName: data.displayName || "Anonymous",
-              score: data.score,
-              attempts: data.attempts,
-              time: data.time,
-              date: data.date,
-            })
-          })
-          // Sort by time manually as fallback
-          dailyEntries.sort((a, b) => {
-            if (a.score !== b.score) return b.score - a.score
-            return a.time - b.time
-          })
-          setDailyLeaderboard(dailyEntries.map((entry, idx) => ({ ...entry, rank: idx + 1 })))
-        } else {
-          throw dailyError
-        }
-      }
-
-      // All-time leaderboard
-      try {
-        const allTimeRef = collection(db, "amerGauntletAllTimeLeaderboard")
-        const allTimeQuery = query(allTimeRef, orderBy("totalScore", "desc"), limit(100))
-        const allTimeSnapshot = await getDocs(allTimeQuery)
-        const allTimeEntries: LeaderboardEntry[] = []
-        allTimeSnapshot.forEach((doc) => {
-          const data = doc.data()
-          allTimeEntries.push({
-            userId: data.userId,
-            displayName: data.displayName || "Anonymous",
-            score: data.totalScore,
-            attempts: 0,
-            time: 0,
-            date: "",
-          })
-        })
-        setAllTimeLeaderboard(allTimeEntries.map((entry, idx) => ({ ...entry, rank: idx + 1 })))
-      } catch (allTimeError: any) {
-        console.error("Failed to load all-time leaderboard:", allTimeError)
-        // Set empty array on error
-        setAllTimeLeaderboard([])
-      }
-    } catch (error) {
-      console.error("Failed to load leaderboards:", error)
-      // Set empty arrays on error
-      setDailyLeaderboard([])
-      setAllTimeLeaderboard([])
-    }
-  }
-
-  const loadUserStats = async () => {
-    if (!user) return
-
-    try {
-      const statsRef = doc(db, "users", user.uid, "amerGauntletStats", "default")
-      const statsDoc = await getDoc(statsRef)
-      if (statsDoc.exists()) {
-        const data = statsDoc.data()
-        setUserStats({
-          totalGames: data.totalGames || 0,
-          wins: data.wins || 0,
-          currentStreak: data.currentStreak || 0,
-          bestStreak: data.bestStreak || 0,
-          averageScore: data.averageScore || 0,
-          totalScore: data.totalScore || 0,
-          fastestTime: data.fastestTime || 0,
-          perfectGames: data.perfectGames || 0,
-        })
-      } else {
-        setUserStats({
-          totalGames: 0,
-          wins: 0,
-          currentStreak: 0,
-          bestStreak: 0,
-          averageScore: 0,
-          totalScore: 0,
-          fastestTime: 0,
-          perfectGames: 0,
-        })
-      }
-    } catch (error) {
-      console.error("Failed to load user stats:", error)
-    }
-  }
-
-  const loadHistory = async () => {
-    if (!user) return
-
-    try {
-      const historyRef = collection(db, "users", user.uid, "amerGauntletResults")
-      const historyQuery = query(historyRef, orderBy("date", "desc"), limit(30))
-      const snapshot = await getDocs(historyQuery)
-      const historyData: GameResult[] = []
-      snapshot.forEach((doc) => {
-        const data = doc.data()
-        historyData.push({
-          date: data.date,
-          word: data.word,
-          attempts: data.attempts,
-          time: data.time,
-          completed: data.completed,
-          score: data.score,
-          hintsUsed: data.hintsUsed || 0,
-        })
-      })
-      setHistory(historyData)
-    } catch (error) {
-      console.error("Failed to load history:", error)
-    }
-  }
+  // Today's game, whether it finished in this session or was loaded from the account.
+  const todayGame = finished ?? accountData.data?.today ?? null
+  const playing = startedAt !== null && !todayGame
+  const now = useNow(1000, playing)
+  const elapsed = startedAt && now ? Math.max(0, Math.floor((now.getTime() - startedAt) / 1000)) : 0
+  const shownGuesses = todayGame?.guesses ?? guesses
+  const rows = shownGuesses.map((guess) => checkGuess(guess, word))
+  const stats = accountData.data?.stats
+  const history = accountData.data?.history ?? []
 
   const startGame = () => {
-    if (!user) {
+    if (!account) {
       setAuthDialogOpen(true)
       return
     }
-    setGameStarted(true)
-    setStartTime(Date.now())
-    setElapsedTime(0)
+    setStartedAt(Date.now())
     setGuesses([])
-    setResults([])
     setCurrentGuess("")
-    setGameCompleted(false)
     setHintsUsed(0)
-    setHintRevealed(false)
-    setShowHint(false)
   }
 
-  const submitGuess = () => {
-    if (!gameStarted || gameCompleted) return
-    if (currentGuess.length !== dailyWord.length) {
-      toast.error(`Guess must be ${dailyWord.length} letters`)
-      return
+  const finishGame = async (finalGuesses: string[], won: boolean) => {
+    if (!account || startedAt === null) return
+    const time = Math.floor((Date.now() - startedAt) / 1000)
+    const attempts = finalGuesses.length
+    const game: StoredGame = {
+      guesses: finalGuesses,
+      result: {
+        date: today,
+        word,
+        attempts,
+        time,
+        completed: won,
+        hintsUsed,
+        score: scoreGame({ won, seconds: time, attempts, hintsUsed }),
+      },
     }
-    if (currentGuess.length > 0) {
-      // Convert to uppercase for consistency
-      const guess = currentGuess.toUpperCase()
-      const result = checkGuess(guess, dailyWord)
-
-      const newGuesses = [...guesses, guess]
-      const newResults = [...results, result]
-
-      setGuesses(newGuesses)
-      setResults(newResults)
-      setCurrentGuess("")
-
-      const newAttempts = newGuesses.length
-      if (guess === dailyWord) {
-        completeGame(newAttempts, true, newGuesses, newResults)
-      } else if (newAttempts >= 6) {
-        // Max attempts reached
-        completeGame(newAttempts, false, newGuesses, newResults)
-      }
-    }
-  }
-
-  const completeGame = async (
-    attempts: number,
-    won: boolean = true,
-    finalGuesses: string[] = guesses,
-    finalResults: Array<Array<'correct' | 'present' | 'absent'>> = results
-  ) => {
-    if (!user) return
-
-    const finalTime = elapsedTime
-    setGameCompleted(true)
-    setGameStarted(false)
-
-    // Calculate score: base score - time penalty - attempt penalty - hint penalty
-    const baseScore = won ? 1000 : 0
-    const timePenalty = Math.floor(finalTime / 10) // 1 point per 10 seconds
-    const attemptPenalty = (attempts - 1) * 50 // 50 points per attempt
-    const hintPenalty = hintsUsed * 100 // 100 points per hint
-    const score = Math.max(0, baseScore - timePenalty - attemptPenalty - hintPenalty)
-
-    const result: GameResult = {
-      date: todayStr,
-      word: dailyWord,
-      attempts,
-      time: finalTime,
-      completed: won,
-      score,
-      hintsUsed,
-    }
-
-    setTodayResult(result)
+    setFinished(game)
+    if (won)
+      toast.success(`Congratulations! You solved it in ${attempts} attempt${attempts === 1 ? "" : "s"}!`)
+    else toast.error(`The word was: ${word}`)
 
     try {
-      // Save result
-      const resultRef = doc(db, "users", user.uid, "amerGauntletResults", todayStr)
-      await setDoc(resultRef, {
-        ...result,
-        guesses: finalGuesses,
-        results: finalResults,
-        createdAt: serverTimestamp(),
-      })
-
-      // Update daily leaderboard
-      const userDoc = await getDoc(doc(db, "users", user.uid))
-      const displayName = userDoc.data()?.displayName || "Anonymous"
-
-      const dailyLeaderboardRef = doc(db, "amerGauntletDailyLeaderboard", `${todayStr}_${user.uid}`)
-      await setDoc(dailyLeaderboardRef, {
-        userId: user.uid,
-        displayName,
-        date: todayStr,
-        score,
-        attempts,
-        time: finalTime,
-        word: dailyWord,
-        createdAt: serverTimestamp(),
-      })
-
-      // Update all-time leaderboard
-      const allTimeRef = doc(db, "amerGauntletAllTimeLeaderboard", user.uid)
-      const allTimeDoc = await getDoc(allTimeRef)
-      if (allTimeDoc.exists()) {
-        const currentTotal = allTimeDoc.data().totalScore || 0
-        await updateDoc(allTimeRef, {
-          totalScore: currentTotal + score,
-          displayName,
-          updatedAt: serverTimestamp(),
-        })
-      } else {
-        await setDoc(allTimeRef, {
-          userId: user.uid,
-          displayName,
-          totalScore: score,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        })
-      }
-
-      // Update user stats
-      const statsRef = doc(db, "users", user.uid, "amerGauntletStats", "default")
-      const statsDoc = await getDoc(statsRef)
-      if (statsDoc.exists()) {
-        const stats = statsDoc.data()
-        const newTotalGames = (stats.totalGames || 0) + 1
-        const newWins = won ? (stats.wins || 0) + 1 : (stats.wins || 0)
-        const lastDate = stats.lastPlayedDate || ""
-        const yesterday = new Date(today)
-        yesterday.setDate(yesterday.getDate() - 1)
-        const yesterdayStr = yesterday.toISOString().split('T')[0]
-        const newStreak = lastDate === yesterdayStr ? (stats.currentStreak || 0) + 1 : (won ? 1 : 0)
-        const newBestStreak = Math.max(newStreak, stats.bestStreak || 0)
-        const newTotalScore = (stats.totalScore || 0) + score
-        const newAverageScore = Math.floor(newTotalScore / newTotalGames)
-        const newFastestTime = stats.fastestTime && stats.fastestTime > 0
-          ? Math.min(stats.fastestTime, finalTime)
-          : finalTime
-        const newPerfectGames = attempts === 1 ? (stats.perfectGames || 0) + 1 : (stats.perfectGames || 0)
-
-        await updateDoc(statsRef, {
-          totalGames: newTotalGames,
-          wins: newWins,
-          currentStreak: newStreak,
-          bestStreak: newBestStreak,
-          averageScore: newAverageScore,
-          totalScore: newTotalScore,
-          fastestTime: newFastestTime,
-          perfectGames: newPerfectGames,
-          lastPlayedDate: todayStr,
-          updatedAt: serverTimestamp(),
-        })
-      } else {
-        await setDoc(statsRef, {
-          totalGames: 1,
-          wins: won ? 1 : 0,
-          currentStreak: won ? 1 : 0,
-          bestStreak: won ? 1 : 0,
-          averageScore: score,
-          totalScore: score,
-          fastestTime: finalTime,
-          perfectGames: attempts === 1 ? 1 : 0,
-          lastPlayedDate: todayStr,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        })
-      }
-
-      loadUserStats()
-      loadLeaderboards()
-      loadHistory()
-
-      if (won) {
-        toast.success(`Congratulations! You solved it in ${attempts} attempt${attempts !== 1 ? 's' : ''}!`)
-      } else {
-        toast.error(`The word was: ${dailyWord}`)
-      }
+      await recordGame(account.uid, game)
+      accountData.reload()
+      dailyLeaderboard.reload()
+      allTimeLeaderboard.reload()
     } catch (error) {
-      console.error("Failed to save result:", error)
+      if (error instanceof Error && error.message === ALREADY_PLAYED) {
+        toast.error("You already played today's challenge, so this attempt wasn't scored.")
+        setFinished(null)
+        accountData.reload()
+        return
+      }
+      logUnexpectedError("gauntlet:save", error)
       toast.error("Failed to save result")
     }
   }
 
-  const useHint = () => {
-    if (!gameStarted || gameCompleted || hintRevealed) return
-    if (!user) {
-      setAuthDialogOpen(true)
+  const submitGuess = () => {
+    if (!playing || currentGuess.length !== word.length) {
+      toast.error(`Guess must be ${word.length} letters`)
       return
     }
-    setHintsUsed(hintsUsed + 1)
-    setHintRevealed(true)
-    setShowHint(true)
+    const next = [...guesses, currentGuess]
+    setGuesses(next)
+    setCurrentGuess("")
+    if (currentGuess === word) void finishGame(next, true)
+    else if (next.length >= MAX_ATTEMPTS) void finishGame(next, false)
+  }
+
+  const revealHint = () => {
+    if (!playing || hintsUsed) return
+    setHintsUsed(1)
     toast.info("Hint revealed! Check the hint below.")
   }
 
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins}:${secs.toString().padStart(2, '0')}`
-  }
-
-  const shareResult = () => {
-    if (!todayResult || !todayResult.completed) {
-      toast.error("No completed game to share")
-      return
-    }
-
-    // Use saved results from state, or fallback to empty array
-    const resultsToShare = results.length > 0 ? results : []
-
-    if (resultsToShare.length === 0) {
-      toast.error("Unable to share: results not available")
-      return
-    }
-
-    const emojiMap: Record<'correct' | 'present' | 'absent', string> = {
-      correct: '🟩',
-      present: '🟨',
-      absent: '⬛',
-    }
-
-    let shareText = `Amer Gauntlet ${todayStr}\n`
-    shareText += `Attempts: ${todayResult.attempts}/6\n`
-    shareText += `Time: ${formatTime(todayResult.time)}\n`
-    shareText += `Score: ${todayResult.score}\n\n`
-
-    resultsToShare.forEach((result) => {
-      shareText += result.map(r => emojiMap[r]).join('') + '\n'
-    })
-
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(shareText).then(() => {
-        toast.success("Result copied to clipboard!")
-      }).catch(() => {
-        // Fallback for browsers that don't support clipboard API
-        const textArea = document.createElement("textarea")
-        textArea.value = shareText
-        textArea.style.position = "fixed"
-        textArea.style.opacity = "0"
-        document.body.appendChild(textArea)
-        textArea.select()
-        try {
-          document.execCommand('copy')
-          toast.success("Result copied to clipboard!")
-        } catch (err) {
-          toast.error("Failed to copy to clipboard")
-        }
-        document.body.removeChild(textArea)
-      })
-    } else {
-      toast.error("Clipboard not supported in this browser")
-    }
-  }
-
-  const getHint = () => {
-    if (!hintRevealed) return null
-    // Reveal first letter
-    return `The word starts with "${dailyWord[0]}"`
-  }
-
-  if (loading || authLoading) {
+  if (!hydrated || authLoading || (uid && accountData.loading)) {
     return (
       <Card>
         <CardContent className="py-12 text-center">
@@ -646,23 +335,27 @@ export function AmerGauntletMain() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold">Today’s challenge</h2>
-          <p className="text-muted-foreground">Daily puzzle challenge - {todayStr}</p>
+          <p className="text-muted-foreground">Daily puzzle challenge - {today}</p>
         </div>
-        {user && userStats && (
+        {stats && (
           <div className="flex items-center gap-2">
-            <Badge variant="outline" className="flex items-center gap-1">
+            <Badge variant="outline" className="flex items-center gap-1" aria-label="Current streak">
               <Flame className="h-3 w-3" />
-              {userStats.currentStreak}
+              {stats.currentStreak}
             </Badge>
-            <Badge variant="outline" className="flex items-center gap-1">
+            <Badge
+              variant="outline"
+              className="flex items-center gap-1"
+              aria-label="Wins out of games played"
+            >
               <Trophy className="h-3 w-3" />
-              {userStats.wins}/{userStats.totalGames}
+              {stats.wins}/{stats.totalGames}
             </Badge>
           </div>
         )}
       </div>
 
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as Tab)}>
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="play">Play</TabsTrigger>
           <TabsTrigger value="leaderboard">Leaderboard</TabsTrigger>
@@ -674,38 +367,36 @@ export function AmerGauntletMain() {
             <CardHeader>
               <CardTitle>Daily Challenge</CardTitle>
               <CardDescription>
-                Guess the {dailyWord.length}-letter word. You have 6 attempts!
+                Guess the {word.length}-letter word. You have {MAX_ATTEMPTS} attempts!
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {!gameStarted && !gameCompleted && (
-                <div className="text-center space-y-4">
-                  <p className="text-muted-foreground">
-                    Ready to take on today's challenge?
-                  </p>
+              {!playing && !todayGame && (
+                <div className="space-y-4 text-center">
+                  <p className="text-muted-foreground">Ready to take on today's challenge?</p>
                   <Button onClick={startGame} size="lg">
                     Start Challenge
                   </Button>
                 </div>
               )}
 
-              {gameStarted && !gameCompleted && (
+              {playing && (
                 <>
-                  <div className="flex items-center justify-center gap-4 mb-4">
+                  <div className="mb-4 flex items-center justify-center gap-4">
                     {settings.showTimer && (
                       <Badge variant="outline" className="flex items-center gap-1">
                         <Timer className="h-3 w-3" />
-                        {formatTime(elapsedTime)}
+                        {formatDuration(elapsed)}
                       </Badge>
                     )}
                     <Badge variant="outline">
-                      Attempts: {guesses.length}/6
+                      Attempts: {guesses.length}/{MAX_ATTEMPTS}
                     </Badge>
-                    {settings.showHints && !hintRevealed && (
+                    {settings.showHints && !hintsUsed && (
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={useHint}
+                        onClick={revealHint}
                         className="flex items-center gap-1"
                       >
                         <Lightbulb className="h-3 w-3" />
@@ -714,104 +405,62 @@ export function AmerGauntletMain() {
                     )}
                   </div>
 
-                  {showHint && getHint() && (
-                    <Card className="bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800">
+                  {hintsUsed > 0 && (
+                    <Card className="border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-900/20">
                       <CardContent className="pt-4">
-                        <p className="text-sm font-medium flex items-center gap-2">
+                        <p className="flex items-center gap-2 text-sm font-medium">
                           <Lightbulb className="h-4 w-4" />
-                          {getHint()}
+                          The word starts with "{word[0]}"
                         </p>
                       </CardContent>
                     </Card>
                   )}
 
-                  <div className="space-y-2">
-                    {Array.from({ length: 6 }).map((_, rowIdx) => {
-                      const guess = guesses[rowIdx] || ""
-                      const result = results[rowIdx] || []
-                      const isCurrentRow = rowIdx === guesses.length
-
-                      return (
-                        <div
-                          key={rowIdx}
-                          className="flex gap-2 justify-center"
-                        >
-                          {Array.from({ length: dailyWord.length }).map((_, colIdx) => {
-                            const letter = isCurrentRow && colIdx < currentGuess.length
-                              ? currentGuess[colIdx]
-                              : guess[colIdx] || ""
-                            const state = result[colIdx]
-
-                            const className = `
-                              w-12 h-12 border-2 rounded-md flex items-center justify-center text-xl font-bold
-                              ${!letter
-                                ? "border-gray-300 dark:border-gray-700"
-                                : state === 'correct'
-                                ? "bg-green-500 border-green-600 text-white"
-                                : state === 'present'
-                                ? "bg-yellow-500 border-yellow-600 text-white"
-                                : state === 'absent'
-                                ? "bg-gray-500 border-gray-600 text-white"
-                                : "border-gray-400 dark:border-gray-600 bg-white dark:bg-gray-800"
-                              }
-                            `
-
-                            return settings.animations ? (
-                              <motion.div
-                                key={colIdx}
-                                initial={false}
-                                animate={{
-                                  scale: letter ? [1, 1.1, 1] : 1,
-                                  rotate: state ? [0, 5, -5, 0] : 0,
-                                }}
-                                transition={{ duration: 0.3 }}
-                                className={className}
-                              >
-                                {letter.toUpperCase()}
-                              </motion.div>
-                            ) : (
-                              <div key={colIdx} className={className}>
-                                {letter.toUpperCase()}
-                              </div>
-                            )
-                          })}
-                        </div>
-                      )
-                    })}
-                  </div>
+                  <Board
+                    word={word}
+                    rows={rows}
+                    guesses={guesses}
+                    currentGuess={currentGuess}
+                    animate={settings.animations}
+                  />
 
                   <div className="flex gap-2">
                     <Input
+                      aria-label="Your guess"
                       value={currentGuess}
-                      onChange={(e) => {
-                        const val = e.target.value.toUpperCase().replace(/[^A-Z]/g, '')
-                        if (val.length <= dailyWord.length) {
-                          setCurrentGuess(val)
+                      onChange={(event) =>
+                        setCurrentGuess(
+                          event.target.value
+                            .toUpperCase()
+                            .replace(/[^A-Z]/g, "")
+                            .slice(0, word.length)
+                        )
+                      }
+                      onKeyDown={(event) => {
+                        if (
+                          event.key === "Enter" &&
+                          settings.autoSubmit &&
+                          currentGuess.length === word.length
+                        ) {
+                          submitGuess()
                         }
                       }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          if (settings.autoSubmit && currentGuess.length === dailyWord.length) {
-                            submitGuess()
-                          }
-                        }
-                      }}
-                      placeholder={`Enter ${dailyWord.length} letters`}
-                      maxLength={dailyWord.length}
-                      className="text-center text-lg font-mono"
+                      placeholder={`Enter ${word.length} letters`}
+                      maxLength={word.length}
+                      className="text-center font-mono text-lg"
                       autoFocus
                     />
-                    <Button onClick={submitGuess} disabled={currentGuess.length !== dailyWord.length}>
+                    <Button onClick={submitGuess} disabled={currentGuess.length !== word.length}>
                       Submit
                     </Button>
                   </div>
                 </>
               )}
 
-              {gameCompleted && todayResult && (
-                <div className="text-center space-y-4">
+              {todayGame && (
+                <div className="space-y-4 text-center">
                   <div className="space-y-2">
-                    {todayResult.completed ? (
+                    {todayGame.result.completed ? (
                       <div className="flex items-center justify-center gap-2 text-green-600 dark:text-green-400">
                         <CheckCircle2 className="h-6 w-6" />
                         <h3 className="text-2xl font-bold">Victory!</h3>
@@ -822,47 +471,33 @@ export function AmerGauntletMain() {
                         <h3 className="text-2xl font-bold">Challenge Failed</h3>
                       </div>
                     )}
-                    <p className="text-muted-foreground">The word was: <strong>{dailyWord}</strong></p>
+                    <p className="text-muted-foreground">
+                      The word was: <strong>{word}</strong>
+                    </p>
                   </div>
+
+                  {rows.length > 0 && (
+                    <Board word={word} rows={rows} guesses={shownGuesses} animate={false} />
+                  )}
 
                   <div className="grid grid-cols-3 gap-4">
-                    <Card>
-                      <CardContent className="pt-4">
-                        <div className="text-2xl font-bold">{todayResult.attempts}</div>
-                        <div className="text-xs text-muted-foreground">Attempts</div>
-                      </CardContent>
-                    </Card>
-                    <Card>
-                      <CardContent className="pt-4">
-                        <div className="text-2xl font-bold">{formatTime(todayResult.time)}</div>
-                        <div className="text-xs text-muted-foreground">Time</div>
-                      </CardContent>
-                    </Card>
-                    <Card>
-                      <CardContent className="pt-4">
-                        <div className="text-2xl font-bold">{todayResult.score}</div>
-                        <div className="text-xs text-muted-foreground">Score</div>
-                      </CardContent>
-                    </Card>
+                    <StatTile label="Attempts" value={todayGame.result.attempts} />
+                    <StatTile label="Time" value={formatDuration(todayGame.result.time)} />
+                    <StatTile label="Score" value={todayGame.result.score} />
                   </div>
 
-                  <div className="flex gap-2 justify-center">
-                    <Button variant="outline" onClick={shareResult}>
-                      <Share2 className="h-4 w-4 mr-2" />
+                  {rows.length > 0 && (
+                    <Button
+                      variant="outline"
+                      onClick={() =>
+                        copyText(shareText(todayGame.result, rows), "Result copied to clipboard!")
+                      }
+                    >
+                      <Share2 className="mr-2 h-4 w-4" />
                       Share Result
                     </Button>
-                    <Button onClick={() => {
-                      setGameCompleted(false)
-                      setGameStarted(false)
-                      setGuesses([])
-                      setResults([])
-                      setCurrentGuess("")
-                      setTodayResult(null)
-                    }}>
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                      Play Again
-                    </Button>
-                  </div>
+                  )}
+                  <NextWordCountdown />
                 </div>
               )}
             </CardContent>
@@ -875,164 +510,49 @@ export function AmerGauntletMain() {
               <TabsTrigger value="daily">Daily</TabsTrigger>
               <TabsTrigger value="alltime">All-Time</TabsTrigger>
             </TabsList>
-
             <TabsContent value="daily">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Trophy className="h-5 w-5" />
-                    Daily Leaderboard
-                  </CardTitle>
-                  <CardDescription>{todayStr}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {dailyLeaderboard.length === 0 ? (
-                    <p className="text-center text-muted-foreground py-8">No entries yet</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {dailyLeaderboard.map((entry, idx) => (
-                        <div
-                          key={entry.userId}
-                          className={`flex items-center justify-between p-3 rounded-lg border ${
-                            user && entry.userId === user.uid
-                              ? "bg-primary/10 border-primary"
-                              : "bg-muted/50"
-                          }`}
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 text-center font-bold">
-                              {idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `#${entry.rank}`}
-                            </div>
-                            <div>
-                              <div className="font-medium">
-                                {entry.displayName}
-                                {user && entry.userId === user.uid && " (You)"}
-                              </div>
-                              <div className="text-xs text-muted-foreground">
-                                {entry.attempts} attempts • {formatTime(entry.time)}
-                              </div>
-                            </div>
-                          </div>
-                          <Badge variant="outline" className="font-bold">
-                            {entry.score}
-                          </Badge>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+              <LeaderboardCard
+                icon={<Trophy className="h-5 w-5" />}
+                title="Daily Leaderboard"
+                description={today}
+                entries={dailyLeaderboard.data ?? []}
+                currentUserId={uid}
+              />
             </TabsContent>
-
             <TabsContent value="alltime">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <TrendingUp className="h-5 w-5" />
-                    All-Time Leaderboard
-                  </CardTitle>
-                  <CardDescription>Top players by total score</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {allTimeLeaderboard.length === 0 ? (
-                    <p className="text-center text-muted-foreground py-8">No entries yet</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {allTimeLeaderboard.map((entry, idx) => (
-                        <div
-                          key={entry.userId}
-                          className={`flex items-center justify-between p-3 rounded-lg border ${
-                            user && entry.userId === user.uid
-                              ? "bg-primary/10 border-primary"
-                              : "bg-muted/50"
-                          }`}
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 text-center font-bold">
-                              {idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `#${entry.rank}`}
-                            </div>
-                            <div className="font-medium">
-                              {entry.displayName}
-                              {user && entry.userId === user.uid && " (You)"}
-                            </div>
-                          </div>
-                          <Badge variant="outline" className="font-bold">
-                            {entry.score}
-                          </Badge>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+              <LeaderboardCard
+                icon={<TrendingUp className="h-5 w-5" />}
+                title="All-Time Leaderboard"
+                description="Top players by total score"
+                entries={allTimeLeaderboard.data ?? []}
+                currentUserId={uid}
+              />
             </TabsContent>
           </Tabs>
         </TabsContent>
 
         <TabsContent value="stats" className="space-y-4">
-          {!user ? (
+          {!stats ? (
             <Card>
-              <CardContent className="py-12 text-center space-y-4">
+              <CardContent className="space-y-4 py-12 text-center">
                 <p className="text-muted-foreground">Sign in to view your statistics</p>
                 <Button onClick={() => setAuthDialogOpen(true)}>Sign In</Button>
               </CardContent>
             </Card>
-          ) : userStats ? (
+          ) : (
             <>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <Card>
-                  <CardContent className="pt-4">
-                    <div className="text-2xl font-bold">{userStats.totalGames}</div>
-                    <div className="text-xs text-muted-foreground">Games Played</div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="pt-4">
-                    <div className="text-2xl font-bold">{userStats.wins}</div>
-                    <div className="text-xs text-muted-foreground">Wins</div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="pt-4">
-                    <div className="text-2xl font-bold flex items-center gap-1">
-                      <Flame className="h-5 w-5" />
-                      {userStats.currentStreak}
-                    </div>
-                    <div className="text-xs text-muted-foreground">Current Streak</div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="pt-4">
-                    <div className="text-2xl font-bold">{userStats.bestStreak}</div>
-                    <div className="text-xs text-muted-foreground">Best Streak</div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="pt-4">
-                    <div className="text-2xl font-bold">{userStats.averageScore}</div>
-                    <div className="text-xs text-muted-foreground">Avg Score</div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="pt-4">
-                    <div className="text-2xl font-bold">{userStats.totalScore}</div>
-                    <div className="text-xs text-muted-foreground">Total Score</div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="pt-4">
-                    <div className="text-2xl font-bold">
-                      {userStats.fastestTime > 0 ? formatTime(userStats.fastestTime) : "N/A"}
-                    </div>
-                    <div className="text-xs text-muted-foreground">Fastest Time</div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="pt-4">
-                    <div className="text-2xl font-bold">{userStats.perfectGames}</div>
-                    <div className="text-xs text-muted-foreground">Perfect Games</div>
-                  </CardContent>
-                </Card>
+              <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+                <StatTile label="Games Played" value={stats.totalGames} />
+                <StatTile label="Wins" value={stats.wins} />
+                <StatTile label="Current Streak" value={stats.currentStreak} />
+                <StatTile label="Best Streak" value={stats.bestStreak} />
+                <StatTile label="Avg Score" value={stats.averageScore} />
+                <StatTile label="Total Score" value={stats.totalScore} />
+                <StatTile
+                  label="Fastest Time"
+                  value={stats.fastestTime > 0 ? formatDuration(stats.fastestTime) : "N/A"}
+                />
+                <StatTile label="Perfect Games" value={stats.perfectGames} />
               </div>
 
               <Card>
@@ -1044,22 +564,23 @@ export function AmerGauntletMain() {
                 </CardHeader>
                 <CardContent>
                   {history.length === 0 ? (
-                    <p className="text-center text-muted-foreground py-8">No history yet</p>
+                    <p className="py-8 text-center text-muted-foreground">No history yet</p>
                   ) : (
                     <div className="space-y-2">
                       {history.map((result) => (
                         <div
                           key={result.date}
-                          className="flex items-center justify-between p-3 rounded-lg border bg-muted/50"
+                          className="flex items-center justify-between rounded-lg border bg-muted/50 p-3"
                         >
                           <div>
                             <div className="font-medium">{result.date}</div>
                             <div className="text-xs text-muted-foreground">
-                              {result.completed ? "Completed" : "Failed"} • {result.attempts} attempts • {formatTime(result.time)}
+                              {result.completed ? "Completed" : "Failed"} • {result.attempts} attempts •{" "}
+                              {formatDuration(result.time)}
                             </div>
                           </div>
-                          <Badge variant={result.completed ? "default" : "destructive"}>
-                            {result.score} pts
+                          <Badge variant="outline" className="font-bold">
+                            {result.score}
                           </Badge>
                         </div>
                       ))}
@@ -1068,17 +589,140 @@ export function AmerGauntletMain() {
                 </CardContent>
               </Card>
             </>
-          ) : (
-            <Card>
-              <CardContent className="py-12 text-center">
-                <p className="text-muted-foreground">Loading statistics...</p>
-              </CardContent>
-            </Card>
           )}
         </TabsContent>
       </Tabs>
 
       <AuthDialog open={authDialogOpen} onOpenChange={setAuthDialogOpen} />
     </motion.div>
+  )
+}
+
+const TILE_STYLES: Record<LetterResult | "typed" | "empty", string> = {
+  correct: "border-green-600 bg-green-500 text-white",
+  present: "border-yellow-600 bg-yellow-500 text-white",
+  absent: "border-gray-600 bg-gray-500 text-white",
+  typed: "border-gray-400 bg-white dark:border-gray-600 dark:bg-gray-800",
+  empty: "border-gray-300 dark:border-gray-700",
+}
+
+function Board({
+  word,
+  rows,
+  guesses,
+  currentGuess = "",
+  animate,
+}: {
+  word: string
+  rows: LetterResult[][]
+  guesses: string[]
+  currentGuess?: string
+  animate: boolean
+}) {
+  return (
+    <div className="space-y-2" role="grid" aria-label="Guesses">
+      {Array.from({ length: MAX_ATTEMPTS }, (_, rowIndex) => {
+        const guess = rowIndex === guesses.length ? currentGuess : (guesses[rowIndex] ?? "")
+        return (
+          <div key={rowIndex} className="flex justify-center gap-2" role="row">
+            {Array.from({ length: word.length }, (_, column) => {
+              const letter = guess[column] ?? ""
+              const state = rows[rowIndex]?.[column]
+              const className = `flex h-12 w-12 items-center justify-center rounded-md border-2 text-xl font-bold ${
+                TILE_STYLES[state ?? (letter ? "typed" : "empty")]
+              }`
+              return animate ? (
+                <motion.div
+                  key={column}
+                  role="gridcell"
+                  initial={false}
+                  animate={{ scale: letter ? [1, 1.1, 1] : 1, rotate: state ? [0, 5, -5, 0] : 0 }}
+                  transition={{ duration: 0.3 }}
+                  className={className}
+                >
+                  {letter}
+                </motion.div>
+              ) : (
+                <div key={column} role="gridcell" className={className}>
+                  {letter}
+                </div>
+              )
+            })}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function StatTile({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <Card>
+      <CardContent className="pt-4">
+        <div className="text-2xl font-bold">{value}</div>
+        <div className="text-xs text-muted-foreground">{label}</div>
+      </CardContent>
+    </Card>
+  )
+}
+
+const MEDALS = ["🥇", "🥈", "🥉"]
+
+function LeaderboardCard({
+  icon,
+  title,
+  description,
+  entries,
+  currentUserId,
+}: {
+  icon: React.ReactNode
+  title: string
+  description: string
+  entries: LeaderboardEntry[]
+  currentUserId: string | null
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          {icon}
+          {title}
+        </CardTitle>
+        <CardDescription>{description}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {entries.length === 0 ? (
+          <p className="py-8 text-center text-muted-foreground">No entries yet</p>
+        ) : (
+          <ol className="space-y-2">
+            {entries.map((entry, index) => {
+              const isYou = entry.userId === currentUserId
+              return (
+                <li
+                  key={entry.userId}
+                  className={`flex items-center justify-between rounded-lg border p-3 ${
+                    isYou ? "border-primary bg-primary/10" : "bg-muted/50"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 text-center font-bold">{MEDALS[index] ?? `#${index + 1}`}</div>
+                    <div>
+                      <div className="font-medium">
+                        {entry.displayName}
+                        {isYou && " (You)"}
+                      </div>
+                      {entry.detail && <div className="text-xs text-muted-foreground">{entry.detail}</div>}
+                    </div>
+                  </div>
+                  <Badge variant="outline" className="font-bold">
+                    {entry.score}
+                  </Badge>
+                </li>
+              )
+            })}
+          </ol>
+        )}
+      </CardContent>
+    </Card>
   )
 }

@@ -2,26 +2,13 @@
 
 import * as React from "react"
 import { AtSign, Loader2 } from "lucide-react"
-import { doc, getDoc, onSnapshot, serverTimestamp, setDoc } from "firebase/firestore"
 import { useAuth } from "@/components/auth/auth-provider"
+import { saveProfile, useProfile } from "@/components/auth/profile-provider"
 import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { db } from "@/lib/firebase/config"
-import {
-  getUsernameError,
-  normalizeUsernameInput,
-  USERNAME_MAX_LENGTH,
-} from "@/lib/account/username"
-
-type ProfileCheck = { uid: string; needsUsername: boolean } | null
+import { getUsernameError, normalizeUsernameInput, USERNAME_MAX_LENGTH } from "@/lib/account/username"
 
 function suggestedUsername(displayName?: string | null, email?: string | null) {
   const source = displayName || email?.split("@")[0] || ""
@@ -29,38 +16,25 @@ function suggestedUsername(displayName?: string | null, email?: string | null) {
 }
 
 export function UsernameOnboarding() {
-  const { user, loading: authLoading } = useAuth()
-  const [profileCheck, setProfileCheck] = React.useState<ProfileCheck>(null)
-  const [username, setUsername] = React.useState("")
+  const { account: user } = useAuth()
+  const profile = useProfile()
+  // null until the person types, so the suggestion tracks the account until then.
+  const [draft, setDraft] = React.useState<string | null>(null)
   const [error, setError] = React.useState("")
   const [saving, setSaving] = React.useState(false)
+  const [savedFor, setSavedFor] = React.useState<string | null>(null)
 
-  React.useEffect(() => {
-    if (authLoading || !user || user.isAnonymous) return
-    return onSnapshot(
-      doc(db, "users", user.uid),
-      (snapshot) => {
-        const savedUsername = snapshot.data()?.username
-        const needsUsername = typeof savedUsername !== "string" || !savedUsername.trim()
-        setProfileCheck({ uid: user.uid, needsUsername })
-        if (needsUsername) {
-          setUsername((current) => current || suggestedUsername(user.displayName, user.email))
-        }
-      },
-      () => setProfileCheck({ uid: user.uid, needsUsername: true })
-    )
-  }, [authLoading, user])
-
+  const username = draft ?? suggestedUsername(user?.displayName, user?.email)
   const open = Boolean(
     user &&
-      !user.isAnonymous &&
-      profileCheck?.uid === user.uid &&
-      profileCheck.needsUsername
+      savedFor !== user.uid &&
+      (profile.status === "ready" || profile.status === "error") &&
+      !profile.username
   )
 
   const saveUsername = async (event: React.FormEvent) => {
     event.preventDefault()
-    if (!user || user.isAnonymous) return
+    if (!user) return
 
     const next = normalizeUsernameInput(username)
     const validationError = getUsernameError(next)
@@ -72,20 +46,12 @@ export function UsernameOnboarding() {
     setSaving(true)
     setError("")
     try {
-      const userRef = doc(db, "users", user.uid)
-      const snapshot = await getDoc(userRef)
-      await setDoc(
-        userRef,
-        {
-          username: next,
-          email: user.email || "",
-          ...(user.displayName ? { displayName: user.displayName } : {}),
-          updatedAt: serverTimestamp(),
-          ...(!snapshot.exists() ? { createdAt: serverTimestamp() } : {}),
-        },
-        { merge: true }
-      )
-      setProfileCheck({ uid: user.uid, needsUsername: false })
+      await saveProfile(user.uid, {
+        username: next,
+        email: user.email || "",
+        ...(user.displayName ? { displayName: user.displayName } : {}),
+      })
+      setSavedFor(user.uid)
     } catch {
       setError("We couldn't save your username. Please try again.")
     } finally {
@@ -115,12 +81,15 @@ export function UsernameOnboarding() {
           <div className="space-y-2">
             <Label htmlFor="first-username">Username</Label>
             <div className="relative">
-              <AtSign className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+              <AtSign
+                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                aria-hidden="true"
+              />
               <Input
                 id="first-username"
                 value={username}
                 onChange={(event) => {
-                  setUsername(normalizeUsernameInput(event.target.value))
+                  setDraft(normalizeUsernameInput(event.target.value))
                   setError("")
                 }}
                 className="pl-9"

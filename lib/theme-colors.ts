@@ -14,3 +14,11 @@ export const THEME_COLOR_STORAGE_KEY = "amerlol:theme-color"
 export function isThemeColor(value: unknown): value is ThemeColor {
   return THEME_COLORS.some((color) => color.id === value)
 }
+
+/**
+ * Inline <head> script that applies the stored accent before first paint, so
+ * pages don't flash the default colour while React hydrates.
+ */
+export const ACCENT_BOOTSTRAP_SCRIPT = `try{var c=localStorage.getItem(${JSON.stringify(THEME_COLOR_STORAGE_KEY)});if(${JSON.stringify(
+  THEME_COLORS.map((color) => color.id)
+)}.indexOf(c)>-1)document.documentElement.dataset.accent=c}catch(e){}`

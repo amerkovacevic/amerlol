@@ -99,10 +99,9 @@ export function makeFwcStickerId(n: number): string {
   return `FWC-${n}`
 }
 
-export function parseUsa2026StickerId(id: string):
-  | { kind: "team"; code: string; n: number }
-  | { kind: "fwc"; n: number }
-  | null {
+export function parseUsa2026StickerId(
+  id: string
+): { kind: "team"; code: string; n: number } | { kind: "fwc"; n: number } | null {
   const trimmed = id.trim()
   if (!trimmed) return null
 
@@ -118,4 +117,3 @@ export function parseUsa2026StickerId(id: string):
 export function findTeamByCode(code: string): Usa2026Team | undefined {
   return USA_2026_TEAMS.find((t) => t.code === code)
 }
-
