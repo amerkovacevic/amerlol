@@ -40,12 +40,9 @@ vi.mock("@/components/apps/stl-monitor/map-component", () => ({
 }))
 vi.mock("@/components/apps/stl-monitor/data-service", () => ({
   fetchMoDOTIncidents: mocks.incidentFetch,
-  fetchIDOTIncidents: mocks.incidentFetch,
   fetchNWSAlerts: mocks.incidentFetch,
-  fetchTransitAlerts: mocks.incidentFetch,
   fetchLocalNews: mocks.incidentFetch,
   weatherAlertsToIncidents: () => [],
-  transitAlertsToIncidents: () => [],
   newsToIncidents: () => [],
 }))
 vi.mock("sonner", () => ({
@@ -418,6 +415,12 @@ it("applies STL Monitor's map appearance preference", async () => {
   await save()
   await overview()
   expect(screen.getByTestId("incident-map").getAttribute("data-style")).toBe("light")
+})
+
+it("says which STL Monitor source failed instead of inventing incidents", async () => {
+  mocks.incidentFetch.mockRejectedValueOnce(new Error("MoDOT down"))
+  await mount("stl-monitor")
+  expect(await screen.findByText(/Couldn.t reach MoDOT traffic just now/)).toBeTruthy()
 })
 
 it("generates a Let Me Google That link straight from an example query", async () => {

@@ -16,9 +16,9 @@ Open problems that need product or architecture decisions. Remove an entry when 
 
 ## Product
 
-- **STL Monitor shows simulated data.** The IDOT and Metro Transit feeds, the MoDOT fallback, and the Analytics
-  and Insights tabs use generated sample data. It is labelled as simulated in the UI; real sources would
-  have to replace it before those tabs are useful.
+- **STL Monitor has three live sources**: MoDOT traffic, NWS weather alerts and local news. Illinois (IDOT)
+  traffic, Metro Transit alerts and crime statistics are not connected, so those categories are hidden. The
+  `transit` and `crime` keys remain in the settings schema so existing saved settings stay valid.
 - **STL Monitor news uses public CORS proxies**, which can be slow, rate-limited or go away.
 
 ## Scale and operations

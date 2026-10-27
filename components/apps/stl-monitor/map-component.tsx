@@ -79,8 +79,8 @@ function createMarkerElement(incident: Incident, ping: boolean): HTMLElement {
 
   const wrapper = document.createElement("button")
   wrapper.type = "button"
-  wrapper.className = incident.simulated ? "stl-marker stl-marker-simulated" : "stl-marker"
-  wrapper.setAttribute("aria-label", incident.simulated ? `Simulated: ${incident.title}` : incident.title)
+  wrapper.className = "stl-marker"
+  wrapper.setAttribute("aria-label", incident.title)
   wrapper.style.setProperty("--marker-size", `${size}px`)
   wrapper.style.setProperty("--marker-color", color)
 
@@ -256,10 +256,6 @@ export default function MapComponent({
         .stl-marker:focus-visible .stl-marker-circle {
           transform: scale(1.15);
           box-shadow: 0 4px 16px var(--marker-color);
-        }
-        .stl-marker-simulated .stl-marker-circle {
-          border-style: dashed;
-          opacity: 0.65;
         }
         .stl-marker-ring {
           border: 2px solid var(--marker-color);
