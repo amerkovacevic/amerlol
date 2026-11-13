@@ -149,26 +149,6 @@ service cloud.firestore {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
       
-      // STL Monitor settings subcollection
-      // Document structure: /users/{userId}/stlMonitorSettings/{settingsId}
-      match /stlMonitorSettings/{settingsId} {
-        allow read: if request.auth != null && request.auth.uid == userId;
-        allow create, update: if isPreferenceWrite(userId, settingsId, ["defaultCategories","defaultSeverityRange","defaultTimeWindow","autoRefresh","refreshInterval","mapStyle"]) &&
-          (!preferenceKeys().hasAny(["defaultCategories"]) || (request.resource.data.defaultCategories is map && ("traffic" in request.resource.data.defaultCategories && request.resource.data.defaultCategories.traffic is bool) && ("weather" in request.resource.data.defaultCategories && request.resource.data.defaultCategories.weather is bool) && ("transit" in request.resource.data.defaultCategories && request.resource.data.defaultCategories.transit is bool) && ("news" in request.resource.data.defaultCategories && request.resource.data.defaultCategories.news is bool) && ("crime" in request.resource.data.defaultCategories && request.resource.data.defaultCategories.crime is bool))) &&
-          (!preferenceKeys().hasAny(["defaultSeverityRange"]) || (request.resource.data.defaultSeverityRange is list && request.resource.data.defaultSeverityRange.size() == 2 && (request.resource.data.defaultSeverityRange[0] is int && request.resource.data.defaultSeverityRange[0] >= 0 && request.resource.data.defaultSeverityRange[0] <= 100) && (request.resource.data.defaultSeverityRange[1] is int && request.resource.data.defaultSeverityRange[1] >= 0 && request.resource.data.defaultSeverityRange[1] <= 100) && request.resource.data.defaultSeverityRange[0] <= request.resource.data.defaultSeverityRange[1])) &&
-          (!preferenceKeys().hasAny(["defaultTimeWindow"]) || (request.resource.data.defaultTimeWindow is string && request.resource.data.defaultTimeWindow in ["15m","1h","6h","24h"])) &&
-          (!preferenceKeys().hasAny(["autoRefresh"]) || (request.resource.data.autoRefresh is bool)) &&
-          (!preferenceKeys().hasAny(["refreshInterval"]) || (request.resource.data.refreshInterval is int && request.resource.data.refreshInterval >= 15 && request.resource.data.refreshInterval <= 300)) &&
-          (!preferenceKeys().hasAny(["mapStyle"]) || (request.resource.data.mapStyle is string && request.resource.data.mapStyle in ["dark","light"]));
-        allow delete: if false;
-      }
-      
-      // STL Monitor saved locations subcollection
-      // Document structure: /users/{userId}/stlMonitorSavedLocations/{locationId}
-      match /stlMonitorSavedLocations/{locationId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-      }
-      
       // LMGTFY settings subcollection
       // Document structure: /users/{userId}/lmgtfySettings/{settingsId}
       match /lmgtfySettings/{settingsId} {

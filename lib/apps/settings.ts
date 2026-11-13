@@ -3,13 +3,6 @@ import { z } from "zod"
 const bool = z.boolean()
 const integer = (min: number, max: number) => z.number().int().min(min).max(max)
 const text = z.string().max(200)
-const categories = z.object({
-  traffic: bool,
-  weather: bool,
-  transit: bool,
-  news: bool,
-  crime: bool,
-})
 
 // Existing Firestore paths and local keys are deliberately retained. Reading never migrates data.
 export const SETTINGS = {
@@ -104,26 +97,6 @@ export const SETTINGS = {
       showHints: bool.default(true),
       animations: bool.default(true),
       autoSubmit: bool.default(false),
-    }),
-  },
-  "stl-monitor": {
-    collection: "stlMonitorSettings",
-    schema: z.object({
-      defaultCategories: categories.default({
-        traffic: true,
-        weather: true,
-        transit: true,
-        news: true,
-        crime: false,
-      }),
-      defaultSeverityRange: z
-        .tuple([integer(0, 100), integer(0, 100)])
-        .refine(([min, max]) => min <= max, "Minimum severity must not exceed maximum")
-        .default([0, 100]),
-      defaultTimeWindow: z.enum(["15m", "1h", "6h", "24h"]).default("1h"),
-      autoRefresh: bool.default(true),
-      refreshInterval: integer(15, 300).default(30),
-      mapStyle: z.enum(["dark", "light"]).default("dark"),
     }),
   },
   lmgtfy: {
@@ -240,11 +213,6 @@ export const SETTING_LABELS: Record<string, string> = {
   showHints: "Enable hints",
   animations: "Animate guess results",
   autoSubmit: "Submit a complete guess with Enter",
-  defaultCategories: "Default incident categories",
-  defaultSeverityRange: "Default severity range (minimum, maximum)",
-  defaultTimeWindow: "Default incident time window",
-  refreshInterval: "Refresh interval (seconds)",
-  mapStyle: "Map appearance",
   defaultAnimationSpeed: "Animation speed",
   redirectDelay: "Delay before search (milliseconds)",
   showQueryInAnimation: "Show query during animation",

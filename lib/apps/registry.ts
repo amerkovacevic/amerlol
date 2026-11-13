@@ -120,16 +120,6 @@ export const APP_REGISTRY: AppEntry[] = [
     accent: "from-red-500 to-orange-500",
   },
   {
-    appId: "stl-monitor",
-    name: "STL Monitor",
-    description: "Real-time incident monitoring dashboard for Greater St. Louis",
-    category: "Utilities",
-    tags: ["stl", "st louis", "monitor", "traffic", "incidents", "weather", "map", "live"],
-    status: "live",
-    accent: "from-red-600 to-rose-500",
-    featured: true,
-  },
-  {
     appId: "lmgtfy",
     name: "Let Me Google That",
     description: "Generate shareable links that play an animation before redirecting to Google search",
