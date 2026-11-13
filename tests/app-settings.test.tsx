@@ -169,7 +169,6 @@ describe("all app settings", () => {
     })
     expect(JSON.stringify(raw)).toBe(before)
     expect(() => validateSettings("timezone", { defaultTimeZones: ["invalid-zone"] })).toThrow()
-    expect(() => validateSettings("stl-monitor", { defaultSeverityRange: [90, 10] })).toThrow()
     expect(() => validateSettings("lmgtfy", { defaultAnimationSpeed: "2" })).toThrow()
     expect(() => validateSettings("encryption", { defaultTab: "missing" })).toThrow()
   })

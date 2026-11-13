@@ -244,9 +244,7 @@ function SettingField({
                 ? NaN
                 : Number(event.target.value)
               : Array.isArray(value)
-                ? event.target.value
-                    .split(",")
-                    .map((part) => (name === "defaultSeverityRange" ? Number(part.trim()) : part.trim()))
+                ? event.target.value.split(",").map((part) => part.trim())
                 : event.target.value
           )
         }

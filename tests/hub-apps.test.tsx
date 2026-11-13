@@ -15,7 +15,6 @@ const mocks = vi.hoisted(() => ({
     uid: "guest",
     isAnonymous: true,
   })),
-  incidentFetch: vi.fn(async () => []),
 }))
 vi.mock("@/components/auth/auth-provider", () => ({
   useAuth: () => ({
@@ -34,16 +33,6 @@ vi.mock("@/components/apps/atlas-sprint/country-map", () => ({
   CountryMap: (props: { focusOnGuess: boolean }) => (
     <div data-testid="country-map" data-focus={String(props.focusOnGuess)} />
   ),
-}))
-vi.mock("@/components/apps/stl-monitor/map-component", () => ({
-  default: (props: { mapStyle: string }) => <div data-testid="incident-map" data-style={props.mapStyle} />,
-}))
-vi.mock("@/components/apps/stl-monitor/data-service", () => ({
-  fetchMoDOTIncidents: mocks.incidentFetch,
-  fetchNWSAlerts: mocks.incidentFetch,
-  fetchLocalNews: mocks.incidentFetch,
-  weatherAlertsToIncidents: () => [],
-  newsToIncidents: () => [],
 }))
 vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() },
@@ -107,7 +96,6 @@ const question = {
 beforeEach(() => {
   localStorage.clear()
   mocks.writes.mockClear()
-  mocks.incidentFetch.mockClear()
   mocks.user = null
   mocks.documents.clear()
   mocks.listeners.clear()
@@ -403,24 +391,6 @@ it("applies Gauntlet hint visibility without resetting a running game", async ()
   await overview()
   expect(screen.queryByRole("button", { name: "Use Hint (-100 pts)" })).toBeNull()
   expect(screen.queryByRole("button", { name: "Start Challenge" })).toBeNull()
-})
-
-it("applies STL Monitor's map appearance preference", async () => {
-  await mount("stl-monitor")
-  await screen.findByTestId("incident-map")
-  await openSettings()
-  fireEvent.change(screen.getByLabelText("Map appearance"), {
-    target: { value: "light" },
-  })
-  await save()
-  await overview()
-  expect(screen.getByTestId("incident-map").getAttribute("data-style")).toBe("light")
-})
-
-it("says which STL Monitor source failed instead of inventing incidents", async () => {
-  mocks.incidentFetch.mockRejectedValueOnce(new Error("MoDOT down"))
-  await mount("stl-monitor")
-  expect(await screen.findByText(/Couldn.t reach MoDOT traffic just now/)).toBeTruthy()
 })
 
 it("generates a Let Me Google That link straight from an example query", async () => {

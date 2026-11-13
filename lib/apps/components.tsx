@@ -97,9 +97,6 @@ const APP_COMPONENTS: Record<AppId, AppComponents> = {
       import("@/components/apps/amer-gauntlet/amer-gauntlet-main").then((m) => m.AmerGauntletMain)
     ),
   },
-  "stl-monitor": {
-    Main: lazy(() => import("@/components/apps/stl-monitor/stl-monitor-main").then((m) => m.STLMonitorMain)),
-  },
   lmgtfy: {
     Main: lazy(() => import("@/components/apps/lmgtfy/lmgtfy-main").then((m) => m.LMGTFYMain)),
   },

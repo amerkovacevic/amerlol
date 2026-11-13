@@ -16,10 +16,6 @@ Open problems that need product or architecture decisions. Remove an entry when 
 
 ## Product
 
-- **STL Monitor has three live sources**: MoDOT traffic, NWS weather alerts and local news. Illinois (IDOT)
-  traffic, Metro Transit alerts and crime statistics are not connected, so those categories are hidden. The
-  `transit` and `crime` keys remain in the settings schema so existing saved settings stay valid.
-- **STL Monitor news uses public CORS proxies**, which can be slow, rate-limited or go away.
 
 ## Scale and operations
 

@@ -112,12 +112,6 @@ describe("account preference access and validation", () => {
       })
     )
     await assertFails(
-      setDoc(doc(database("alice"), "users/alice/stlMonitorSettings/default"), {
-        defaultSeverityRange: [80, 10],
-        updatedAt: serverTimestamp(),
-      })
-    )
-    await assertFails(
       setDoc(doc(database("alice"), "users/alice/timezoneSettings/default"), {
         defaultTimeZones: [],
         updatedAt: serverTimestamp(),

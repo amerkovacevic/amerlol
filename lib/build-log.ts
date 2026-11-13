@@ -35,12 +35,6 @@ export const buildLog: BuildLogEntry[] = [
   },
   {
     date: "2026-01-13",
-    title: "STL Monitor",
-    description:
-      "Built a real-time incident monitoring dashboard for St. Louis. Think of it like a local news feed but on a map – you can see traffic, weather, and transit alerts happening around the city. Added some analytics and replay features to make sense of patterns over time.",
-  },
-  {
-    date: "2026-01-13",
     title: "Amer Gauntlet",
     description:
       "Made a daily word puzzle game with leaderboards. Similar vibes to Wordle but with scoring, streaks, and competitive rankings. Turns out building the scoring system was more fun than I expected.",
